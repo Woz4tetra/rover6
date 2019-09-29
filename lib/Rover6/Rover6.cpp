@@ -38,7 +38,6 @@ Rover6::Rover6()
 
     bno = new Adafruit_BNO055(-1, BNO055_ADDRESS_A, &Wire1);
     bno_board_temp = 0;
-    bno_timer = new IntervalTimer();
     bno055_data = new float[BNO055_DATA_BUF_LEN];
     for (size_t i = 0; i < BNO055_DATA_BUF_LEN; i++) {
         bno055_data[i] = 0.0;
@@ -59,20 +58,18 @@ void Rover6::begin()
     setup_fsrs();
     initialize_display();
     setup_BNO055();
-    setup_timers();
+    // setup_timers();
 
-    set_idle(false);
+    set_idle(true);
 }
 
 void Rover6::setup_timers()
 {
-    bno_timer->begin(Rover6::read_BNO055, BNO055_SAMPLERATE_DELAY_US);
     lox_timer->begin(Rover6::read_VL53L0X, VL53L0X_SAMPLERATE_DELAY_US);
 }
 
 void Rover6::end_timers()
 {
-    bno_timer->end();
     lox_timer->end();
 }
 
@@ -101,11 +98,26 @@ void Rover6::check_serial()
     if (DATA_SERIAL.available()) {
         String command = DATA_SERIAL.readStringUntil('\n');
 
-        switch (command.charAt(0)) {
-            case '>': set_idle(false); break;
-            case '<': set_idle(true); break;
+        char first = command.charAt(0);
+        if (first == '>') {
+            set_idle(false);
+        }
+        else if (first == '<') {
+            set_idle(true);
+        }
+        else if (first == '?') {
+            DATA_SERIAL.print("!\n");
+        }
+        else if (first == 'r') {
+            DATA_SERIAL.println("Reporting");
+            report_status();
+        }
 
-            case 'r': report_status(); break;
+        if (is_idle) {
+            return;
+        }
+
+        switch (first) {
             case 'm':
                 switch (command.charAt(1)) {
                     case 'a': set_motorA(command.substring(2).toInt()); break;
@@ -115,8 +127,8 @@ void Rover6::check_serial()
                 break;
             case 's':
                 set_servo(
-                    command.substring(2, 4).toInt(),
-                    command.substring(4).toInt()
+                    command.substring(2, 3).toInt(),
+                    command.substring(3).toInt()
                 );
                 break;
         }
@@ -125,22 +137,27 @@ void Rover6::check_serial()
 
 void Rover6::report_data()
 {
+    if (is_idle) {
+        return;
+    }
+
+    // read_BNO055();
     read_INA219();
     read_encoders();
     read_fsrs();
 
 
-    bno055_data[0] = this->orientationData->orientation.x;
-    bno055_data[1] = this->orientationData->orientation.y;
-    bno055_data[2] = this->orientationData->orientation.z;
+    bno055_data[0] = orientationData->orientation.x;
+    bno055_data[1] = orientationData->orientation.y;
+    bno055_data[2] = orientationData->orientation.z;
 
-    bno055_data[3] = this->angVelocityData->gyro.x;
-    bno055_data[4] = this->angVelocityData->gyro.y;
-    bno055_data[5] = this->angVelocityData->gyro.z;
+    bno055_data[3] = angVelocityData->gyro.x;
+    bno055_data[4] = angVelocityData->gyro.y;
+    bno055_data[5] = angVelocityData->gyro.z;
 
-    bno055_data[6] = this->linearAccelData->acceleration.x;
-    bno055_data[7] = this->linearAccelData->acceleration.y;
-    bno055_data[8] = this->linearAccelData->acceleration.z;
+    bno055_data[6] = linearAccelData->acceleration.x;
+    bno055_data[7] = linearAccelData->acceleration.y;
+    bno055_data[8] = linearAccelData->acceleration.z;
 
     DATA_SERIAL.print("bno\t");
     for (size_t i = 0; i < BNO055_DATA_BUF_LEN; i++) {
@@ -181,6 +198,22 @@ void Rover6::report_status()
 {
     print_info("VL53L0X report");
 
+    uint8_t system, gyro, accel, mag = 0;
+    bno->getCalibration(&system, &gyro, &accel, &mag);
+
+    print_info("BNO055 report:");
+    MSG_SERIAL.print("TEMP: ");
+    MSG_SERIAL.print(this->bno->getTemp());
+
+    MSG_SERIAL.print("\tCALIBRATION: Sys=");
+    MSG_SERIAL.print(system, DEC);
+    MSG_SERIAL.print(" Gyro=");
+    MSG_SERIAL.print(gyro, DEC);
+    MSG_SERIAL.print(" Accel=");
+    MSG_SERIAL.print(accel, DEC);
+    MSG_SERIAL.print(" Mag=");
+    MSG_SERIAL.println(mag, DEC);
+
     // print last distance measurement with all fields
     // print bno status
     // print current actuator commands
@@ -189,8 +222,13 @@ void Rover6::report_status()
 
 void Rover6::setup_serial()
 {
-    MSG_SERIAL.begin(9600);
-    DATA_SERIAL.begin(500000);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
+    MSG_SERIAL.begin(115200);
+    while (!MSG_SERIAL) {
+        delay(1);
+    }
+
+    DATA_SERIAL.begin(115200);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
+    // DATA_SERIAL.begin(500000);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
     print_info("Rover #6");
     print_info("Serial buses initialized.");
 }
@@ -356,9 +394,7 @@ void Rover6::setup_BNO055()
 void Rover6::read_BNO055()
 {
     //could add VECTOR_ACCELEROMETER, VECTOR_MAGNETOMETER,VECTOR_GRAVITY...
-    Rover6::self->bno->getEvent(Rover6::self->orientationData, Adafruit_BNO055::VECTOR_EULER);
-    Rover6::self->bno->getEvent(Rover6::self->angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
-    Rover6::self->bno->getEvent(Rover6::self->linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
-
-    Rover6::self->bno_board_temp = Rover6::self->bno->getTemp();
+    bno->getEvent(orientationData, Adafruit_BNO055::VECTOR_EULER);
+    bno->getEvent(angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
+    bno->getEvent(linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
 }

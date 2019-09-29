@@ -107,13 +107,6 @@ public:
     VL53L0X_RangingMeasurementData_t* measure1;
     VL53L0X_RangingMeasurementData_t* measure2;
 
-    static void read_BNO055();
-    sensors_event_t* orientationData;
-    sensors_event_t* angVelocityData;
-    sensors_event_t* linearAccelData;
-    int8_t bno_board_temp;
-    Adafruit_BNO055* bno;
-
 
 private:
     bool is_idle;
@@ -146,13 +139,18 @@ private:
     long encA_pos;
     long encB_pos;
 
-    uint8_t fsr_1_val;
-    uint8_t fsr_2_val;
+    IntervalTimer* lox_timer;
+
+    uint16_t fsr_1_val;
+    uint16_t fsr_2_val;
 
     Adafruit_ST7735* tft;
 
-    IntervalTimer* bno_timer;
-    IntervalTimer* lox_timer;
+    sensors_event_t* orientationData;
+    sensors_event_t* angVelocityData;
+    sensors_event_t* linearAccelData;
+    int8_t bno_board_temp;
+    Adafruit_BNO055* bno;
 
     void report_status();
     void print_info(String s)  { MSG_SERIAL.print("INFO\t"); MSG_SERIAL.println(s); }
@@ -183,6 +181,7 @@ private:
     void set_display_brightness(int brightness);
 
     void setup_BNO055();
+    void read_BNO055();
 };
 
 #endif // __ROVER6_H__
