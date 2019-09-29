@@ -63,7 +63,7 @@
 #define SHT_LOX1 7
 #define SHT_LOX2 5
 
-const uint16_t VL53L0X_SAMPLERATE_DELAY_US = 10000000;
+const uint32_t VL53L0X_SAMPLERATE_DELAY_US = 10000000;
 
 /*
  * Adafruit TFT 1.8" display
@@ -87,7 +87,7 @@ const float TFT_PI = 3.1415926;
  * BNO055
  */
 #define BNO055_RST_PIN 25
-const uint16_t BNO055_SAMPLERATE_DELAY_US = 100000;
+const uint32_t BNO055_SAMPLERATE_DELAY_US = 100000;
 #define BNO055_DATA_BUF_LEN 9
 
 
