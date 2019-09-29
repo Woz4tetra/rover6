@@ -15,8 +15,6 @@
 #include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
 #include <SPI.h>
 
-#include <Adafruit_NeoPixel.h>
-
 #include <Encoder.h>
 
 #include <Adafruit_BNO055_Teensy.h>
@@ -65,7 +63,7 @@
 #define SHT_LOX1 7
 #define SHT_LOX2 5
 
-uint16_t VL53L0X_SAMPLERATE_DELAY_US = 10000000;
+const uint16_t VL53L0X_SAMPLERATE_DELAY_US = 10000000;
 
 /*
  * Adafruit TFT 1.8" display
@@ -75,7 +73,7 @@ uint16_t VL53L0X_SAMPLERATE_DELAY_US = 10000000;
 #define TFT_RST    9
 #define TFT_DC     8
 #define TFT_LITE   6
-float TFT_PI = 3.1415926;
+const float TFT_PI = 3.1415926;
 
 /*
  * Adafruit FSR
@@ -89,7 +87,7 @@ float TFT_PI = 3.1415926;
  * BNO055
  */
 #define BNO055_RST_PIN 25
-uint16_t BNO055_SAMPLERATE_DELAY_US = 100000;
+const uint16_t BNO055_SAMPLERATE_DELAY_US = 100000;
 #define BNO055_DATA_BUF_LEN 9
 
 

@@ -59,6 +59,7 @@ void Rover6::begin()
     setup_fsrs();
     initialize_display();
     setup_BNO055();
+    setup_timers();
 
     set_idle(false);
 }
@@ -84,14 +85,14 @@ void Rover6::set_idle(bool state)
     if (is_idle) {
         set_motor_standby(true);
         set_display_brightness(0);
-        interrupts();
-        setup_timers();
+        // setup_timers();
+        // interrupts();
     }
     else {
         set_motor_standby(false);
         set_display_brightness(255);
-        noInterrupts();
-        end_timers();
+        // noInterrupts();
+        // end_timers();
     }
 }
 
