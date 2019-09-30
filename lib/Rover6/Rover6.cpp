@@ -30,20 +30,20 @@ Rover6::Rover6()
     lox2 = new Adafruit_VL53L0X();
     measure1 = new VL53L0X_RangingMeasurementData_t();
     measure2 = new VL53L0X_RangingMeasurementData_t();
-    lox_timer = new IntervalTimer();
-    lox1_dist_mm = 0;
-    lox2_dist_mm = 0;
 
     tft = new Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
     bno = new Adafruit_BNO055(-1, BNO055_ADDRESS_A, &Wire1);
+    orientationData = new sensors_event_t();
+    angVelocityData = new sensors_event_t();
+    linearAccelData = new sensors_event_t();
     bno_board_temp = 0;
-    bno055_data = new float[BNO055_DATA_BUF_LEN];
-    for (size_t i = 0; i < BNO055_DATA_BUF_LEN; i++) {
-        bno055_data[i] = 0.0;
-    }
 
     is_idle = true;
+
+    current_time = 0;
+    bno_report_timer = 0;
+    fast_sensor_report_timer = 0;
 }
 
 void Rover6::begin()
@@ -61,16 +61,10 @@ void Rover6::begin()
     // setup_timers();
 
     set_idle(true);
-}
 
-void Rover6::setup_timers()
-{
-    lox_timer->begin(Rover6::read_VL53L0X, VL53L0X_SAMPLERATE_DELAY_US);
-}
-
-void Rover6::end_timers()
-{
-    lox_timer->end();
+    current_time = millis();
+    bno_report_timer = millis();
+    fast_sensor_report_timer = millis();
 }
 
 void Rover6::set_idle(bool state)
@@ -88,9 +82,42 @@ void Rover6::set_idle(bool state)
     else {
         set_motor_standby(false);
         set_display_brightness(255);
+        current_time = millis();
+        bno_report_timer = millis();
+        fast_sensor_report_timer = millis();
         // noInterrupts();
         // end_timers();
     }
+}
+
+void Rover6::write(String name, const char *formats, ...)
+{
+    va_list args;
+    va_start(args, formats);
+    String data = String(formats) + "\t";
+    while (*formats != '\0') {
+        if (*formats == 'd') {
+            int i = va_arg(args, int);
+            data += String(i);
+        }
+        else if (*formats == 'l') {
+            int32_t s = va_arg(args, int32_t);
+            data += String(s);
+        }
+        else if (*formats == 's') {
+            char *s = va_arg(args, char*);
+            data += s;
+        }
+        else if (*formats == 'f') {
+            double f = va_arg(args, double);
+            data += String(f);
+        }
+        data += "\t";
+        ++formats;
+    }
+    va_end(args);
+    data += PACKET_END;
+    DATA_SERIAL.print(name + "\t" + data);
 }
 
 void Rover6::check_serial()
@@ -138,60 +165,31 @@ void Rover6::check_serial()
 void Rover6::report_data()
 {
     if (is_idle) {
+        delay(50);
         return;
     }
 
-    // read_BNO055();
-    read_INA219();
-    read_encoders();
-    read_fsrs();
+    current_time = millis();
+    if (current_time - bno_report_timer > BNO055_SAMPLERATE_DELAY_MS)
+    {
+        bno_report_timer = current_time;
+        read_BNO055();
+        read_VL53L0X();
 
-
-    bno055_data[0] = orientationData->orientation.x;
-    bno055_data[1] = orientationData->orientation.y;
-    bno055_data[2] = orientationData->orientation.z;
-
-    bno055_data[3] = angVelocityData->gyro.x;
-    bno055_data[4] = angVelocityData->gyro.y;
-    bno055_data[5] = angVelocityData->gyro.z;
-
-    bno055_data[6] = linearAccelData->acceleration.x;
-    bno055_data[7] = linearAccelData->acceleration.y;
-    bno055_data[8] = linearAccelData->acceleration.z;
-
-    DATA_SERIAL.print("bno\t");
-    for (size_t i = 0; i < BNO055_DATA_BUF_LEN; i++) {
-        DATA_SERIAL.print(i);
-        DATA_SERIAL.print(':');
-        DATA_SERIAL.print(bno055_data[i]);
-        DATA_SERIAL.print('\t');
+        report_BNO055();
+        report_VL53L0X();
     }
+    if (current_time - fast_sensor_report_timer > FAST_SAMPLERATE_DELAY_MS)
+    {
+        fast_sensor_report_timer = current_time;
+        read_INA219();
+        read_encoders();
+        read_fsrs();
 
-    lox1_dist_mm = measure1->RangeMilliMeter;
-    lox2_dist_mm = measure2->RangeMilliMeter;
-
-    DATA_SERIAL.print("\nlox\t0:");
-    DATA_SERIAL.print(lox1_dist_mm);
-    DATA_SERIAL.print("\t1:");
-    DATA_SERIAL.print(lox2_dist_mm);
-
-    DATA_SERIAL.print("\nina\t0:");
-    DATA_SERIAL.print(ina219_current_mA);
-    DATA_SERIAL.print("\t1:");
-    DATA_SERIAL.print(ina219_power_mW);
-    DATA_SERIAL.print("\t2:");
-    DATA_SERIAL.print(ina219_loadvoltage);
-
-    DATA_SERIAL.print("\nenc\t0:");
-    DATA_SERIAL.print(encA_pos);
-    DATA_SERIAL.print("\t1:");
-    DATA_SERIAL.print(encB_pos);
-
-    DATA_SERIAL.print("\n>fsr\t0:");
-    DATA_SERIAL.print(fsr_1_val);
-    DATA_SERIAL.print("\t1:");
-    DATA_SERIAL.print(fsr_2_val);
-    DATA_SERIAL.print('\n');
+        report_INA219();
+        report_encoders();
+        report_fsrs();
+    }
 }
 
 void Rover6::report_status()
@@ -270,6 +268,10 @@ void Rover6::read_INA219()
     ina219_loadvoltage = ina219_busvoltage + (ina219_shuntvoltage / 1000);
 }
 
+void Rover6::report_INA219() {
+    write("ina", "lfff", millis(), ina219_current_mA, ina219_power_mW, ina219_loadvoltage);
+}
+
 void Rover6::setup_motors()
 {
     pinMode(MOTOR_STBY, OUTPUT);
@@ -299,6 +301,10 @@ void Rover6::read_encoders()
 {
     encA_pos = motorA_enc->read();
     encB_pos = motorB_enc->read();
+}
+
+void Rover6::report_encoders() {
+    write("enc", "lll", millis(), encA_pos, encB_pos);
 }
 
 void Rover6::setup_VL53L0X()
@@ -344,11 +350,15 @@ void Rover6::setup_VL53L0X()
 }
 void Rover6::read_VL53L0X()
 {
-    Rover6::self->lox1->rangingTest(Rover6::self->measure1, false); // pass in 'true' to get debug data printout!
-    Rover6::self->lox2->rangingTest(Rover6::self->measure2, false); // pass in 'true' to get debug data printout!
+    lox1->rangingTest(measure1, false); // pass in 'true' to get debug data printout!
+    lox2->rangingTest(measure2, false); // pass in 'true' to get debug data printout!
 
     // lox1_out_of_range = measure1->RangeStatus == 4;  // if out of range
     // measure1.RangeMilliMeter
+}
+
+void Rover6::report_VL53L0X() {
+    write("lox", "lddd", millis(), measure1->RangeMilliMeter, measure2->RangeMilliMeter, measure1->RangeStatus);
 }
 
 void Rover6::setup_fsrs()
@@ -362,6 +372,10 @@ void Rover6::read_fsrs()
 {
     fsr_1_val = analogRead(FSR_PIN_1);
     fsr_2_val = analogRead(FSR_PIN_2);
+}
+
+void Rover6::report_fsrs() {
+    write("fsr", "ldd", millis(), fsr_1_val, fsr_2_val);
 }
 
 void Rover6::initialize_display()
@@ -397,4 +411,20 @@ void Rover6::read_BNO055()
     bno->getEvent(orientationData, Adafruit_BNO055::VECTOR_EULER);
     bno->getEvent(angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
     bno->getEvent(linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
+}
+
+void Rover6::report_BNO055()
+{
+    write(
+        "bno", "lfffffffff",
+        orientationData->orientation.x,
+        orientationData->orientation.y,
+        orientationData->orientation.z,
+        angVelocityData->gyro.x,
+        angVelocityData->gyro.y,
+        angVelocityData->gyro.z,
+        linearAccelData->acceleration.x,
+        linearAccelData->acceleration.y,
+        linearAccelData->acceleration.z
+    );
 }

@@ -63,8 +63,6 @@
 #define SHT_LOX1 7
 #define SHT_LOX2 5
 
-const uint32_t VL53L0X_SAMPLERATE_DELAY_US = 10000000;
-
 /*
  * Adafruit TFT 1.8" display
  * ST7735
@@ -87,8 +85,17 @@ const float TFT_PI = 3.1415926;
  * BNO055
  */
 #define BNO055_RST_PIN 25
-const uint32_t BNO055_SAMPLERATE_DELAY_US = 100000;
+const uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
 #define BNO055_DATA_BUF_LEN 9
+
+
+const uint16_t FAST_SAMPLERATE_DELAY_MS = 10;
+
+/*
+ * Data formatting over UART serial
+ */
+#define PACKET_END '\n'
+
 
 
 class Rover6 {
@@ -101,29 +108,23 @@ public:
     void check_serial();
     void report_data();
 
-    static void read_VL53L0X();
-    Adafruit_VL53L0X* lox1;
-    Adafruit_VL53L0X* lox2;
-    VL53L0X_RangingMeasurementData_t* measure1;
-    VL53L0X_RangingMeasurementData_t* measure2;
 
 
 private:
     bool is_idle;
     void set_idle(bool state);
 
-    void setup_timers();
-    void end_timers();
+    uint32_t current_time;
+    uint32_t bno_report_timer;
+    uint32_t fast_sensor_report_timer;
+
+    void write(String name, const char *formats, ...);
 
     Adafruit_PWMServoDriver* servos;
 
     // pulse length count (out of 4096)
     int* servo_pulse_mins;
     int* servo_pulse_maxs;
-
-    float* bno055_data;
-    uint16_t lox1_dist_mm;
-    uint16_t lox2_dist_mm;
 
     Adafruit_INA219* ina219;
     float ina219_shuntvoltage;
@@ -139,7 +140,10 @@ private:
     long encA_pos;
     long encB_pos;
 
-    IntervalTimer* lox_timer;
+    Adafruit_VL53L0X* lox1;
+    Adafruit_VL53L0X* lox2;
+    VL53L0X_RangingMeasurementData_t* measure1;
+    VL53L0X_RangingMeasurementData_t* measure2;
 
     uint16_t fsr_1_val;
     uint16_t fsr_2_val;
@@ -164,6 +168,7 @@ private:
 
     void setup_INA219();
     void read_INA219();
+    void report_INA219();
 
     void setup_motors();
     void set_motor_standby(bool standby);
@@ -171,17 +176,22 @@ private:
     void set_motorA(int speed)  { motorA->setSpeed(speed); }
     void set_motorB(int speed)  { motorB->setSpeed(speed); }
     void read_encoders();
+    void report_encoders();
 
     void setup_VL53L0X();
+    void read_VL53L0X();
+    void report_VL53L0X();
 
     void setup_fsrs();
     void read_fsrs();
+    void report_fsrs();
 
     void initialize_display();
     void set_display_brightness(int brightness);
 
     void setup_BNO055();
     void read_BNO055();
+    void report_BNO055();
 };
 
 #endif // __ROVER6_H__

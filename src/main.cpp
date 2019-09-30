@@ -12,5 +12,5 @@ void setup() {
 void loop() {
     rover->check_serial();
     rover->report_data();
-    delayMicroseconds(BNO055_SAMPLERATE_DELAY_US);
+    delay(5);
 }
