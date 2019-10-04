@@ -44,6 +44,10 @@ Rover6::Rover6()
     current_time = 0;
     bno_report_timer = 0;
     fast_sensor_report_timer = 0;
+
+    irrecv = new IRrecv(IR_RECEIVER_PIN);
+    irresults = new decode_results();
+    ir_result_available = false;
 }
 
 void Rover6::begin()
@@ -58,6 +62,7 @@ void Rover6::begin()
     setup_fsrs();
     initialize_display();
     setup_BNO055();
+    setup_IR();
     // setup_timers();
 
     set_idle(true);
@@ -185,10 +190,12 @@ void Rover6::report_data()
         read_INA219();
         read_encoders();
         read_fsrs();
+        read_IR();
 
         report_INA219();
         report_encoders();
         report_fsrs();
+        report_IR();
     }
 }
 
@@ -427,4 +434,43 @@ void Rover6::report_BNO055()
         linearAccelData->acceleration.y,
         linearAccelData->acceleration.z
     );
+}
+
+
+void Rover6::setup_IR()
+{
+    irrecv->enableIRIn();
+    irrecv->blink13(false);
+}
+
+void Rover6::read_IR()
+{
+    if (irrecv->decode(results)) {
+        ir_result_available = true;
+        irrecv->resume(); // Receive the next value
+    }
+}
+
+
+void Rover6::report_IR()
+{
+    if (!ir_result_available) {
+        return;
+    }
+    ir_result_available = false;
+
+    String decode_type;
+    if (results->decode_type == NEC) {
+        decode_type = "NEC";
+    } else if (results->decode_type == SONY) {
+        decode_type = "SONY";
+    } else if (results->decode_type == RC5) {
+        decode_type = "RC5";
+    } else if (results->decode_type == RC6) {
+        decode_type = "RC6";
+    } else if (results->decode_type == UNKNOWN) {
+        decode_type = "???";
+    }
+
+    write("ir", "sd", decode_type, results->value);
 }

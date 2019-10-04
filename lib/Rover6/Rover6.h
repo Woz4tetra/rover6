@@ -19,6 +19,8 @@
 
 #include <Adafruit_BNO055_Teensy.h>
 
+#include <IRremote.h>
+
 /*
  * Serial devices
  */
@@ -97,6 +99,12 @@ const uint16_t FAST_SAMPLERATE_DELAY_MS = 10;
 #define PACKET_END '\n'
 
 
+/*
+ * IR remote receiver
+ */
+
+#define IR_RECEIVER_PIN 2
+
 
 class Rover6 {
 public:
@@ -156,6 +164,10 @@ private:
     int8_t bno_board_temp;
     Adafruit_BNO055* bno;
 
+    IRrecv* irrecv;
+    decode_results* irresults;
+    bool ir_result_available;
+
     void report_status();
     void print_info(String s)  { MSG_SERIAL.print("INFO\t"); MSG_SERIAL.println(s); }
     void print_error(String s)  { MSG_SERIAL.print("ERROR\t"); MSG_SERIAL.println(s); }
@@ -192,6 +204,10 @@ private:
     void setup_BNO055();
     void read_BNO055();
     void report_BNO055();
+
+    void setup_IR();
+    void read_IR();
+    void report_IR();
 };
 
 #endif // __ROVER6_H__
