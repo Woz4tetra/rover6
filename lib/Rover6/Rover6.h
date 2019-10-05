@@ -21,14 +21,14 @@
 
 #include <IRremote.h>
 
-// #define ENABLE_SERVOS
-// #define ENABLE_INA
-// #define ENABLE_MOTORS
-// #define ENABLE_ENCODERS
+#define ENABLE_SERVOS
+#define ENABLE_INA
+#define ENABLE_MOTORS
+#define ENABLE_ENCODERS
 #define ENABLE_TOF
-// #define ENABLE_TFT
-// #define ENABLE_FSR
-// #define ENABLE_BNO
+#define ENABLE_TFT
+#define ENABLE_FSR
+#define ENABLE_BNO
 #define ENABLE_IR
 
 
@@ -247,7 +247,6 @@ private:
     void setup_IR();
     void read_IR();
     void report_IR();
-    void apply_IR();
     #endif
 
     void report_status();

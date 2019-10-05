@@ -582,15 +582,35 @@ void Rover6::report_IR()
     if (!ir_result_available) {
         return;
     }
-    ir_result_available = false;
 
-    if (ir_type == NEC) {
-        write("irr", "ldd", millis(), ir_type, ir_value);        
+    if (ir_type == NEC && ir_value != 0xffff) {
+        write("irr", "ldd", millis(), ir_type, ir_value);
     }
-}
 
-void Rover6::apply_IR()
-{
+    switch (ir_value) {
+        case 0x00ff: MSG_SERIAL.println("IR: VOL-"); break;  // VOL-
+        case 0x807f: MSG_SERIAL.println("IR: Play/Pause"); break;  // Play/Pause
+        case 0x40bf: MSG_SERIAL.println("IR: VOL+"); break;  // VOL+
+        case 0x20df: MSG_SERIAL.println("IR: SETUP"); break;  // SETUP
+        case 0xa05f: MSG_SERIAL.println("IR: ^"); break;  // ^
+        case 0x609f: MSG_SERIAL.println("IR: MODE"); break;  // MODE
+        case 0x10ef: MSG_SERIAL.println("IR: <"); break;  // <
+        case 0x906f: MSG_SERIAL.println("IR: ENTER"); break;  // ENTER
+        case 0x50af: MSG_SERIAL.println("IR: >"); break;  // >
+        case 0x30cf: MSG_SERIAL.println("IR: 0 10+"); break;  // 0 10+
+        case 0xb04f: MSG_SERIAL.println("IR: v"); break;  // v
+        case 0x708f: MSG_SERIAL.println("IR: Del"); break;  // Del
+        case 0x08f7: MSG_SERIAL.println("IR: 1"); break;  // 1
+        case 0x8877: MSG_SERIAL.println("IR: 2"); break;  // 2
+        case 0x48B7: MSG_SERIAL.println("IR: 3"); break;  // 3
+        case 0x28D7: MSG_SERIAL.println("IR: 4"); break;  // 4
+        case 0xA857: MSG_SERIAL.println("IR: 5"); break;  // 5
+        case 0x6897: MSG_SERIAL.println("IR: 6"); break;  // 6
+        case 0x18E7: MSG_SERIAL.println("IR: 7"); break;  // 7
+        case 0x9867: MSG_SERIAL.println("IR: 8"); break;  // 8
+        case 0x58A7: MSG_SERIAL.println("IR: 9"); break;  // 9
+
+    }
     // String decode_type;
     // if (irresults->decode_type == NEC) {
     //     decode_type = "NEC";
@@ -603,6 +623,11 @@ void Rover6::apply_IR()
     // } else if (irresults->decode_type == UNKNOWN) {
     //     decode_type = "???";
     // }
+
+    ir_result_available = false;
+    ir_type = 0;
+    ir_value = 0;
 }
+
 
 #endif
