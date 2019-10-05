@@ -591,34 +591,15 @@ void Rover6::bmpDraw()
                 // Crop area to be loaded
                 w = bmpWidth;
                 h = bmpHeight;
-                if((x+w-1) >= tft->width())  w = tft->width()  - x;
-                if((y+h-1) >= tft->height()) h = tft->height() - y;
+                if ((x+w-1) >= tft->width())  w = tft->width()  - x;
+                if ((y+h-1) >= tft->height()) h = tft->height() - y;
 
                 // Set TFT address window to clipped image bounds
-                tft->startWrite();
-                tft->setAddrWindow(x, y, w, h);
+                // tft->startWrite();
+                // tft->setAddrWindow(x, y, w, h);
 
                 for (row = 0; row < h; row++) { // For each scanline...
-                    // Seek to start of scan line.  It might seem labor-
-                    // intensive to be doing this on every line, but this
-                    // method covers a lot of gritty details like cropping
-                    // and scanline padding.  Also, the seek only takes
-                    // place if the file position actually needs to change
-                    // (avoids a lot of cluster math in SD library).
-                    if (flip) { // Bitmap is stored bottom-to-top order (normal BMP)
-                        pos = bmpImageoffset + (bmpHeight - 1 - row) * rowSize;
-                    }
-                    else {     // Bitmap is stored top-to-bottom
-                        pos = bmpImageoffset + row * rowSize;
-                    }
-
-                    // if (bmpFile.position() != pos) { // Need seek?
-                    //     tft->endWrite();
-                    //     bmpFile.seek(pos);
-                    //     buffidx = sizeof(sdbuffer); // Force buffer reload
-                    // }
-
-                    for (col=0; col<w; col++) { // For each pixel...
+                    for (col = 0; col < w; col++) { // For each pixel...
                         // Time to read more pixel data?
                         if (buffidx >= sizeof(sdbuffer)) { // Indeed
                             DATA_SERIAL.readBytes(sdbuffer, sizeof(sdbuffer));
@@ -630,10 +611,12 @@ void Rover6::bmpDraw()
                         b = sdbuffer[buffidx++];
                         g = sdbuffer[buffidx++];
                         r = sdbuffer[buffidx++];
-                        tft->pushColor(tft->color565(r,g,b));
+                        // tft->pushColor(tft->color565(r,g,b));
+                        tft.drawPixel(col, row, tft->color565(r,g,b));
+
                     } // end pixel
                 } // end scanline
-                tft->endWrite();
+                // tft->endWrite();
                 Serial.print("Loaded in ");
                 Serial.print(millis() - startTime);
                 Serial.println(" ms");
