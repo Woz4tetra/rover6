@@ -584,7 +584,9 @@ void Rover6::report_IR()
     }
     ir_result_available = false;
 
-    write("irr", "ldd", millis(), ir_type, ir_value);
+    if (ir_type == NEC) {
+        write("irr", "ldd", millis(), ir_type, ir_value);        
+    }
 }
 
 void Rover6::apply_IR()
