@@ -3,6 +3,13 @@ from PIL import Image
 import numpy as np
 from device_port import DevicePort
 
+def color565(red, green, blue):
+    # uint16_t Adafruit_SPITFT::color565(uint8_t red, uint8_t green, uint8_t blue) {
+    #     return ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | (blue >> 3);
+    # }
+    return ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | (blue >> 3)
+
+
 usb_port = DevicePort("/dev/serial/by-id/usb-Teensyduino_USB_Serial_5816830-if00")
 uart_port = DevicePort("/dev/serial0", baud=500000)
 
@@ -12,13 +19,6 @@ uart_port.configure()
 uart_port.check_protocol("?", "!")
 print("UART ready")
 
-uart_port.write(">")
-
-def color565(red, green, blue):
-    return ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | (blue >> 3)
-# uint16_t Adafruit_SPITFT::color565(uint8_t red, uint8_t green, uint8_t blue) {
-#     return ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | (blue >> 3);
-# }
 
 width, height = 128, 64
 image = Image.open("cam.jpg")
@@ -39,15 +39,15 @@ for row in range(height):
 tft_bytes = bytes(tft_array)
 tft_bytes = b'd' + tft_bytes + b'\n'
 
-uart_port.device.write(tft_bytes)
 
 try:
-    uart_port.write(">")
+    uart_port.write(">\n")
+    uart_port.device.write(tft_bytes)
     while True:
         for port in [uart_port, usb_port]:
-            waiting = usb_port.in_waiting()
+            waiting = port.in_waiting()
             if waiting:
-                receive_time, packets = port.read(usb_waiting)
+                receive_time, packets = port.read(waiting)
                 receive_date = datetime.datetime.fromtimestamp(receive_time)
                 receive_str = datetime.datetime.strftime(receive_date, "%c")
                 print("%s:" % (receive_str))
@@ -56,7 +56,7 @@ try:
 
 except BaseException:
     uart_port.write("<")
-    usb_port.close()
-    uart_port.close()
+    usb_port.stop()
+    uart_port.stop()
 
     raise

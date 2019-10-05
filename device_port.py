@@ -2,11 +2,11 @@ import time
 import serial
 import logging
 
-from .default_params import *
+from default_params import *
 
 
 class DevicePort:
-    def __init__(self, address, log_level=logging.INFO, device=None, start_time=None, first_packet="", whoiam="", baud=DEFAULT_RATE):
+    def __init__(self, address, log_level=logging.DEBUG, device=None, start_time=None, first_packet="", whoiam="", baud=DEFAULT_RATE):
         """
         Wraps the serial.Serial class and implements the atlasbuggy serial protocol for arduinos
 
@@ -122,7 +122,6 @@ class DevicePort:
                 else:
                     self.logger.debug("Still waiting for '%s' packet from '%s'" % (recv_packet_header, self.address))
 
-                self.write(STOP_PACKET_ASK)
                 if ask_packet:
                     self.write(ask_packet)
 
