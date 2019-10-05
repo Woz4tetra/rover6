@@ -4,8 +4,11 @@
 
 #include <Arduino.h>
 #include <i2c_t3.h>
+
 #include <Adafruit_INA219_Teensy.h>
+
 #include <Adafruit_PWMServoDriverTeensy.h>
+
 #include <Adafruit_VL53L0X_Teensy.h>
 
 #include <TB6612.h>
@@ -113,19 +116,18 @@ const uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
 #define BNO055_DATA_BUF_LEN 9
 
 
-const uint16_t FAST_SAMPLERATE_DELAY_MS = 10;
-
-/*
- * Data formatting over UART serial
- */
-#define PACKET_END '\n'
-
-
 /*
  * IR remote receiver
  */
 
 #define IR_RECEIVER_PIN 4
+
+
+/*
+ * Data formatting over UART serial
+ */
+const uint16_t FAST_SAMPLERATE_DELAY_MS = 10;
+#define PACKET_END '\n'
 
 
 class Rover6 {
@@ -223,6 +225,10 @@ private:
     void initialize_display();
     void set_display_brightness(int brightness);
     void display_image();
+    void bmpDraw();
+    uint16_t serial_read16();
+    uint32_t serial_read32();
+
     #endif
 
     #ifdef ENABLE_BNO

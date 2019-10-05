@@ -1,3 +1,5 @@
+import io
+import time
 import datetime
 from PIL import Image
 import numpy as np
@@ -23,36 +25,48 @@ print("UART ready")
 width, height = 128, 64
 image = Image.open("cam.jpg")
 image = image.resize((width, height))
-im_array = np.asarray(image)
-tft_array = []
-for row in range(height):
-    for col in range(width):
-        red = im_array[row][col][0]
-        green = im_array[row][col][1]
-        blue = im_array[row][col][2]
-        tft_color = color565(red, green, blue)
-        lower = tft_color >> 8
-        upper = tft_color & 0xff
-        tft_array.append(lower)
-        tft_array.append(upper)
-
-tft_bytes = bytes(tft_array)
-tft_bytes = b'd' + tft_bytes + b'\n'
+buf = io.BytesIO()
+image.save(buf, format='BMP')
+byte_im = buf.getvalue()
+byte_im = b'd' + byte_im + b'\n'
+# im_array = np.asarray(image)
+# tft_array = []
+# for row in range(height):
+#     for col in range(width):
+#         red = im_array[row][col][0]
+#         green = im_array[row][col][1]
+#         blue = im_array[row][col][2]
+#         tft_color = color565(red, green, blue)
+#         lower = tft_color & 0xff
+#         upper = tft_color >> 8
+#         tft_array.append(lower)
+#         tft_array.append(upper)
+# tft_bytes = bytes(tft_array)
+# tft_bytes = b'd' + tft_bytes + b'\n'
 
 
 try:
-    uart_port.write(">\n")
-    uart_port.device.write(tft_bytes)
+    uart_port.write(">")
+    time.sleep(0.1)
+    print("Sending image")
+    uart_port.device.write(byte_im)
+    # for index in range(len(byte_im)):
+    #     uart_port.device.write(byte_im[index: index + 1])
+    #     if index % 100 == 0:
+    #         time.sleep(0.01)
+    #         print(index)
+
+    port = usb_port
     while True:
-        for port in [uart_port, usb_port]:
-            waiting = port.in_waiting()
-            if waiting:
-                receive_time, packets = port.read(waiting)
-                receive_date = datetime.datetime.fromtimestamp(receive_time)
-                receive_str = datetime.datetime.strftime(receive_date, "%c")
-                print("%s:" % (receive_str))
-                for packet in packets:
-                    print("\t%s" % packet)
+        # for port in [uart_port, usb_port]:
+        waiting = port.in_waiting()
+        if waiting:
+            receive_time, packets = port.read(waiting)
+            receive_date = datetime.datetime.fromtimestamp(receive_time)
+            receive_str = datetime.datetime.strftime(receive_date, "%c")
+            print("%s:" % (receive_str))
+            for packet in packets:
+                print("\t%s" % packet)
 
 except BaseException:
     uart_port.write("<")

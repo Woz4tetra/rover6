@@ -112,6 +112,7 @@ void Rover6::begin()
 #ifdef ENABLE_IR
     setup_IR();
 #endif
+
     // setup_timers();
 
     set_idle(true);
@@ -127,6 +128,10 @@ void Rover6::set_idle(bool state)
         return;
     }
     is_idle = state;
+
+    set_motorA(0);
+    set_motorB(0);
+
     if (is_idle) {
 #ifdef ENABLE_MOTORS
         set_motor_standby(true);
@@ -503,18 +508,140 @@ void Rover6::display_image()
     // }
     MSG_SERIAL.println("Displaying image");
 
-    for (int row = 0; row < tft->height(); row++) {
-        for (int col = 0; col < tft->width(); col++) {
-            uint8_t c1 = (uint8_t)DATA_SERIAL.read();
-            uint8_t c2 = (uint8_t)DATA_SERIAL.read();
-            uint16_t color = c1 << 8 | c2;
-            tft->drawPixel(row, col, color);
-        }
-    }
+    bmpDraw();
+
     if (DATA_SERIAL.read() != '\n') {
         MSG_SERIAL.println("Image does not end with a newline!!");
     }
 }
+
+
+uint16_t Rover6::serial_read16()
+{
+    uint16_t result;
+    ((uint8_t *)&result)[0] = DATA_SERIAL.read(); // LSB
+    ((uint8_t *)&result)[1] = DATA_SERIAL.read(); // MSB
+    return result;
+}
+
+uint32_t Rover6::serial_read32()
+{
+    uint32_t result;
+    ((uint8_t *)&result)[0] = DATA_SERIAL.read(); // LSB
+    ((uint8_t *)&result)[1] = DATA_SERIAL.read();
+    ((uint8_t *)&result)[2] = DATA_SERIAL.read();
+    ((uint8_t *)&result)[3] = DATA_SERIAL.read(); // MSB
+    return result;
+}
+
+#define BUFFPIXEL 20
+
+void Rover6::bmpDraw()
+{
+    uint8_t  x = 128;
+    uint8_t  y = 64;
+    int      bmpWidth, bmpHeight;   // W+H in pixels
+    uint8_t  bmpDepth;              // Bit depth (currently must be 24)
+    uint32_t bmpImageoffset;        // Start of image data in file
+    uint32_t rowSize;               // Not always = bmpWidth; may have padding
+    uint8_t  sdbuffer[3*BUFFPIXEL]; // pixel buffer (R+G+B per pixel)
+    uint8_t  buffidx = sizeof(sdbuffer); // Current position in sdbuffer
+    boolean  goodBmp = false;       // Set to true on valid header parse
+    boolean  flip    = true;        // BMP is stored bottom-to-top
+    int      w, h, row, col;
+    uint8_t  r, g, b;
+    uint32_t pos = 0, startTime = millis();
+
+    // Parse BMP header
+    if (serial_read16() == 0x4D42)
+    {
+        Serial.print("File size: "); Serial.println(serial_read32());
+        (void)serial_read32(); // Read & ignore creator bytes
+        bmpImageoffset = serial_read32(); // Start of image data
+        Serial.print("Image Offset: "); Serial.println(bmpImageoffset, DEC);
+
+        // Read DIB header
+        Serial.print("Header size: "); Serial.println(serial_read32());
+
+        bmpWidth  = serial_read32();
+        bmpHeight = serial_read32();
+        if (serial_read16() == 1)  // if goodBmp
+        {
+            bmpDepth = serial_read16(); // bits per pixel
+            Serial.print("Bit Depth: "); Serial.println(bmpDepth);
+
+            if ((bmpDepth == 24) && (serial_read32() == 0)) { // 0 = uncompressed
+                goodBmp = true; // Supported BMP format -- proceed!
+                Serial.print("Image size: ");
+                Serial.print(bmpWidth);
+                Serial.print('x');
+                Serial.println(bmpHeight);
+
+                // BMP rows are padded (if needed) to 4-byte boundary
+                rowSize = (bmpWidth * 3 + 3) & ~3;
+
+
+                // If bmpHeight is negative, image is in top-down order.
+                // This is not canon but has been observed in the wild.
+                if (bmpHeight < 0) {
+                    bmpHeight = -bmpHeight;
+                    flip      = false;
+                }
+
+                // Crop area to be loaded
+                w = bmpWidth;
+                h = bmpHeight;
+                if((x+w-1) >= tft->width())  w = tft->width()  - x;
+                if((y+h-1) >= tft->height()) h = tft->height() - y;
+
+                // Set TFT address window to clipped image bounds
+                tft->startWrite();
+                tft->setAddrWindow(x, y, w, h);
+
+                for (row = 0; row < h; row++) { // For each scanline...
+                    // Seek to start of scan line.  It might seem labor-
+                    // intensive to be doing this on every line, but this
+                    // method covers a lot of gritty details like cropping
+                    // and scanline padding.  Also, the seek only takes
+                    // place if the file position actually needs to change
+                    // (avoids a lot of cluster math in SD library).
+                    if (flip) { // Bitmap is stored bottom-to-top order (normal BMP)
+                        pos = bmpImageoffset + (bmpHeight - 1 - row) * rowSize;
+                    }
+                    else {     // Bitmap is stored top-to-bottom
+                        pos = bmpImageoffset + row * rowSize;
+                    }
+
+                    // if (bmpFile.position() != pos) { // Need seek?
+                    //     tft->endWrite();
+                    //     bmpFile.seek(pos);
+                    //     buffidx = sizeof(sdbuffer); // Force buffer reload
+                    // }
+
+                    for (col=0; col<w; col++) { // For each pixel...
+                        // Time to read more pixel data?
+                        if (buffidx >= sizeof(sdbuffer)) { // Indeed
+                            DATA_SERIAL.readBytes(sdbuffer, sizeof(sdbuffer));
+                            buffidx = 0; // Set index to beginning
+                            tft->startWrite();
+                        }
+
+                        // Convert pixel from BMP to TFT format, push to display
+                        b = sdbuffer[buffidx++];
+                        g = sdbuffer[buffidx++];
+                        r = sdbuffer[buffidx++];
+                        tft->pushColor(tft->color565(r,g,b));
+                    } // end pixel
+                } // end scanline
+                tft->endWrite();
+                Serial.print("Loaded in ");
+                Serial.print(millis() - startTime);
+                Serial.println(" ms");
+            } // end goodBmp
+        }
+    }
+}
+
 #endif
 
 
@@ -592,13 +719,13 @@ void Rover6::report_IR()
         case 0x807f: MSG_SERIAL.println("IR: Play/Pause"); break;  // Play/Pause
         case 0x40bf: MSG_SERIAL.println("IR: VOL+"); break;  // VOL+
         case 0x20df: MSG_SERIAL.println("IR: SETUP"); break;  // SETUP
-        case 0xa05f: MSG_SERIAL.println("IR: ^"); break;  // ^
+        case 0xa05f: MSG_SERIAL.println("IR: ^"); set_motorA(255); break;  // ^
         case 0x609f: MSG_SERIAL.println("IR: MODE"); break;  // MODE
-        case 0x10ef: MSG_SERIAL.println("IR: <"); break;  // <
-        case 0x906f: MSG_SERIAL.println("IR: ENTER"); break;  // ENTER
-        case 0x50af: MSG_SERIAL.println("IR: >"); break;  // >
+        case 0x10ef: MSG_SERIAL.println("IR: <");  set_motorB(-255); break;  // <
+        case 0x906f: MSG_SERIAL.println("IR: ENTER"); set_motorA(0); set_motorB(0); break;  // ENTER
+        case 0x50af: MSG_SERIAL.println("IR: >");  set_motorB(255); break;  // >
         case 0x30cf: MSG_SERIAL.println("IR: 0 10+"); break;  // 0 10+
-        case 0xb04f: MSG_SERIAL.println("IR: v"); break;  // v
+        case 0xb04f: MSG_SERIAL.println("IR: v");  set_motorA(-255); break;  // v
         case 0x708f: MSG_SERIAL.println("IR: Del"); break;  // Del
         case 0x08f7: MSG_SERIAL.println("IR: 1"); break;  // 1
         case 0x8877: MSG_SERIAL.println("IR: 2"); break;  // 2
@@ -628,6 +755,4 @@ void Rover6::report_IR()
     ir_type = 0;
     ir_value = 0;
 }
-
-
 #endif
