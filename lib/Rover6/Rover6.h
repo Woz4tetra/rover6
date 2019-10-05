@@ -200,6 +200,7 @@ private:
 
     void initialize_display();
     void set_display_brightness(int brightness);
+    void display_image(String encoded_image);
 
     void setup_BNO055();
     void read_BNO055();
@@ -208,6 +209,7 @@ private:
     void setup_IR();
     void read_IR();
     void report_IR();
+    void apply_IR();
 };
 
 #endif // __ROVER6_H__

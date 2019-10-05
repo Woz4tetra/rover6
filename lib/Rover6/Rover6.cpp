@@ -163,6 +163,7 @@ void Rover6::check_serial()
                     command.substring(3).toInt()
                 );
                 break;
+            case 'd': display_image(command.substring(1)); break;
         }
     }
 }
@@ -232,8 +233,8 @@ void Rover6::setup_serial()
         delay(1);
     }
 
-    DATA_SERIAL.begin(115200);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
-    // DATA_SERIAL.begin(500000);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
+    // DATA_SERIAL.begin(115200);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
+    DATA_SERIAL.begin(500000);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
     print_info("Rover #6");
     print_info("Serial buses initialized.");
 }
@@ -400,6 +401,31 @@ void Rover6::set_display_brightness(int brightness)
     analogWrite(TFT_LITE, brightness);
 }
 
+void Rover6::display_image(String encoded_image)
+{
+    /*
+     * Display is 128x64 16-bit color
+     * String must be at least length 16384 (0x4000)
+     */
+
+    if (encoded_image.length() < 0x4000) {
+        print_error("Invalid string length");
+        print_error(encoded_image.length());
+        return;
+    }
+    uint8_t row;
+    uint8_t col;
+    for (size_t i = 0; i < encoded_image.length(); i += 2) {
+        row = (uint8_t)(i / tft->height());
+        col = i % tft->width();
+
+        uint8_t c1 = (uint8_t)encoded_image.charAt(i);
+        uint8_t c2 = (uint8_t)encoded_image.charAt(i + 1);
+        uint16_t color = c1 << 8 | c2;
+        tft.drawPixel(col, row, color);
+    }
+}
+
 void Rover6::setup_BNO055()
 {
     if (!bno->begin())
@@ -445,7 +471,7 @@ void Rover6::setup_IR()
 
 void Rover6::read_IR()
 {
-    if (irrecv->decode(results)) {
+    if (irrecv->decode(irresults)) {
         ir_result_available = true;
         irrecv->resume(); // Receive the next value
     }
@@ -459,18 +485,46 @@ void Rover6::report_IR()
     }
     ir_result_available = false;
 
-    String decode_type;
-    if (results->decode_type == NEC) {
-        decode_type = "NEC";
-    } else if (results->decode_type == SONY) {
-        decode_type = "SONY";
-    } else if (results->decode_type == RC5) {
-        decode_type = "RC5";
-    } else if (results->decode_type == RC6) {
-        decode_type = "RC6";
-    } else if (results->decode_type == UNKNOWN) {
-        decode_type = "???";
-    }
+    write("irr", "dd", irresults->decode_type, irresults->value);
+}
 
-    write("ir", "sd", decode_type, results->value);
+void Rover6::apply_IR()
+{
+    // String decode_type;
+    // if (irresults->decode_type == NEC) {
+    //     decode_type = "NEC";
+    // } else if (irresults->decode_type == SONY) {
+    //     decode_type = "SONY";
+    // } else if (irresults->decode_type == RC5) {
+    //     decode_type = "RC5";
+    // } else if (irresults->decode_type == RC6) {
+    //     decode_type = "RC6";
+    // } else if (irresults->decode_type == UNKNOWN) {
+    //     decode_type = "???";
+    // }
+    if (irresults->decode_type == NEC) {
+        switch (irresults->value) {
+            case 0: break;
+            case 1: break;
+            case 2: break;
+            case 4: break;
+            case 5: break;
+            case 6: break;
+            case 8: break;
+            case 9: break;
+            case 10: break;
+            case 12: break;
+            case 13: break;
+            case 14: break;
+            case 16: break;
+            case 17: break;
+            case 18: break;
+            case 20: break;
+            case 21: break;
+            case 22: break;
+            case 24: break;
+            case 25: break;
+            case 26: break;
+        }
+    }
 }
