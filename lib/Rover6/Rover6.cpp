@@ -534,23 +534,28 @@ uint32_t Rover6::serial_read32()
     return result;
 }
 
-#define BUFFPIXEL 20
+#define EXPECTED_WIDTH  128
+#define EXPECTED_HEIGHT  160
 
 void Rover6::bmpDraw()
 {
-    uint8_t  x = 128;
-    uint8_t  y = 64;
+    // uint8_t  x = 128;
+    // uint8_t  y = 64;
     int      bmpWidth, bmpHeight;   // W+H in pixels
+    uint32_t rowSize;               // Not always = bmpWidth; may have padding
     uint8_t  bmpDepth;              // Bit depth (currently must be 24)
     uint32_t bmpImageoffset;        // Start of image data in file
-    uint32_t rowSize;               // Not always = bmpWidth; may have padding
-    uint8_t  sdbuffer[3*BUFFPIXEL]; // pixel buffer (R+G+B per pixel)
-    uint8_t  buffidx = sizeof(sdbuffer); // Current position in sdbuffer
-    boolean  goodBmp = false;       // Set to true on valid header parse
+    uint8_t  sdbuffer[3 * EXPECTED_WIDTH * EXPECTED_HEIGHT + 0xff]; // pixel buffer (R+G+B per pixel) + extra
+    uint32_t buffidx = 0;//sizeof(sdbuffer); // Current position in sdbuffer
+    uint32_t image_size;
     boolean  flip    = true;        // BMP is stored bottom-to-top
-    int      w, h, row, col;
+    // boolean  goodBmp = false;       // Set to true on valid header parse
+    int      row, col;
     uint8_t  r, g, b;
-    uint32_t pos = 0, startTime = millis();
+    uint32_t pos = 0;
+    uint32_t startTime = micros();
+
+    tft->fillScreen(ST77XX_BLACK);
 
     // Parse BMP header
     if (serial_read16() == 0x4D42)
@@ -571,15 +576,11 @@ void Rover6::bmpDraw()
             Serial.print("Bit Depth: "); Serial.println(bmpDepth);
 
             if ((bmpDepth == 24) && (serial_read32() == 0)) { // 0 = uncompressed
-                goodBmp = true; // Supported BMP format -- proceed!
+                // goodBmp = true; // Supported BMP format -- proceed!
                 Serial.print("Image size: ");
                 Serial.print(bmpWidth);
                 Serial.print('x');
                 Serial.println(bmpHeight);
-
-                // BMP rows are padded (if needed) to 4-byte boundary
-                rowSize = (bmpWidth * 3 + 3) & ~3;
-
 
                 // If bmpHeight is negative, image is in top-down order.
                 // This is not canon but has been observed in the wild.
@@ -588,38 +589,50 @@ void Rover6::bmpDraw()
                     flip      = false;
                 }
 
-                // Crop area to be loaded
-                w = bmpWidth;
-                h = bmpHeight;
-                if ((x+w-1) >= tft->width())  w = tft->width()  - x;
-                if ((y+h-1) >= tft->height()) h = tft->height() - y;
+                rowSize = (bmpWidth * 3 + 3) & ~3;
+                // rowSize = bmpWidth * 3;
 
                 // Set TFT address window to clipped image bounds
-                // tft->startWrite();
-                // tft->setAddrWindow(x, y, w, h);
+                tft->startWrite();
+                tft->setAddrWindow(0, 0, bmpWidth, bmpHeight);
 
-                for (row = 0; row < h; row++) { // For each scanline...
-                    for (col = 0; col < w; col++) { // For each pixel...
-                        // Time to read more pixel data?
-                        if (buffidx >= sizeof(sdbuffer)) { // Indeed
-                            DATA_SERIAL.readBytes(sdbuffer, sizeof(sdbuffer));
-                            buffidx = 0; // Set index to beginning
-                            tft->startWrite();
-                        }
+                if (!DATA_SERIAL.available()) {
+                    MSG_SERIAL.println("ERROR: Ran out of data on serial before image finished drawing!");
+                    return;
+                }
 
+                image_size = bmpHeight * bmpWidth * 3;
+                if (sizeof(sdbuffer) < image_size) {
+                    MSG_SERIAL.println("ERROR: Buffer is insufficiently sized for image!");
+                    return;
+                }
+                // DATA_SERIAL.readBytes(sdbuffer, bmpImageoffset);
+                DATA_SERIAL.readBytes(sdbuffer, image_size);
+
+                bmpImageoffset = 0;
+                for (row = 0; row < bmpHeight; row++) { // For each scanline...
+                    if (flip) // Bitmap is stored bottom-to-top order (normal BMP)
+                        pos = bmpImageoffset + (bmpHeight - 1 - row) * rowSize;
+                    else     // Bitmap is stored top-to-bottom
+                        pos = bmpImageoffset + row * rowSize;
+
+                    if (pos != buffidx) {
+                        buffidx = pos;
+                    }
+                    for (col = 0; col < bmpWidth; col++) { // For each pixel...
                         // Convert pixel from BMP to TFT format, push to display
                         b = sdbuffer[buffidx++];
                         g = sdbuffer[buffidx++];
                         r = sdbuffer[buffidx++];
-                        // tft->pushColor(tft->color565(r,g,b));
-                        tft.drawPixel(col, row, tft->color565(r,g,b));
+                        tft->pushColor(tft->color565(r, g, b));
+                        // tft->drawPixel(col, row, tft->color565(r,g,b));
 
                     } // end pixel
                 } // end scanline
-                // tft->endWrite();
+                tft->endWrite();
                 Serial.print("Loaded in ");
-                Serial.print(millis() - startTime);
-                Serial.println(" ms");
+                Serial.print(micros() - startTime);
+                Serial.println(" us");
             } // end goodBmp
         }
     }

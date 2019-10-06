@@ -22,12 +22,16 @@ uart_port.check_protocol("?", "!")
 print("UART ready")
 
 
-width, height = 128, 64
+width, height = 160, 128
 image = Image.open("cam.jpg")
-image = image.resize((width, height))
+thumb_image = image.resize((width, height))
+thumb_image = thumb_image.transpose(Image.ROTATE_90)
+
 buf = io.BytesIO()
-image.save(buf, format='BMP')
+thumb_image.save(buf, format='BMP')
 byte_im = buf.getvalue()
+# file_len = len(byte_im)
+# file_len_bytes = file_len.to_bytes(2, byteorder='big')
 byte_im = b'd' + byte_im + b'\n'
 # im_array = np.asarray(image)
 # tft_array = []
