@@ -41,7 +41,20 @@
 
 #define DATA_SERIAL  Serial5
 
-char SERIAL_MSG_BUFFER[0xff];
+/*
+ * Soft restart
+ */
+
+#define SCB_AIRCR (*(volatile uint32_t *)0xE000ED0C) // Application Interrupt and Reset Control location
+
+void _soft_restart()
+{
+    DATA_SERIAL.end();  // clears the serial monitor  if used
+    SCB_AIRCR = 0x05FA0004;  // write value for restart
+}
+
+#define SERIAL_MSG_BUFFER_SIZE  0xff
+char SERIAL_MSG_BUFFER[SERIAL_MSG_BUFFER_SIZE];
 
 /*
  * Adafruit PWM servo driver
@@ -87,6 +100,9 @@ char SERIAL_MSG_BUFFER[0xff];
 #define SHT_LOX1 7
 #define SHT_LOX2 5
 
+const uint16_t LOX_SAMPLERATE_DELAY_MS = 250;
+
+
 /*
  * Adafruit TFT 1.8" display
  * ST7735
@@ -97,8 +113,9 @@ char SERIAL_MSG_BUFFER[0xff];
 #define TFT_DC     8
 #define TFT_LITE   6
 const float TFT_PI = 3.1415926;
-#define TFT_SCROLLING_BUFFER_SIZE  30
-char TFT_SPRINTF_BUFFER[0xff];
+#define TFT_SPRINTF_SIZE  0xff
+char TFT_SPRINTF_BUFFER[TFT_SPRINTF_SIZE];
+char TFT_SCROLLING_BUFFER[0x1ff];
 
 /*
  * Adafruit FSR
@@ -162,7 +179,6 @@ private:
 
     void setup_serial();
 
-    #ifdef ENABLE_SERVOS
     Adafruit_PWMServoDriver* servos;
 
     // pulse length count (out of 4096)
@@ -172,9 +188,7 @@ private:
     void setup_servos();
     void set_servo(uint8_t n, double angle);
     void set_servo_standby(bool standy);
-    #endif
 
-    #ifdef ENABLE_INA
     Adafruit_INA219* ina219;
     float ina219_shuntvoltage;
     float ina219_busvoltage;
@@ -186,9 +200,6 @@ private:
     void read_INA219();
     void report_INA219();
 
-    #endif
-
-    #ifdef ENABLE_MOTORS
     TB6612* motorA;
     TB6612* motorB;
     Encoder* motorA_enc;
@@ -196,20 +207,17 @@ private:
 
     void setup_motors();
     void set_motor_standby(bool standby);
-    void set_motorA(int speed)  { motorA->setSpeed(speed); }
-    void set_motorB(int speed)  { motorB->setSpeed(speed); }
-    #endif
+    void set_motorA(int speed);
+    void set_motorB(int speed);
 
-    #ifdef ENABLE_ENCODERS
     long encA_pos;
     long encB_pos;
 
     void setup_encoders();
     void read_encoders();
     void report_encoders();
-    #endif
+    void reset_encoders();
 
-    #ifdef ENABLE_TOF
     Adafruit_VL53L0X* lox1;
     Adafruit_VL53L0X* lox2;
     VL53L0X_RangingMeasurementData_t* measure1;
@@ -218,23 +226,19 @@ private:
     void setup_VL53L0X();
     void read_VL53L0X();
     void report_VL53L0X();
-    #endif
 
-    #ifdef ENABLE_FSR
     uint16_t fsr_1_val;
     uint16_t fsr_2_val;
 
     void setup_fsrs();
     void read_fsrs();
     void report_fsrs();
-    #endif
 
-    #ifdef ENABLE_TFT
     Adafruit_ST7735* tft;
     uint8_t tft_brightness;
 
-    String* scrolling_buffer;
-    uint16_t scrolling_index;
+    // String* scrolling_buffer;
+    // uint16_t scrolling_index;
 
     void initialize_display();
     void set_display_brightness(int brightness);
@@ -244,9 +248,6 @@ private:
     uint32_t serial_read32();
     void println_display(const char* text, ...);
 
-    #endif
-
-    #ifdef ENABLE_BNO
     sensors_event_t* orientationData;
     sensors_event_t* angVelocityData;
     sensors_event_t* linearAccelData;
@@ -256,9 +257,7 @@ private:
     void setup_BNO055();
     void read_BNO055();
     void report_BNO055();
-    #endif
 
-    #ifdef ENABLE_IR
     IRrecv* irrecv;
     decode_results* irresults;
     bool ir_result_available;
@@ -268,11 +267,8 @@ private:
     void setup_IR();
     void read_IR();
     void report_IR();
-    #endif
 
-    #if defined(ENABLE_BNO) || defined(ENABLE_TOF) || defined(ENABLE_SERVOS) || defined(ENABLE_INA)
     void setup_i2c();
-    #endif
 };
 
 #endif // __ROVER6_H__
