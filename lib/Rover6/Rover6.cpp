@@ -484,7 +484,7 @@ void Rover6::read_VL53L0X()
 {
     #ifdef ENABLE_TOF
     lox1->rangingTest(measure1, false); // pass in 'true' to get debug data printout!
-    // lox2->rangingTest(measure2, false); // pass in 'true' to get debug data printout!
+    lox2->rangingTest(measure2, false); // pass in 'true' to get debug data printout!
 
     // lox1_out_of_range = measure1->RangeStatus == 4;  // if out of range
     // measure1.RangeMilliMeter
