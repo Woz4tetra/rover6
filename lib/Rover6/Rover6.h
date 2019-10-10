@@ -39,8 +39,9 @@
  * Serial devices
  */
 
-#define MSG_SERIAL Serial
-#define DATA_SERIAL Serial5
+#define DATA_SERIAL  Serial5
+
+char SERIAL_MSG_BUFFER[0xff];
 
 /*
  * Adafruit PWM servo driver
@@ -48,7 +49,7 @@
  */
 
 #define NUM_SERVOS 16
-
+#define SERVO_STBY 24
 
 /*
  * Adafruit High-side current and voltage meter
@@ -96,6 +97,8 @@
 #define TFT_DC     8
 #define TFT_LITE   6
 const float TFT_PI = 3.1415926;
+#define TFT_SCROLLING_BUFFER_SIZE  30
+char TFT_SPRINTF_BUFFER[0xff];
 
 /*
  * Adafruit FSR
@@ -153,6 +156,12 @@ private:
 
     void write(String name, const char *formats, ...);
 
+    void report_status();
+    void print_info(const char* message, ...);
+    void print_error(const char* message, ...);
+
+    void setup_serial();
+
     #ifdef ENABLE_SERVOS
     Adafruit_PWMServoDriver* servos;
 
@@ -162,6 +171,7 @@ private:
 
     void setup_servos();
     void set_servo(uint8_t n, double angle);
+    void set_servo_standby(bool standy);
     #endif
 
     #ifdef ENABLE_INA
@@ -221,6 +231,10 @@ private:
 
     #ifdef ENABLE_TFT
     Adafruit_ST7735* tft;
+    uint8_t tft_brightness;
+
+    String* scrolling_buffer;
+    uint16_t scrolling_index;
 
     void initialize_display();
     void set_display_brightness(int brightness);
@@ -228,6 +242,7 @@ private:
     void bmpDraw();
     uint16_t serial_read16();
     uint32_t serial_read32();
+    void println_display(const char* text, ...);
 
     #endif
 
@@ -254,12 +269,6 @@ private:
     void read_IR();
     void report_IR();
     #endif
-
-    void report_status();
-    void print_info(String s)  { MSG_SERIAL.print("INFO\t"); MSG_SERIAL.println(s); }
-    void print_error(String s)  { MSG_SERIAL.print("ERROR\t"); MSG_SERIAL.println(s); }
-
-    void setup_serial();
 
     #if defined(ENABLE_BNO) || defined(ENABLE_TOF) || defined(ENABLE_SERVOS) || defined(ENABLE_INA)
     void setup_i2c();

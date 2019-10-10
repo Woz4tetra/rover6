@@ -3,7 +3,7 @@
 
 Rover6::Rover6()
 {
-#ifdef ENABLE_SERVOS
+    #ifdef ENABLE_SERVOS
     servos = new Adafruit_PWMServoDriver(0x40, &Wire1);
     servo_pulse_mins = new int[NUM_SERVOS];
     servo_pulse_maxs = new int[NUM_SERVOS];
@@ -13,54 +13,61 @@ Rover6::Rover6()
     for (size_t i = 0; i < NUM_SERVOS; i++) {
         servo_pulse_maxs[i] = 600;
     }
-#endif
+    #endif
 
-#ifdef ENABLE_INA
+    #ifdef ENABLE_INA
     ina219 = new Adafruit_INA219();
     ina219_shuntvoltage = 0.0;
     ina219_busvoltage = 0.0;
     ina219_current_mA = 0.0;
     ina219_loadvoltage = 0.0;
     ina219_power_mW = 0.0;
-#endif
+    #endif
 
 
-#ifdef ENABLE_MOTORS
+    #ifdef ENABLE_MOTORS
     motorA = new TB6612(MOTORA_PWM, MOTORA_DR1, MOTORA_DR2);
     motorB = new TB6612(MOTORB_PWM, MOTORB_DR1, MOTORB_DR2);
-#endif
+    #endif
 
-#ifdef ENABLE_ENCODERS
+    #ifdef ENABLE_ENCODERS
     //encoder objects initialized in setup
     encA_pos = 0;
     encB_pos = 0;
-#endif
+    #endif
 
-#ifdef ENABLE_TOF
+    #ifdef ENABLE_TOF
     lox1 = new Adafruit_VL53L0X();
     lox2 = new Adafruit_VL53L0X();
     measure1 = new VL53L0X_RangingMeasurementData_t();
     measure2 = new VL53L0X_RangingMeasurementData_t();
-#endif
+    #endif
 
-#ifdef ENABLE_TFT
+    #ifdef ENABLE_TFT
     tft = new Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
-#endif
+    tft_brightness = 0;
+
+    scrolling_buffer = new String[TFT_SCROLLING_BUFFER_SIZE];
+    for (int i = 0; i < TFT_SCROLLING_BUFFER_SIZE; i++) {
+        scrolling_buffer[i] = "";
+    }
+    scrolling_index = 0;
+    #endif
 
 
-#ifdef ENABLE_BNO
+    #ifdef ENABLE_BNO
     bno = new Adafruit_BNO055(-1, BNO055_ADDRESS_A, &Wire1);
     orientationData = new sensors_event_t();
     angVelocityData = new sensors_event_t();
     linearAccelData = new sensors_event_t();
     bno_board_temp = 0;
-#endif
+    #endif
 
-#ifdef ENABLE_IR
+    #ifdef ENABLE_IR
     irrecv = new IRrecv(IR_RECEIVER_PIN);
     irresults = new decode_results();
     ir_result_available = false;
-#endif
+    #endif
 
     is_idle = true;
     data_buffer = "";
@@ -73,45 +80,47 @@ Rover6::Rover6()
 void Rover6::begin()
 {
     setup_serial();
-#if defined(ENABLE_BNO) || defined(ENABLE_TOF) || defined(ENABLE_SERVOS) || defined(ENABLE_INA)
+    #if defined(ENABLE_BNO) || defined(ENABLE_TOF) || defined(ENABLE_SERVOS) || defined(ENABLE_INA)
     setup_i2c();
-#endif
+    #endif
 
-#ifdef ENABLE_SERVOS
+    #ifdef ENABLE_SERVOS
     setup_servos();
-#endif
+    #endif
 
-#ifdef ENABLE_INA
+    #ifdef ENABLE_INA
     setup_INA219();
-#endif
+    #endif
 
-#ifdef ENABLE_MOTORS
+    #ifdef ENABLE_MOTORS
     setup_motors();
-#endif
+    #endif
 
-#ifdef ENABLE_ENCODERS
+    #ifdef ENABLE_ENCODERS
     setup_encoders();
-#endif
+    #endif
 
-#ifdef ENABLE_TOF
+    #ifdef ENABLE_TOF
     setup_VL53L0X();
-#endif
+    #endif
 
-#ifdef ENABLE_FSR
+    #ifdef ENABLE_FSR
     setup_fsrs();
-#endif
+    #endif
 
-#ifdef ENABLE_TFT
+    #ifdef ENABLE_TFT
     initialize_display();
-#endif
+    #endif
 
-#ifdef ENABLE_BNO
+    #ifdef ENABLE_BNO
     setup_BNO055();
-#endif
+    #endif
 
-#ifdef ENABLE_IR
+    #ifdef ENABLE_IR
     setup_IR();
-#endif
+    #endif
+
+    // flush serial buffer
 
     // setup_timers();
 
@@ -127,30 +136,49 @@ void Rover6::set_idle(bool state)
     if (state == is_idle) {
         return;
     }
+
+    println_display("Setting idle to: %d", is_idle);
+
     is_idle = state;
 
     set_motorA(0);
     set_motorB(0);
 
     if (is_idle) {
-#ifdef ENABLE_MOTORS
+        #ifdef ENABLE_MOTORS
         set_motor_standby(true);
-#endif
+        #endif
 
-#ifdef ENABLE_TFT
+        #ifdef ENABLE_SERVOS
+        set_servo_standby(true);
+        #endif
+
+        #ifdef ENABLE_TFT
         set_display_brightness(0);
-#endif
+        #endif
         // setup_timers();
         // interrupts();
     }
     else {
-#ifdef ENABLE_MOTORS
+        #ifdef ENABLE_MOTORS
         set_motor_standby(false);
-#endif
+        #endif
 
-#ifdef ENABLE_TFT
+        #ifdef ENABLE_SERVOS
+        set_servo_standby(false);
+        #endif
+
+        #ifdef ENABLE_TFT
         set_display_brightness(255);
-#endif
+        #endif
+
+        #ifdef ENABLE_ENCODERS
+        encA_pos = 0;
+        encB_pos = 0;
+        motorA_enc->write(0);
+        motorB_enc->write(0);
+        #endif
+
         current_time = millis();
         i2c_report_timer = millis();
         fast_sensor_report_timer = millis();
@@ -189,6 +217,30 @@ void Rover6::write(String name, const char *formats, ...)
     DATA_SERIAL.print(name + "\t" + data);
 }
 
+void Rover6::print_info(const char* message, ...)
+{
+    va_list args;
+    va_start(args, message);
+    sprintf(SERIAL_MSG_BUFFER, message, args);
+    va_end(args);
+
+    DATA_SERIAL.print("msg\tINFO\t");
+    DATA_SERIAL.print(SERIAL_MSG_BUFFER);
+    DATA_SERIAL.print('\n');
+}
+
+void Rover6::print_error(const char* message, ...)
+{
+    va_list args;
+    va_start(args, message);
+    sprintf(SERIAL_MSG_BUFFER, message, args);
+    va_end(args);
+
+    DATA_SERIAL.print("msg\tERROR\t");
+    DATA_SERIAL.print(SERIAL_MSG_BUFFER);
+    DATA_SERIAL.print('\n');
+}
+
 void Rover6::check_serial()
 {
     if (DATA_SERIAL.available()) {
@@ -206,7 +258,6 @@ void Rover6::check_serial()
             DATA_SERIAL.print("!\n");
         }
         else if (command == 'r') {
-            DATA_SERIAL.println("Reporting");
             report_status();
         }
 
@@ -229,10 +280,15 @@ void Rover6::check_serial()
 #ifdef ENABLE_SERVOS
             case 's':
                 data_buffer = DATA_SERIAL.readStringUntil('\n');
-                set_servo(
-                    data_buffer.substring(1, 2).toInt(),
-                    data_buffer.substring(2).toInt()
-                );
+                if (data_buffer.charAt(0) == 't') {
+                    // tell servo positions
+                }
+                else {
+                    set_servo(
+                        data_buffer.substring(1, 2).toInt(),
+                        data_buffer.substring(2).toInt()
+                    );
+                }
                 break;
 #endif
 
@@ -300,11 +356,6 @@ void Rover6::report_status()
 
 void Rover6::setup_serial()
 {
-    MSG_SERIAL.begin(115200);
-    while (!MSG_SERIAL) {
-        delay(1);
-    }
-
     // DATA_SERIAL.begin(115200);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
     DATA_SERIAL.begin(500000);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
     print_info("Rover #6");
@@ -329,14 +380,25 @@ void Rover6::setup_servos()
     servos->setPWMFreq(60);
     delay(10);
     print_info("PCA9685 Servos initialized.");
+    pinMode(SERVO_STBY, OUTPUT);
 }
 
-void Rover6::set_servo(uint8_t n, double angle) {
+void Rover6::set_servo(uint8_t n, double angle)
+{
     uint16_t pulse = (uint16_t)map(angle, 0, 180, servo_pulse_mins[n], servo_pulse_maxs[n]);
     servos->setPWM(n, 0, pulse);
 }
 #endif
 
+void Rover6::set_servo_standby(bool standby)
+{
+    if (standby) {  // set servos to low power
+        digitalWrite(SERVO_STBY, HIGH);
+    }
+    else {  // bring servos out of standby mode
+        digitalWrite(SERVO_STBY, LOW);
+    }
+}
 
 #ifdef ENABLE_INA
 void Rover6::setup_INA219()
@@ -427,7 +489,7 @@ void Rover6::setup_VL53L0X()
 
     // initing LOX1
     if(!lox1->begin(LOX1_ADDRESS, false, &Wire)) {
-        print_error(F("Failed to boot first VL53L0X"));
+        print_error("Failed to boot first VL53L0X");
         while(1);
     }
     delay(10);
@@ -438,7 +500,7 @@ void Rover6::setup_VL53L0X()
 
     //initing LOX2
     if(!lox2->begin(LOX2_ADDRESS, false, &Wire)) {
-        print_error(F("Failed to boot second VL53L0X"));
+        print_error("Failed to boot second VL53L0X");
         while(1);
     }
     print_info("VL53L0X's initialized.");
@@ -486,12 +548,52 @@ void Rover6::initialize_display()
     delay(10);
     set_display_brightness(255);
     tft->fillScreen(ST77XX_BLACK);
+
+    tft->setTextWrap(true);
+    tft->setTextSize(1);
+    tft->setRotation(1); // horizontal display
+
     print_info("TFT display initialized.");
+    println_display("Hello!");
 }
 
 void Rover6::set_display_brightness(int brightness)
 {
     analogWrite(TFT_LITE, brightness);
+    tft_brightness = brightness;
+}
+
+void Rover6::println_display(const char* text, ...)
+{
+    va_list args;
+    va_start(args, text);
+    sprintf(TFT_SPRINTF_BUFFER, text, args);
+    va_end(args);
+    String text_string(text);
+
+    scrolling_buffer[scrolling_index] = text_string;
+
+    uint16_t print_index = scrolling_index;
+    uint16_t cursor_h = tft->height();  // where to put the cursor for each line
+
+    int16_t  x1, y1;
+    uint16_t w, h;
+
+    for (int i = 0; i < TFT_SCROLLING_BUFFER_SIZE; i++) {
+        // traverse the buffer backwards
+        print_index = (scrolling_index - i) % TFT_SCROLLING_BUFFER_SIZE;
+
+        tft->getTextBounds(scrolling_buffer[print_index], 0, 0, &x1, &y1, &w, &h);
+        cursor_h -= h;
+        if (cursor_h < 0 || scrolling_buffer[print_index].length() == 0) {
+            break;
+        }
+
+        tft->setCursor(0, cursor_h);
+        tft->print(scrolling_buffer[print_index]);
+    }
+
+    scrolling_index++;
 }
 
 void Rover6::display_image()
@@ -506,12 +608,12 @@ void Rover6::display_image()
     //     print_error(encoded_image.length());
     //     return;
     // }
-    MSG_SERIAL.println("Displaying image");
+    print_info("Displaying image");
 
     bmpDraw();
 
     if (DATA_SERIAL.read() != '\n') {
-        MSG_SERIAL.println("Image does not end with a newline!!");
+        print_info("Image does not end with a newline!!");
     }
 }
 
@@ -597,13 +699,13 @@ void Rover6::bmpDraw()
                 tft->setAddrWindow(0, 0, bmpWidth, bmpHeight);
 
                 if (!DATA_SERIAL.available()) {
-                    MSG_SERIAL.println("ERROR: Ran out of data on serial before image finished drawing!");
+                    print_error("ERROR: Ran out of data on serial before image finished drawing!");
                     return;
                 }
 
                 image_size = bmpHeight * bmpWidth * 3;
                 if (sizeof(sdbuffer) < image_size) {
-                    MSG_SERIAL.println("ERROR: Buffer is insufficiently sized for image!");
+                    print_error("ERROR: Buffer is insufficiently sized for image!");
                     return;
                 }
                 // DATA_SERIAL.readBytes(sdbuffer, bmpImageoffset);
@@ -706,32 +808,32 @@ void Rover6::report_IR()
         return;
     }
 
-    if (ir_type == NEC && ir_value != 0xffff) {
+    if (ir_type == NEC && ir_value != 0xffff) {  // 0xffff means repeat last command
         write("irr", "ldd", millis(), ir_type, ir_value);
     }
 
     switch (ir_value) {
-        case 0x00ff: MSG_SERIAL.println("IR: VOL-"); break;  // VOL-
-        case 0x807f: MSG_SERIAL.println("IR: Play/Pause"); break;  // Play/Pause
-        case 0x40bf: MSG_SERIAL.println("IR: VOL+"); break;  // VOL+
-        case 0x20df: MSG_SERIAL.println("IR: SETUP"); break;  // SETUP
-        case 0xa05f: MSG_SERIAL.println("IR: ^"); set_motorA(255); break;  // ^
-        case 0x609f: MSG_SERIAL.println("IR: MODE"); break;  // MODE
-        case 0x10ef: MSG_SERIAL.println("IR: <");  set_motorB(-255); break;  // <
-        case 0x906f: MSG_SERIAL.println("IR: ENTER"); set_motorA(0); set_motorB(0); break;  // ENTER
-        case 0x50af: MSG_SERIAL.println("IR: >");  set_motorB(255); break;  // >
-        case 0x30cf: MSG_SERIAL.println("IR: 0 10+"); break;  // 0 10+
-        case 0xb04f: MSG_SERIAL.println("IR: v");  set_motorA(-255); break;  // v
-        case 0x708f: MSG_SERIAL.println("IR: Del"); break;  // Del
-        case 0x08f7: MSG_SERIAL.println("IR: 1"); break;  // 1
-        case 0x8877: MSG_SERIAL.println("IR: 2"); break;  // 2
-        case 0x48B7: MSG_SERIAL.println("IR: 3"); break;  // 3
-        case 0x28D7: MSG_SERIAL.println("IR: 4"); break;  // 4
-        case 0xA857: MSG_SERIAL.println("IR: 5"); break;  // 5
-        case 0x6897: MSG_SERIAL.println("IR: 6"); break;  // 6
-        case 0x18E7: MSG_SERIAL.println("IR: 7"); break;  // 7
-        case 0x9867: MSG_SERIAL.println("IR: 8"); break;  // 8
-        case 0x58A7: MSG_SERIAL.println("IR: 9"); break;  // 9
+        case 0x00ff: print_info("IR: VOL-"); break;  // VOL-
+        case 0x807f: print_info("IR: Play/Pause"); break;  // Play/Pause
+        case 0x40bf: print_info("IR: VOL+"); break;  // VOL+
+        case 0x20df: print_info("IR: SETUP"); break;  // SETUP
+        case 0xa05f: print_info("IR: ^"); set_motorA(255); break;  // ^
+        case 0x609f: print_info("IR: MODE"); break;  // MODE
+        case 0x10ef: print_info("IR: <");  set_motorB(-255); break;  // <
+        case 0x906f: print_info("IR: ENTER"); set_motorA(0); set_motorB(0); break;  // ENTER
+        case 0x50af: print_info("IR: >");  set_motorB(255); break;  // >
+        case 0x30cf: print_info("IR: 0 10+"); break;  // 0 10+
+        case 0xb04f: print_info("IR: v");  set_motorA(-255); break;  // v
+        case 0x708f: print_info("IR: Del"); break;  // Del
+        case 0x08f7: print_info("IR: 1"); break;  // 1
+        case 0x8877: print_info("IR: 2"); break;  // 2
+        case 0x48B7: print_info("IR: 3"); break;  // 3
+        case 0x28D7: print_info("IR: 4"); break;  // 4
+        case 0xA857: print_info("IR: 5"); break;  // 5
+        case 0x6897: print_info("IR: 6"); break;  // 6
+        case 0x18E7: print_info("IR: 7"); break;  // 7
+        case 0x9867: print_info("IR: 8"); break;  // 8
+        case 0x58A7: print_info("IR: 9"); break;  // 9
 
     }
     // String decode_type;
