@@ -113,9 +113,11 @@ const uint16_t LOX_SAMPLERATE_DELAY_MS = 250;
 #define TFT_DC     8
 #define TFT_LITE   6
 const float TFT_PI = 3.1415926;
-#define TFT_SPRINTF_SIZE  0xff
-char TFT_SPRINTF_BUFFER[TFT_SPRINTF_SIZE];
-char TFT_SCROLLING_BUFFER[0x1ff];
+#define TFT_BUFFER_SIZE  0xff
+char TFT_MSG_BUFFER[TFT_BUFFER_SIZE];
+// #define TFT_SPRINTF_SIZE  0xff
+// char TFT_SPRINTF_BUFFER[TFT_SPRINTF_SIZE];
+// char TFT_SCROLLING_BUFFER[0x1ff];
 
 /*
  * Adafruit FSR
@@ -140,7 +142,7 @@ const uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
  * IR remote receiver
  */
 
-#define IR_RECEIVER_PIN 4
+#define IR_RECEIVER_PIN 2
 
 
 /*
@@ -170,6 +172,7 @@ private:
     uint32_t current_time;
     uint32_t i2c_report_timer;
     uint32_t fast_sensor_report_timer;
+    uint32_t lox_report_timer;
 
     void write(String name, const char *formats, ...);
 
@@ -184,10 +187,11 @@ private:
     // pulse length count (out of 4096)
     int* servo_pulse_mins;
     int* servo_pulse_maxs;
+    double* servo_positions;
 
     void setup_servos();
     void set_servo(uint8_t n, double angle);
-    void set_servo_standby(bool standy);
+    void set_servo_standby(bool standby);
 
     Adafruit_INA219* ina219;
     float ina219_shuntvoltage;
@@ -209,6 +213,10 @@ private:
     void set_motor_standby(bool standby);
     void set_motorA(int speed);
     void set_motorB(int speed);
+
+    int motorA_cmd;
+    int motorB_cmd;
+    bool motors_on_standby;
 
     long encA_pos;
     long encB_pos;
@@ -240,13 +248,15 @@ private:
     // String* scrolling_buffer;
     // uint16_t scrolling_index;
 
-    void initialize_display();
+    void setup_display();
     void set_display_brightness(int brightness);
-    void display_image();
-    void bmpDraw();
-    uint16_t serial_read16();
-    uint32_t serial_read32();
-    void println_display(const char* text, ...);
+    void print_display(const char* message, ...);
+    void display_sensors();
+    // void display_image();
+    // void bmpDraw();
+    // uint16_t serial_read16();
+    // uint32_t serial_read32();
+    // void println_display(const char* text, ...);
 
     sensors_event_t* orientationData;
     sensors_event_t* angVelocityData;

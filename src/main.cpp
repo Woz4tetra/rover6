@@ -12,5 +12,5 @@ void setup() {
 void loop() {
     rover->check_serial();
     rover->report_data();
-    // delay(1);
+    delay(1);
 }

@@ -1,17 +1,21 @@
 
 #include "Rover6.h"
 
+
+/*
+ * Constructor
+ */
 Rover6::Rover6()
 {
     #ifdef ENABLE_SERVOS
     servos = new Adafruit_PWMServoDriver(0x40, &Wire1);
     servo_pulse_mins = new int[NUM_SERVOS];
     servo_pulse_maxs = new int[NUM_SERVOS];
+    servo_positions = new double[NUM_SERVOS];
     for (size_t i = 0; i < NUM_SERVOS; i++) {
         servo_pulse_mins[i] = 150;
-    }
-    for (size_t i = 0; i < NUM_SERVOS; i++) {
         servo_pulse_maxs[i] = 600;
+        servo_positions[i] = 0.0;
     }
     #endif
 
@@ -28,6 +32,8 @@ Rover6::Rover6()
     #ifdef ENABLE_MOTORS
     motorA = new TB6612(MOTORA_PWM, MOTORA_DR1, MOTORA_DR2);
     motorB = new TB6612(MOTORB_PWM, MOTORB_DR1, MOTORB_DR2);
+
+    motors_on_standby = true;
     #endif
 
     #ifdef ENABLE_ENCODERS
@@ -75,8 +81,12 @@ Rover6::Rover6()
     current_time = 0;
     i2c_report_timer = 0;
     fast_sensor_report_timer = 0;
+    lox_report_timer = 0;
 }
 
+/*
+ * Setup devices
+ */
 void Rover6::begin()
 {
     setup_serial();
@@ -88,7 +98,7 @@ void Rover6::begin()
     setup_encoders();
     setup_VL53L0X();
     setup_fsrs();
-    initialize_display();
+    setup_display();
     setup_BNO055();
     setup_IR();
 
@@ -103,6 +113,9 @@ void Rover6::begin()
     fast_sensor_report_timer = millis();
 }
 
+/*
+ * Toggle idle
+ */
 void Rover6::set_idle(bool state)
 {
     if (state == is_idle) {
@@ -138,6 +151,9 @@ void Rover6::set_idle(bool state)
     }
 }
 
+/*
+ * Serial communication
+ */
 void Rover6::write(String name, const char *formats, ...)
 {
     va_list args;
@@ -192,6 +208,9 @@ void Rover6::print_error(const char* message, ...)
     DATA_SERIAL.print('\n');
 }
 
+/*
+ * External method. Check for data on serial
+ */
 void Rover6::check_serial()
 {
     if (DATA_SERIAL.available()) {
@@ -241,16 +260,22 @@ void Rover6::check_serial()
                 }
                 break;
 
-            case 'd': display_image(); break;
+            // case 'd': display_image(); break;
             default: break;
         }
     }
 }
 
+/*
+ * Poll sensors and send over serial
+ */
 void Rover6::report_data()
 {
     if (is_idle) {
-        delay(50);
+        read_IR();
+        report_IR();
+
+        delay(10);
         return;
     }
 
@@ -269,25 +294,41 @@ void Rover6::report_data()
         report_encoders();
         report_fsrs();
         report_IR();
+
     }
 
     if (current_time - i2c_report_timer > BNO055_SAMPLERATE_DELAY_MS)
     {
+        display_sensors();
         i2c_report_timer = current_time;
+
         read_BNO055();
-        read_VL53L0X();
+        // read_VL53L0X();
 
         report_BNO055();
+        // report_VL53L0X();
+    }
+
+    if (current_time - lox_report_timer > LOX_SAMPLERATE_DELAY_MS)
+    {
+        lox_report_timer = current_time;
+
+        read_VL53L0X();
         report_VL53L0X();
     }
 }
 
+/*
+ * Return all device statuses when requested
+ */
 void Rover6::report_status()
 {
 
 }
 
-
+/*
+ * Serial
+ */
 void Rover6::setup_serial()
 {
     // while (!Serial) {
@@ -299,6 +340,9 @@ void Rover6::setup_serial()
     print_info("Serial buses initialized.");
 }
 
+/*
+ * I2C
+ */
 void Rover6::setup_i2c()
 {
     #if defined(ENABLE_BNO) || defined(ENABLE_TOF) || defined(ENABLE_SERVOS) || defined(ENABLE_INA)
@@ -310,6 +354,10 @@ void Rover6::setup_i2c()
     #endif  // enable i2c
 }
 
+/*
+ * Adafruit PWM servo driver
+ * PCA9685
+ */
 void Rover6::setup_servos()
 {
     #ifdef ENABLE_SERVOS
@@ -324,7 +372,9 @@ void Rover6::setup_servos()
 void Rover6::set_servo(uint8_t n, double angle)
 {
     #ifdef ENABLE_SERVOS
+    servo_positions[n] = angle;
     uint16_t pulse = (uint16_t)map(angle, 0, 180, servo_pulse_mins[n], servo_pulse_maxs[n]);
+    print_info("Setting servo %d pulse: %d", n, pulse);
     servos->setPWM(n, 0, pulse);
     #endif  // ENABLE_SERVOS
 }
@@ -341,7 +391,10 @@ void Rover6::set_servo_standby(bool standby)
     #endif  // ENABLE_SERVOS
 }
 
-
+/*
+ * Adafruit High-side current and voltage meter
+ * INA219
+ */
 void Rover6::setup_INA219()
 {
     #ifdef ENABLE_INA
@@ -367,6 +420,10 @@ void Rover6::report_INA219() {
     #endif  // ENABLE_INA
 }
 
+/*
+ * Adafruit dual motor driver breakout + encoders
+ * TB6612
+ */
 void Rover6::setup_motors()
 {
     #ifdef ENABLE_MOTORS
@@ -380,6 +437,12 @@ void Rover6::setup_motors()
 void Rover6::set_motor_standby(bool standby)
 {
     #ifdef ENABLE_MOTORS
+    if (standby != motors_on_standby) {
+        motors_on_standby = standby;
+    }
+    else {
+        return;
+    }
     if (standby) {  // set motors to low power
         digitalWrite(MOTOR_STBY, LOW);
     }
@@ -393,12 +456,14 @@ void Rover6::set_motorA(int speed)
 {
     #ifdef ENABLE_MOTORS
     motorA->setSpeed(speed);
+    motorA_cmd = speed;
     #endif  // ENABLE_MOTORS
 }
 void Rover6::set_motorB(int speed)
 {
     #ifdef ENABLE_MOTORS
     motorB->setSpeed(speed);
+    motorB_cmd = speed;
     #endif  // ENABLE_MOTORS
 }
 
@@ -435,7 +500,10 @@ void Rover6::reset_encoders()
     #endif  // ENABLE_ENCODERS
 }
 
-
+/*
+ * Adafruit TOF distance sensor
+ * VL53L0X
+ */
 void Rover6::setup_VL53L0X()
 {
     #ifdef ENABLE_TOF
@@ -493,35 +561,15 @@ void Rover6::read_VL53L0X()
 
 void Rover6::report_VL53L0X() {
     #ifdef ENABLE_TOF
-    write("lox", "lddd", millis(), measure1->RangeMilliMeter, measure2->RangeMilliMeter, measure1->RangeStatus);
+    write("lox", "ldddd", millis(), measure1->RangeMilliMeter, measure2->RangeMilliMeter, measure1->RangeStatus, measure2->RangeStatus);
     #endif  // ENABLE_TOF
 }
 
-void Rover6::setup_fsrs()
-{
-    #ifdef ENABLE_FSR
-    pinMode(FSR_PIN_1, INPUT);
-    pinMode(FSR_PIN_2, INPUT);
-    print_info("FSRs initialized.");
-    #endif  // ENABLE_FSR
-}
-
-void Rover6::read_fsrs()
-{
-    #ifdef ENABLE_FSR
-    fsr_1_val = analogRead(FSR_PIN_1);
-    fsr_2_val = analogRead(FSR_PIN_2);
-    #endif  // ENABLE_FSR
-}
-
-void Rover6::report_fsrs() {
-    #ifdef ENABLE_FSR
-    write("fsr", "ldd", millis(), fsr_1_val, fsr_2_val);
-    #endif  // ENABLE_FSR
-}
-
-
-void Rover6::initialize_display()
+/*
+ * Adafruit TFT 1.8" display
+ * ST7735
+ */
+void Rover6::setup_display()
 {
     #ifdef ENABLE_TFT
     pinMode(TFT_LITE, OUTPUT);
@@ -533,10 +581,10 @@ void Rover6::initialize_display()
     tft->setTextWrap(true);
     tft->setTextSize(1);
     tft->setRotation(1); // horizontal display
+    tft->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
 
     print_info("TFT display initialized.");
-    println_display("Hello! %d", millis());
-    // println_display("Hi!");
+
     #endif  // ENABLE_TFT
 }
 
@@ -548,62 +596,40 @@ void Rover6::set_display_brightness(int brightness)
     #endif  // ENABLE_TFT
 }
 
-void Rover6::println_display(const char* text, ...)
+void Rover6::print_display(const char* message, ...)
 {
-    #ifdef ENABLE_TFT
     va_list args;
-    va_start(args, text);
-    vsnprintf(TFT_SPRINTF_BUFFER, TFT_SPRINTF_SIZE, text, args);
+    va_start(args, message);
+    vsnprintf(TFT_MSG_BUFFER, TFT_BUFFER_SIZE, message, args);
     va_end(args);
 
-    int16_t  x1, y1;
-    uint16_t w, h;
-    tft->getTextBounds(TFT_SPRINTF_BUFFER, 0, 0, &x1, &y1, &w, &h);
-    tft->print(TFT_SPRINTF_BUFFER);
-
-    print_info("x: %d, y: %d, w: %d, h: %d", x1, y1, w, h);
-
-    /*
-    size_t text_len = strlen(text);
-    for (size_t i = 0; i < text_len; i++) {
-        scrolling_buffer[i + scrolling_index] = text[i];
-    }
-
-    uint16_t print_index = scrolling_index;
-    uint16_t cursor_h = tft->height();  // where to put the cursor for each line
-
-    int16_t  x1, y1;
-    uint16_t w, h;
-
-    char c = '0';
-    while (c != '\0') {
-
-    }
-    for (int i = 0; i < TFT_SCROLLING_BUFFER_SIZE; i++) {
-        // traverse the buffer backwards
-        print_index = (scrolling_index - i) % TFT_SCROLLING_BUFFER_SIZE;
-
-        tft->getTextBounds(scrolling_buffer[print_index], 0, 0, &x1, &y1, &w, &h);
-        cursor_h -= h;
-        if (cursor_h < 0 || scrolling_buffer[print_index].length() == 0) {
-            break;
-        }
-
-        tft->setCursor(0, cursor_h);
-        tft->print(scrolling_buffer[print_index]);
-    }
-
-    scrolling_index++;*/
-    #endif  // ENABLE_TFT
+    tft->print(TFT_MSG_BUFFER);
 }
 
+void Rover6::display_sensors()
+{
+    //tft->fillScreen(ST77XX_BLACK);
+    tft->setCursor(0, 0);
+    print_display(
+        "%dmA, %dV\n \
+M: %d, %d, %d\n\
+E: %d, %d\n\
+D: %d, %d, %d, %d\n\
+F: %d, %d\n", (int)ina219_current_mA, (int)ina219_loadvoltage,
+        motorA_cmd, motorB_cmd, motors_on_standby,
+        encA_pos, encB_pos,
+        measure1->RangeMilliMeter, measure2->RangeMilliMeter, measure1->RangeStatus, measure2->RangeStatus,
+        fsr_1_val, fsr_2_val
+    );
+}
+
+
+/*
 void Rover6::display_image()
 {
     #ifdef ENABLE_TFT
-    /*
-     * Display is 128x64 16-bit color
-     * String must be at least length 16384 (0x4000)
-     */
+    // Display is 128x64 16-bit color
+    // String must be at least length 16384 (0x4000)
 
     // if (encoded_image.length() < 0x4000) {
     //     print_error("Invalid string length");
@@ -628,6 +654,8 @@ uint16_t Rover6::serial_read16()
     ((uint8_t *)&result)[0] = DATA_SERIAL.read(); // LSB
     ((uint8_t *)&result)[1] = DATA_SERIAL.read(); // MSB
     return result;
+    #else
+    return 0;
     #endif  // ENABLE_TFT
 }
 
@@ -640,6 +668,8 @@ uint32_t Rover6::serial_read32()
     ((uint8_t *)&result)[2] = DATA_SERIAL.read();
     ((uint8_t *)&result)[3] = DATA_SERIAL.read(); // MSB
     return result;
+    #else
+    return 0;
     #endif  // ENABLE_TFT
 }
 
@@ -748,7 +778,39 @@ void Rover6::bmpDraw()
     }
     #endif  // ENABLE_TFT
 }
+*/
 
+/*
+ * Adafruit FSR
+ * Interlink 402
+ */
+void Rover6::setup_fsrs()
+{
+    #ifdef ENABLE_FSR
+    pinMode(FSR_PIN_1, INPUT);
+    pinMode(FSR_PIN_2, INPUT);
+    print_info("FSRs initialized.");
+    #endif  // ENABLE_FSR
+}
+
+void Rover6::read_fsrs()
+{
+    #ifdef ENABLE_FSR
+    fsr_1_val = analogRead(FSR_PIN_1);
+    fsr_2_val = analogRead(FSR_PIN_2);
+    #endif  // ENABLE_FSR
+}
+
+void Rover6::report_fsrs() {
+    #ifdef ENABLE_FSR
+    write("fsr", "ldd", millis(), fsr_1_val, fsr_2_val);
+    #endif  // ENABLE_FSR
+}
+
+/*
+ * Adafruit 9-DOF Absolute Orientation IMU
+ * BNO055
+ */
 void Rover6::setup_BNO055()
 {
     #ifdef ENABLE_BNO
@@ -792,12 +854,15 @@ void Rover6::report_BNO055()
     #endif  // ENABLE_BNO
 }
 
-
+/*
+ * IR remote receiver
+ */
 void Rover6::setup_IR()
 {
     #ifdef ENABLE_IR
     irrecv->enableIRIn();
     irrecv->blink13(false);
+    print_info("IR initialized.");
     #endif  // ENABLE_IR
 }
 
@@ -827,7 +892,7 @@ void Rover6::report_IR()
 
     switch (ir_value) {
         case 0x00ff: print_info("IR: VOL-"); break;  // VOL-
-        case 0x807f: print_info("IR: Play/Pause"); break;  // Play/Pause
+        case 0x807f: print_info("IR: Play/Pause"); set_idle(!is_idle); break;  // Play/Pause
         case 0x40bf: print_info("IR: VOL+"); break;  // VOL+
         case 0x20df: print_info("IR: SETUP"); break;  // SETUP
         case 0xa05f: print_info("IR: ^"); set_motorA(255); break;  // ^
