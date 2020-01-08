@@ -30,7 +30,7 @@ Rover6::Rover6()
 
 
     #ifdef ENABLE_MOTORS
-    motorA = new TB6612(MOTORA_PWM, MOTORA_DR1, MOTORA_DR2);
+    motorA = new TB6612(MOTORA_PWM, MOTORA_DR2, MOTORA_DR1);
     motorB = new TB6612(MOTORB_PWM, MOTORB_DR1, MOTORB_DR2);
 
     motors_on_standby = true;
@@ -253,10 +253,15 @@ void Rover6::check_serial()
                     // tell servo positions
                 }
                 else {
-                    set_servo(
-                        data_buffer.substring(0, 2).toInt(),
-                        data_buffer.substring(2).toInt()
-                    );
+                    for (size_t i = 0; i < 1000; i++) {
+                        set_servo_pwm(0, i);
+                        set_servo_pwm(1, i);
+                        delay(1);
+                    }
+                    // set_servo_pwm(
+                    //     data_buffer.substring(0, 2).toInt(),
+                    //     data_buffer.substring(2).toInt()
+                    // );
                 }
                 break;
 
@@ -362,7 +367,8 @@ void Rover6::setup_servos()
 {
     #ifdef ENABLE_SERVOS
     servos->begin();
-    servos->setPWMFreq(60);
+    // servos->setPWMFreq(60);
+    servos->setPWMFreq(50);
     delay(10);
     print_info("PCA9685 Servos initialized.");
     pinMode(SERVO_STBY, OUTPUT);
@@ -374,6 +380,13 @@ void Rover6::set_servo(uint8_t n, double angle)
     #ifdef ENABLE_SERVOS
     servo_positions[n] = angle;
     uint16_t pulse = (uint16_t)map(angle, 0, 180, servo_pulse_mins[n], servo_pulse_maxs[n]);
+    set_servo_pwm(n, pulse);
+    #endif  // ENABLE_SERVOS
+}
+
+void Rover6::set_servo_pwm(uint8_t n, uint16_t pulse)
+{
+    #ifdef ENABLE_SERVOS
     print_info("Setting servo %d pulse: %d", n, pulse);
     servos->setPWM(n, 0, pulse);
     #endif  // ENABLE_SERVOS
@@ -464,6 +477,28 @@ void Rover6::set_motorB(int speed)
     #ifdef ENABLE_MOTORS
     motorB->setSpeed(speed);
     motorB_cmd = speed;
+    #endif  // ENABLE_MOTORS
+}
+
+void Rover6::drive_forward(int speed)
+{
+    #ifdef ENABLE_MOTORS
+    set_motorA(-speed);
+    set_motorB(-speed);
+    delay(500);
+    set_motorA(0);
+    set_motorB(0);
+    #endif  // ENABLE_MOTORS
+}
+
+void Rover6::rotate(int speed)
+{
+    #ifdef ENABLE_MOTORS
+    set_motorA(speed);
+    set_motorB(-speed);
+    delay(250);
+    set_motorA(0);
+    set_motorB(0);
     #endif  // ENABLE_MOTORS
 }
 
@@ -569,6 +604,7 @@ void Rover6::report_VL53L0X() {
  * Adafruit TFT 1.8" display
  * ST7735
  */
+
 void Rover6::setup_display()
 {
     #ifdef ENABLE_TFT
@@ -578,7 +614,7 @@ void Rover6::setup_display()
     set_display_brightness(255);
     tft->fillScreen(ST77XX_BLACK);
 
-    tft->setTextWrap(true);
+    tft->setTextWrap(false);
     tft->setTextSize(1);
     tft->setRotation(1); // horizontal display
     tft->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
@@ -610,12 +646,14 @@ void Rover6::display_sensors()
 {
     //tft->fillScreen(ST77XX_BLACK);
     tft->setCursor(0, 0);
-    print_display(
-        "%dmA, %dV\n \
-M: %d, %d, %d\n\
-E: %d, %d\n\
-D: %d, %d, %d, %d\n\
-F: %d, %d\n", (int)ina219_current_mA, (int)ina219_loadvoltage,
+    tft->print(String(ina219_current_mA));
+    tft->print("mA, ");
+    tft->print(String(ina219_loadvoltage));
+    tft->println("V         ");
+    print_display("M: %d, %d, %d         \n\
+E: %d, %d         \n\
+D: %d, %d, %d, %d         \n\
+F: %d, %d         \n",
         motorA_cmd, motorB_cmd, motors_on_standby,
         encA_pos, encB_pos,
         measure1->RangeMilliMeter, measure2->RangeMilliMeter, measure1->RangeStatus, measure2->RangeStatus,
@@ -895,16 +933,16 @@ void Rover6::report_IR()
         case 0x807f: print_info("IR: Play/Pause"); set_idle(!is_idle); break;  // Play/Pause
         case 0x40bf: print_info("IR: VOL+"); break;  // VOL+
         case 0x20df: print_info("IR: SETUP"); break;  // SETUP
-        case 0xa05f: print_info("IR: ^"); set_motorA(255); break;  // ^
+        case 0xa05f: print_info("IR: ^"); drive_forward(255); break;  // ^
         case 0x609f: print_info("IR: MODE"); break;  // MODE
-        case 0x10ef: print_info("IR: <");  set_motorB(-255); break;  // <
+        case 0x10ef: print_info("IR: <");  rotate(255); break;  // <
         case 0x906f: print_info("IR: ENTER"); set_motorA(0); set_motorB(0); break;  // ENTER
-        case 0x50af: print_info("IR: >");  set_motorB(255); break;  // >
+        case 0x50af: print_info("IR: >");  rotate(-255); break;  // >
         case 0x30cf: print_info("IR: 0 10+"); break;  // 0 10+
-        case 0xb04f: print_info("IR: v");  set_motorA(-255); break;  // v
+        case 0xb04f: print_info("IR: v");  drive_forward(-255); break;  // v
         case 0x708f: print_info("IR: Del"); break;  // Del
-        case 0x08f7: print_info("IR: 1"); break;  // 1
-        case 0x8877: print_info("IR: 2"); break;  // 2
+        case 0x08f7: print_info("IR: 1"); set_servo(0, (servo_positions[0] == 0.0 ? 90.0 : 0.0)); break;  // 1
+        case 0x8877: print_info("IR: 2"); set_servo(1, (servo_positions[1] == 0.0 ? 180.0 : 0.0)); break;  // 2
         case 0x48B7: print_info("IR: 3"); break;  // 3
         case 0x28D7: print_info("IR: 4"); break;  // 4
         case 0xA857: print_info("IR: 5"); break;  // 5

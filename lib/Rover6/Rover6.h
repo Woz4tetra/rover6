@@ -191,6 +191,7 @@ private:
 
     void setup_servos();
     void set_servo(uint8_t n, double angle);
+    void set_servo_pwm(uint8_t n, uint16_t pulse);
     void set_servo_standby(bool standby);
 
     Adafruit_INA219* ina219;
@@ -213,6 +214,8 @@ private:
     void set_motor_standby(bool standby);
     void set_motorA(int speed);
     void set_motorB(int speed);
+    void drive_forward(int speed);
+    void rotate(int speed);
 
     int motorA_cmd;
     int motorB_cmd;
