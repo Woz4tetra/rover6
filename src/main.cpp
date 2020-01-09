@@ -26,7 +26,8 @@
  */
 
 #define DATA_SERIAL  Serial5
-char SERIAL_MSG_BUFFER[0xff];
+#define SERIAL_MSG_BUFFER_SIZE 0xff
+char SERIAL_MSG_BUFFER[SERIAL_MSG_BUFFER_SIZE];
 const uint16_t FAST_SAMPLERATE_DELAY_MS = 10;
 #define PACKET_END '\n'
 bool is_reporting_enabled = false;
@@ -68,7 +69,7 @@ void print_info(const char* message, ...)
 {
     va_list args;
     va_start(args, message);
-    sprintf(SERIAL_MSG_BUFFER, message, args);
+    vsnprintf(SERIAL_MSG_BUFFER, SERIAL_MSG_BUFFER_SIZE, message, args);
     va_end(args);
 
     DATA_SERIAL.print("msg\tINFO\t");
@@ -80,7 +81,7 @@ void print_error(const char* message, ...)
 {
     va_list args;
     va_start(args, message);
-    sprintf(SERIAL_MSG_BUFFER, message, args);
+    vsnprintf(SERIAL_MSG_BUFFER, SERIAL_MSG_BUFFER_SIZE, message, args);
     va_end(args);
 
     DATA_SERIAL.print("msg\tERROR\t");
@@ -145,10 +146,10 @@ void set_servo_standby(bool standby)
 {
     servos_on_standby = standby;
     if (standby) {  // set servos to low power
-        digitalWrite(SERVO_STBY, HIGH);
+        servos.sleep();
     }
     else {  // bring servos out of standby mode
-        digitalWrite(SERVO_STBY, LOW);
+        servos.wakeup();
     }
 }
 
@@ -166,6 +167,8 @@ void setup_servos()
     delay(10);
     print_info("PCA9685 Servos initialized.");
     pinMode(SERVO_STBY, OUTPUT);
+    digitalWrite(SERVO_STBY, LOW);
+
     set_servo_standby(true);
 }
 
@@ -178,29 +181,29 @@ void set_servo(uint8_t n, int angle)
     }
 }
 
-#define FRONT_TILTER_MAX 90
-#define FRONT_TILTER_MIN 10
-#define BACK_TILTER_MAX 90
-#define BACK_TILTER_MIN 10
+#define FRONT_TILTER_UP 75
+#define FRONT_TILTER_DOWN 160
+#define BACK_TILTER_UP 75
+#define BACK_TILTER_DOWN 160
 
 void set_front_tilter(int angle)
 {
-    if (angle > FRONT_TILTER_MAX) {
-        angle = FRONT_TILTER_MAX;
+    if (angle > FRONT_TILTER_UP) {
+        angle = FRONT_TILTER_UP;
     }
-    if (angle < FRONT_TILTER_MIN) {
-        angle = FRONT_TILTER_MIN;
+    if (angle < FRONT_TILTER_DOWN) {
+        angle = FRONT_TILTER_DOWN;
     }
     set_servo(0, angle);
 }
 
 void set_back_tilter(int angle)
 {
-    if (angle > BACK_TILTER_MAX) {
-        angle = BACK_TILTER_MAX;
+    if (angle > BACK_TILTER_UP) {
+        angle = BACK_TILTER_UP;
     }
-    if (angle < BACK_TILTER_MIN) {
-        angle = BACK_TILTER_MIN;
+    if (angle < BACK_TILTER_DOWN) {
+        angle = BACK_TILTER_DOWN;
     }
     set_servo(1, angle);
 }
@@ -292,12 +295,12 @@ void setup_motors()
 }
 
 void set_motorA(int speed) {
-    if (is_safe_to_move && speed != 0) {
+    if (is_safe_to_move || speed == 0) {
         motorA.setSpeed(speed);
     }
 }
 void set_motorB(int speed) {
-    if (is_safe_to_move && speed != 0) {
+    if (is_safe_to_move || speed == 0) {
         motorB.setSpeed(speed);
     }
 }
@@ -373,7 +376,7 @@ uint32_t lox_report_timer = 0;
 #define LOX_SAMPLERATE_SLOW_DELAY_MS 500
 unsigned int lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
 
-#define LOX_GROUND_UPPER_THRESHOLD_MM 35
+#define LOX_GROUND_UPPER_THRESHOLD_MM 80
 #define LOX_GROUND_LOWER_THRESHOLD_MM 10
 
 
@@ -469,8 +472,9 @@ void initialize_display()
     delay(10);
     set_display_brightness(255);
     tft.fillScreen(ST77XX_BLACK);
+    tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
 
-    tft.setTextWrap(true);
+    tft.setTextWrap(false);
     tft.setTextSize(1);
     tft.setRotation(1); // horizontal display
 
@@ -604,7 +608,7 @@ void report_BNO055()
  * IR remote receiver
  */
 
-#define IR_RECEIVER_PIN 4
+#define IR_RECEIVER_PIN 2
 
 IRrecv irrecv(IR_RECEIVER_PIN);
 decode_results irresults;
@@ -630,6 +634,7 @@ bool read_IR()
         ir_value = irresults.value;
         irrecv.resume(); // Receive the next value
         callback_ir();
+        print_info("IR: %d", ir_value);
         return true;
     }
     else {
@@ -662,39 +667,41 @@ bool read_VL53L0X()
     if (current_time - lox_report_timer < lox_samplerate_delay_ms) {
         return false;
     }
+    lox_report_timer = current_time;
     if (is_moving()) {
-        lox_report_timer = current_time;
         if (is_moving_forward()) {
-            set_front_tilter(FRONT_TILTER_MAX);
-            set_back_tilter(BACK_TILTER_MIN);
+            set_front_tilter(FRONT_TILTER_UP);
+            set_back_tilter(BACK_TILTER_DOWN);
             read_front_VL53L0X();
             return true;
         }
         else {
-            set_front_tilter(FRONT_TILTER_MIN);
-            set_back_tilter(BACK_TILTER_MAX);
+            set_front_tilter(FRONT_TILTER_DOWN);
+            set_back_tilter(BACK_TILTER_UP);
             read_back_VL53L0X();
             return true;
         }
     }
     else {
-        set_front_tilter(FRONT_TILTER_MIN);
-        set_back_tilter(BACK_TILTER_MIN);
+        set_front_tilter(FRONT_TILTER_DOWN);
+        set_back_tilter(BACK_TILTER_DOWN);
         read_front_VL53L0X();
         read_back_VL53L0X();
+        return true;
     }
     return false;
 }
 
 bool calibrate_tilters()
 {
+    print_info("Calibrating range tilters");
     if (servos_on_standby) {
         print_error("Tilt calibration failed! Servos are on standby");
         is_safe_to_move = false;
         return false;
     }
-    set_front_tilter(FRONT_TILTER_MIN);
-    set_back_tilter(BACK_TILTER_MIN);
+    set_front_tilter(FRONT_TILTER_DOWN);
+    set_back_tilter(BACK_TILTER_DOWN);
 
     delay(150);
 
@@ -712,7 +719,7 @@ bool calibrate_tilters()
         success = false;
     }
 
-    char* status_string;
+    char* status_string = (char*)"";
     if (measure1.RangeStatus != 0) {
         VL53L0X_get_range_status_string(measure1.RangeStatus, status_string);
         print_error("Tilt calibration failed! lox1 measurement reported an error: %s", status_string);
@@ -745,12 +752,21 @@ bool calibrate_tilters()
     }
 
     is_safe_to_move = success;
+    if (success) {
+        print_info("Range tilter calibration successful!");
+    }
+    else {
+        print_error("Range tilter calibration failed!!");
+    }
 
     return success;
 }
 
 void set_standby(bool standby)
 {
+    if (is_on_standby == standby) {
+        return;
+    }
     print_info("Setting standby to: %d", standby);
     is_on_standby = standby;
     set_motor_standby(standby);
@@ -866,35 +882,38 @@ void check_serial()
         else if (command == 'r') {
             reset();
         }
-        else if (command == 's') {
+        else if (command == '+') {
             if (DATA_SERIAL.read() == '!') {  // you sure you want to reset?
                 soft_restart();
             }
         }
-        switch (command) {
-            case 'm':
-                data_buffer = DATA_SERIAL.readStringUntil('\n');
-                switch (data_buffer.charAt(1)) {
-                    case 'a': set_motorA(data_buffer.substring(1).toInt()); break;
-                    case 'b': set_motorB(data_buffer.substring(1).toInt()); break;
-                    case 's': set_motor_standby((bool)(data_buffer.substring(1).toInt())); break;
-                }
-                break;
+        else {
+            switch (command) {
+                case 'm':
+                    data_buffer = DATA_SERIAL.readStringUntil('\n');
+                    DATA_SERIAL.println(data_buffer);
+                    switch (data_buffer.charAt(0)) {
+                        case 'a': set_motorA(data_buffer.substring(1).toInt()); break;
+                        case 'b': set_motorB(data_buffer.substring(1).toInt()); break;
+                        case 's': set_motor_standby((bool)(data_buffer.substring(1).toInt())); break;
+                    }
+                    break;
 
-            case 's':
-                data_buffer = DATA_SERIAL.readStringUntil('\n');
-                if (data_buffer.charAt(0) == 't') {
-                    // tell servo positions
-                }
-                else {
-                    set_servo(
-                        data_buffer.substring(1, 2).toInt(),
-                        data_buffer.substring(2).toInt()
-                    );
-                }
-                break;
+                case 's':
+                    data_buffer = DATA_SERIAL.readStringUntil('\n');
+                    if (data_buffer.charAt(0) == 't') {
+                        // tell servo positions
+                    }
+                    else {
+                        set_servo(
+                            data_buffer.substring(0, 2).toInt(),
+                            data_buffer.substring(2).toInt()
+                        );
+                    }
+                    break;
 
-            default: break;
+                default: break;
+            }
         }
     }
 }
@@ -903,7 +922,6 @@ void display_data()
 {
     tft.setCursor(0, 0);
 
-    tft.print(String(ina219_current_mA));
     tft.print(String(ina219_current_mA));
     tft.print("mA, ");
     tft.print(String(ina219_loadvoltage));
