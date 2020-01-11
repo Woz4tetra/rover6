@@ -20,6 +20,8 @@
 
 #include <IRremote.h>
 
+#include <PID_v1.h>
+
 
 /*
  * Serial devices
@@ -32,7 +34,8 @@ const uint16_t FAST_SAMPLERATE_DELAY_MS = 10;
 #define PACKET_END '\n'
 bool is_reporting_enabled = false;
 String data_buffer;
-uint32_t current_time = 0;
+// uint32_t current_time = 0;
+#define CURRENT_TIME millis()
 
 void print_data(String name, const char *formats, ...)
 {
@@ -231,7 +234,7 @@ void setup_INA219()
 
 bool read_INA219()
 {
-    if (current_time - ina_report_timer < INA_SAMPLERATE_DELAY_MS) {
+    if (CURRENT_TIME - ina_report_timer < INA_SAMPLERATE_DELAY_MS) {
         return false;
     }
     ina219_shuntvoltage = ina219.getShuntVoltage_mV();
@@ -319,8 +322,15 @@ bool is_moving_forward() {
 Encoder motorA_enc(MOTORA_ENCA, MOTORA_ENCB);
 Encoder motorB_enc(MOTORB_ENCA, MOTORB_ENCB);
 
-long encA_pos = 0;
-long encB_pos = 0;
+long encA_pos, encB_pos = 0;
+double enc_speedA, enc_speedB = 0.0;  // cm/s
+uint32_t prev_enc_time = 0;
+
+// cm per rotation = 2pi * wheel radius (cm)
+// ticks per rotation = 1920
+// cm per tick = cm per rotation / ticks per rotation
+double wheel_radius_cm = 32.5;
+double cm_per_tick = 2.0 * PI * wheel_radius_cm / 1920.0; //  * ticks / rotation
 
 void reset_encoders()
 {
@@ -336,8 +346,16 @@ bool read_encoders()
     long new_encB_pos = motorB_enc.read();
 
     if (encA_pos != new_encA_pos || encB_pos != new_encB_pos) {
+        if (prev_enc_time > CURRENT_TIME) {  // wrap-around event
+            prev_enc_time = CURRENT_TIME;
+            return false;
+        }
+        enc_speedA = (new_encA_pos - encA_pos) * cm_per_tick / (CURRENT_TIME - prev_enc_time);
+        enc_speedB = (new_encB_pos - encB_pos) * cm_per_tick / (CURRENT_TIME - prev_enc_time);
+
         encA_pos = new_encA_pos;
         encB_pos = new_encB_pos;
+        prev_enc_time = CURRENT_TIME;
 
         return true;
     }
@@ -516,7 +534,7 @@ void setup_fsrs()
 
 bool read_fsrs()
 {
-    if (current_time - fsr_report_timer < FSR_SAMPLERATE_DELAY_MS) {
+    if (CURRENT_TIME - fsr_report_timer < FSR_SAMPLERATE_DELAY_MS) {
         return false;
     }
     fsr_1_val = analogRead(FSR_PIN_1);
@@ -571,10 +589,10 @@ bool read_BNO055()
         return false;
     }
 
-    if (current_time - bno_report_timer < BNO_SAMPLERATE_DELAY_MS) {
+    if (CURRENT_TIME - bno_report_timer < BNO_SAMPLERATE_DELAY_MS) {
         return false;
     }
-    bno_report_timer = current_time;
+    bno_report_timer = CURRENT_TIME;
 
     bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
     bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
@@ -650,6 +668,75 @@ void report_IR()
 }
 
 /*
+ * Motor speed controller
+ */
+//
+
+double speed_setpointA, speed_setpointB;  // cm/s
+double pid_commandA, pid_commandB;  // -255...255
+double Kp_A = 0.1, Ki_A = 0.0, Kd_A = 0.0;
+double Kp_B = 0.1, Ki_B = 0.0, Kd_B = 0.0;
+bool speed_pid_enabled = false;
+uint32_t prev_setpointA_time = 0;
+uint32_t prev_setpointB_time = 0;
+#define SPEED_COMMAND_TIMEOUT_MS 1000
+
+PID motorA_pid(&enc_speedA, &pid_commandA, &speed_setpointA, Kp_A, Ki_A, Kd_A, DIRECT);
+PID motorB_pid(&enc_speedB, &pid_commandB, &speed_setpointB, Kp_B, Ki_B, Kd_B, DIRECT);
+
+void setup_pid()
+{
+    motorA_pid.SetMode(AUTOMATIC);
+    motorB_pid.SetMode(AUTOMATIC);
+}
+
+void update_speed_pid()
+{
+    if (!speed_pid_enabled) {
+        return;
+    }
+
+    if (CURRENT_TIME - prev_setpointA_time > SPEED_COMMAND_TIMEOUT_MS) {
+        speed_setpointA = 0.0;
+        prev_setpointA_time = CURRENT_TIME;
+    }
+    if (CURRENT_TIME - prev_setpointB_time > SPEED_COMMAND_TIMEOUT_MS) {
+        speed_setpointB = 0.0;
+        prev_setpointB_time = CURRENT_TIME;
+    }
+
+    motorA_pid.Compute();
+    motorB_pid.Compute();
+
+    set_motorA((int)pid_commandA);
+    set_motorB((int)pid_commandB);
+}
+
+void toggle_speed_pid(bool enabled)
+{
+    if (enabled == speed_pid_enabled) {
+        return;
+    }
+    speed_pid_enabled = enabled;
+    if (!speed_pid_enabled) {
+        set_motorA(0);
+        set_motorB(0);
+    }
+}
+
+void update_setpointA(double new_setpoint)
+{
+    speed_setpointA = new_setpoint;
+    prev_setpointA_time = CURRENT_TIME;
+}
+
+void update_setpointB(double new_setpoint)
+{
+    speed_setpointB = new_setpoint;
+    prev_setpointB_time = CURRENT_TIME;
+}
+
+/*
  * General functions
  */
 //
@@ -664,10 +751,10 @@ bool read_VL53L0X()
     else {
         lox_samplerate_delay_ms = LOX_SAMPLERATE_SLOW_DELAY_MS;
     }
-    if (current_time - lox_report_timer < lox_samplerate_delay_ms) {
+    if (CURRENT_TIME - lox_report_timer < lox_samplerate_delay_ms) {
         return false;
     }
-    lox_report_timer = current_time;
+    lox_report_timer = CURRENT_TIME;
     if (is_moving()) {
         if (is_moving_forward()) {
             set_front_tilter(FRONT_TILTER_UP);
@@ -893,9 +980,9 @@ void check_serial()
                     data_buffer = DATA_SERIAL.readStringUntil('\n');
                     DATA_SERIAL.println(data_buffer);
                     switch (data_buffer.charAt(0)) {
-                        case 'a': set_motorA(data_buffer.substring(1).toInt()); break;
-                        case 'b': set_motorB(data_buffer.substring(1).toInt()); break;
-                        case 's': set_motor_standby((bool)(data_buffer.substring(1).toInt())); break;
+                        case 'a': update_setpointA(data_buffer.substring(1).toFloat()); break;
+                        case 'b': update_setpointB(data_buffer.substring(1).toFloat()); break;
+                        case 'p': toggle_speed_pid(data_buffer.charAt(1) == '1' ? true : false); break;
                     }
                     break;
 
@@ -969,6 +1056,8 @@ void report_data()
     }
 
     display_data();
+
+    update_speed_pid();
 }
 
 
@@ -977,7 +1066,7 @@ void setup() {
 }
 
 void loop() {
-    current_time = millis();
+    // current_time = millis();
 
     check_serial();
     report_data();
