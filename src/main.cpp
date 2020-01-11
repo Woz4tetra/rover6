@@ -472,7 +472,8 @@ void report_VL53L0X()
 const float TFT_PI = 3.1415926;
 #define TFT_BUFFER_SIZE  0xff
 char TFT_MSG_BUFFER[TFT_BUFFER_SIZE];
-
+uint32_t tft_display_timer = 0;
+#define TFT_UPDATE_DELAY_MS 250
 
 Adafruit_ST7735 tft(TFT_CS, TFT_DC, TFT_RST);
 uint8_t tft_brightness;
@@ -1007,6 +1008,11 @@ void check_serial()
 
 void display_data()
 {
+    if (CURRENT_TIME - tft_display_timer < TFT_UPDATE_DELAY_MS) {
+        return;
+    }
+    tft_display_timer = CURRENT_TIME;
+
     tft.setCursor(0, 0);
 
     tft.print(String(ina219_current_mA));
@@ -1014,7 +1020,7 @@ void display_data()
     tft.print(String(ina219_loadvoltage));
     tft.println("V         ");
 
-    tft.print("B: ");
+    tft.print("bno: ");
     tft.print(String(orientationData.orientation.x));
     tft.print(",");
     tft.print(String(orientationData.orientation.y));
@@ -1022,15 +1028,35 @@ void display_data()
     tft.print(String(orientationData.orientation.z));
     tft.println("        ");
 
-    print_display("M: %d, %d, %d         \n\
-E: %d, %d         \n\
-D: %d, %d, %d, %d         \n\
-F: %d, %d         \n",
-        motorA.getSpeed(), motorB.getSpeed(), motors_on_standby,
-        encA_pos, encB_pos,
-        measure1.RangeMilliMeter, measure2.RangeMilliMeter, measure1.RangeStatus, measure2.RangeStatus,
-        fsr_1_val, fsr_2_val
-    );
+    tft.print("motor: ");
+    tft.print(motorA.getSpeed());
+    tft.print(",");
+    tft.print(motorB.getSpeed());
+    tft.print(",");
+    tft.print(motors_on_standby);
+    tft.println("        ");
+
+    tft.print("enc: ");
+    tft.print(encA_pos);
+    tft.print(",");
+    tft.print(encB_pos);
+    tft.println("        ");
+
+    tft.print("lox: ");
+    tft.print(measure1.RangeMilliMeter);
+    tft.print(",");
+    tft.print(measure2.RangeMilliMeter);
+    tft.print(",");
+    tft.print(measure1.RangeStatus);
+    tft.print(",");
+    tft.print(measure2.RangeStatus);
+    tft.println("        ");
+
+    tft.print("fsr: ");
+    tft.print(fsr_1_val);
+    tft.print(",");
+    tft.print(fsr_2_val);
+    tft.println("        ");
 }
 
 
@@ -1057,7 +1083,7 @@ void report_data()
 
     display_data();
 
-    update_speed_pid();
+    // update_speed_pid();
 }
 
 
