@@ -77,10 +77,32 @@ void print_info(const char* message, ...)
 
     DATA_SERIAL.print("msg\tINFO\t");
     DATA_SERIAL.print(SERIAL_MSG_BUFFER);
+}
+
+void println_info(const char* message, ...)
+{
+    va_list args;
+    va_start(args, message);
+    vsnprintf(SERIAL_MSG_BUFFER, SERIAL_MSG_BUFFER_SIZE, message, args);
+    va_end(args);
+
+    DATA_SERIAL.print("msg\tINFO\t");
+    DATA_SERIAL.print(SERIAL_MSG_BUFFER);
     DATA_SERIAL.print('\n');
 }
 
 void print_error(const char* message, ...)
+{
+    va_list args;
+    va_start(args, message);
+    vsnprintf(SERIAL_MSG_BUFFER, SERIAL_MSG_BUFFER_SIZE, message, args);
+    va_end(args);
+
+    DATA_SERIAL.print("msg\tERROR\t");
+    DATA_SERIAL.print(SERIAL_MSG_BUFFER);
+}
+
+void println_error(const char* message, ...)
 {
     va_list args;
     va_start(args, message);
@@ -96,8 +118,8 @@ void setup_serial()
 {
     // DATA_SERIAL.begin(115200);
     DATA_SERIAL.begin(500000);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
-    print_info("Rover #6");
-    print_info("Serial buses initialized.");
+    println_info("Rover #6");
+    println_info("Serial buses initialized.");
 }
 
 /*
@@ -125,7 +147,7 @@ void setup_i2c()
     I2C_BUS_1.setDefaultTimeout(200000); // 200ms
     I2C_BUS_2.begin(I2C_MASTER, 0x00, I2C_PINS_37_38, I2C_PULLUP_EXT, 400000);
     I2C_BUS_2.setDefaultTimeout(200000); // 200ms
-    print_info("I2C initialized.");
+    println_info("I2C initialized.");
 }
 
 /*
@@ -168,7 +190,7 @@ void setup_servos()
     servos.begin();
     servos.setPWMFreq(60);
     delay(10);
-    print_info("PCA9685 Servos initialized.");
+    println_info("PCA9685 Servos initialized.");
     pinMode(SERVO_STBY, OUTPUT);
     digitalWrite(SERVO_STBY, LOW);
 
@@ -229,7 +251,7 @@ uint32_t ina_report_timer = 0;
 void setup_INA219()
 {
     ina219.begin(&I2C_BUS_1);
-    print_info("INA219 initialized.");
+    println_info("INA219 initialized.");
 }
 
 bool read_INA219()
@@ -293,7 +315,7 @@ void setup_motors()
     pinMode(MOTOR_STBY, OUTPUT);
     motorA.begin();
     motorB.begin();
-    print_info("Motors initialized.");
+    println_info("Motors initialized.");
     set_motor_standby(true);
 }
 
@@ -315,6 +337,11 @@ bool is_moving_forward() {
     return motorA.getSpeed() + motorB.getSpeed() >= 0;
 }
 
+void stop_motors() {
+    motorA.setSpeed(0);
+    motorB.setSpeed(0);
+}
+
 /*
  * Encoders
  */
@@ -326,11 +353,17 @@ long encA_pos, encB_pos = 0;
 double enc_speedA, enc_speedB = 0.0;  // cm/s
 uint32_t prev_enc_time = 0;
 
-// cm per rotation = 2pi * wheel radius (cm)
+// cm per rotation = 2pi * wheel radius (cm); arc = angle * radius
 // ticks per rotation = 1920
 // cm per tick = cm per rotation / ticks per rotation
 double wheel_radius_cm = 32.5;
 double cm_per_tick = 2.0 * PI * wheel_radius_cm / 1920.0; //  * ticks / rotation
+
+// 160 rpm @ 6V
+// 135 rpm @ 5V
+// 60 rpm @ 3V
+double max_linear_speed_cps = 135.0 * 2.0 * PI * 32.5 / 60.0;  // cm per s, no load
+
 
 void reset_encoders()
 {
@@ -403,14 +436,14 @@ void setup_VL53L0X()
     pinMode(SHT_LOX1, OUTPUT);
     pinMode(SHT_LOX2, OUTPUT);
 
-    print_info("Shutdown pins inited...");
+    println_info("Shutdown pins inited...");
 
     // all reset
     digitalWrite(SHT_LOX1, LOW);
     digitalWrite(SHT_LOX2, LOW);
-    print_info("Both in reset mode...(pins are low)");
+    println_info("Both in reset mode...(pins are low)");
     delay(10);
-    print_info("Starting...");
+    println_info("Starting...");
 
     // all unreset
     digitalWrite(SHT_LOX1, HIGH);
@@ -423,7 +456,7 @@ void setup_VL53L0X()
 
     // initing LOX1
     if(!lox1.begin(LOX1_ADDRESS, false, &I2C_BUS_1)) {
-        print_error("Failed to boot first VL53L0X");
+        println_error("Failed to boot first VL53L0X");
         while(1);
     }
     delay(10);
@@ -434,10 +467,10 @@ void setup_VL53L0X()
 
     //initing LOX2
     if(!lox2.begin(LOX2_ADDRESS, false, &I2C_BUS_1)) {
-        print_error("Failed to boot second VL53L0X");
+        println_error("Failed to boot second VL53L0X");
         while(1);
     }
-    print_info("VL53L0X's initialized.");
+    println_info("VL53L0X's initialized.");
 }
 void read_front_VL53L0X() {
     lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
@@ -497,7 +530,7 @@ void initialize_display()
     tft.setTextSize(1);
     tft.setRotation(1); // horizontal display
 
-    print_info("TFT display initialized.");
+    println_info("TFT display initialized.");
     tft.print("Hello!");
 }
 
@@ -526,11 +559,13 @@ uint16_t fsr_2_val;
 uint32_t fsr_report_timer = 0;
 #define FSR_SAMPLERATE_DELAY_MS 250
 
+#define FSR_CONTACT_THRESHOLD 50
+
 void setup_fsrs()
 {
     pinMode(FSR_PIN_1, INPUT);
     pinMode(FSR_PIN_2, INPUT);
-    print_info("FSRs initialized.");
+    println_info("FSRs initialized.");
 }
 
 bool read_fsrs()
@@ -540,6 +575,7 @@ bool read_fsrs()
     }
     fsr_1_val = analogRead(FSR_PIN_1);
     fsr_2_val = analogRead(FSR_PIN_2);
+
     return true;
 }
 
@@ -575,12 +611,12 @@ void setup_BNO055()
     if (!bno.begin())
     {
         /* There was a problem detecting the BNO055 ... check your connections */
-        print_error("No BNO055 detected!! Check your wiring or I2C address");
+        println_error("No BNO055 detected!! Check your wiring or I2C address");
     }
     else {
         delay(500);
         is_bno_setup = true;
-        print_info("BNO055 initialized.");
+        println_info("BNO055 initialized.");
     }
 }
 
@@ -652,8 +688,7 @@ bool read_IR()
         prev_ir_value = ir_value;
         ir_value = irresults.value;
         irrecv.resume(); // Receive the next value
-        callback_ir();
-        print_info("IR: %d", ir_value);
+        println_info("IR: %d", ir_value);
         return true;
     }
     else {
@@ -673,10 +708,10 @@ void report_IR()
  */
 //
 
-double speed_setpointA, speed_setpointB;  // cm/s
-double pid_commandA, pid_commandB;  // -255...255
-double Kp_A = 0.1, Ki_A = 0.0, Kd_A = 0.0;
-double Kp_B = 0.1, Ki_B = 0.0, Kd_B = 0.0;
+double speed_setpointA, speed_setpointB = 0.0;  // cm/s
+double pid_commandA, pid_commandB = 0.0;  // -255...255
+double Kp_A = 200.0, Ki_A = 0.0, Kd_A = 0.0;
+double Kp_B = 200.0, Ki_B = 0.0, Kd_B = 0.0;
 bool speed_pid_enabled = false;
 uint32_t prev_setpointA_time = 0;
 uint32_t prev_setpointB_time = 0;
@@ -685,10 +720,56 @@ uint32_t prev_setpointB_time = 0;
 PID motorA_pid(&enc_speedA, &pid_commandA, &speed_setpointA, Kp_A, Ki_A, Kd_A, DIRECT);
 PID motorB_pid(&enc_speedB, &pid_commandB, &speed_setpointB, Kp_B, Ki_B, Kd_B, DIRECT);
 
+void set_KAs(double Kp, double Ki, double Kd)
+{
+    Kp_A = Kp;
+    Kp_A = Ki;
+    Kp_A = Kd;
+}
+
+void set_KBs(double Kp, double Ki, double Kd)
+{
+    Kp_B = Kp;
+    Kp_B = Ki;
+    Kp_B = Kd;
+}
+
 void setup_pid()
 {
     motorA_pid.SetMode(AUTOMATIC);
     motorB_pid.SetMode(AUTOMATIC);
+}
+
+
+void toggle_speed_pid(bool enabled)
+{
+    if (enabled == speed_pid_enabled) {
+        return;
+    }
+    println_info("Toggling speed pid: %d", enabled);
+
+    speed_pid_enabled = enabled;
+    if (!speed_pid_enabled) {
+        stop_motors();
+    }
+}
+
+void update_setpointA(double new_setpoint)
+{
+    speed_setpointA = new_setpoint;
+    prev_setpointA_time = CURRENT_TIME;
+
+    print_info("setpoint A: ");
+    DATA_SERIAL.println(speed_setpointA);
+}
+
+void update_setpointB(double new_setpoint)
+{
+    speed_setpointB = new_setpoint;
+    prev_setpointB_time = CURRENT_TIME;
+
+    print_info("setpoint B: ");
+    DATA_SERIAL.println(speed_setpointB);
 }
 
 void update_speed_pid()
@@ -698,44 +779,23 @@ void update_speed_pid()
     }
 
     if (CURRENT_TIME - prev_setpointA_time > SPEED_COMMAND_TIMEOUT_MS) {
-        speed_setpointA = 0.0;
-        prev_setpointA_time = CURRENT_TIME;
+        update_setpointA(0.0);
     }
     if (CURRENT_TIME - prev_setpointB_time > SPEED_COMMAND_TIMEOUT_MS) {
-        speed_setpointB = 0.0;
-        prev_setpointB_time = CURRENT_TIME;
+        update_setpointB(0.0);
     }
 
     motorA_pid.Compute();
     motorB_pid.Compute();
 
+    // print_info("command:");
+    // DATA_SERIAL.print(pid_commandA);
+    // DATA_SERIAL.print("\t");
+    // DATA_SERIAL.println(pid_commandB);
     set_motorA((int)pid_commandA);
     set_motorB((int)pid_commandB);
 }
 
-void toggle_speed_pid(bool enabled)
-{
-    if (enabled == speed_pid_enabled) {
-        return;
-    }
-    speed_pid_enabled = enabled;
-    if (!speed_pid_enabled) {
-        set_motorA(0);
-        set_motorB(0);
-    }
-}
-
-void update_setpointA(double new_setpoint)
-{
-    speed_setpointA = new_setpoint;
-    prev_setpointA_time = CURRENT_TIME;
-}
-
-void update_setpointB(double new_setpoint)
-{
-    speed_setpointB = new_setpoint;
-    prev_setpointB_time = CURRENT_TIME;
-}
 
 /*
  * General functions
@@ -782,9 +842,9 @@ bool read_VL53L0X()
 
 bool calibrate_tilters()
 {
-    print_info("Calibrating range tilters");
+    println_info("Calibrating range tilters");
     if (servos_on_standby) {
-        print_error("Tilt calibration failed! Servos are on standby");
+        println_error("Tilt calibration failed! Servos are on standby");
         is_safe_to_move = false;
         return false;
     }
@@ -799,55 +859,70 @@ bool calibrate_tilters()
     bool success = true;
 
     if (lox1.Status != VL53L0X_ERROR_NONE) {
-        print_error("Tilt calibration failed! lox1 reported error %d", lox1.Status);
+        println_error("Tilt calibration failed! lox1 reported error %d", lox1.Status);
         success = false;
     }
     if (lox2.Status != VL53L0X_ERROR_NONE) {
-        print_error("Tilt calibration failed! lox2 reported error %d", lox2.Status);
+        println_error("Tilt calibration failed! lox2 reported error %d", lox2.Status);
         success = false;
     }
 
     char* status_string = (char*)"";
     if (measure1.RangeStatus != 0) {
         VL53L0X_get_range_status_string(measure1.RangeStatus, status_string);
-        print_error("Tilt calibration failed! lox1 measurement reported an error: %s", status_string);
+        println_error("Tilt calibration failed! lox1 measurement reported an error: %s", status_string);
         success = false;
     }
     else {
         if (measure1.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
-            print_error("Tilt calibration failed! lox1 measurement higher than ground threshold: %d > %d", measure1.RangeMilliMeter, LOX_GROUND_UPPER_THRESHOLD_MM);
+            println_error("Tilt calibration failed! lox1 measurement higher than ground threshold: %d > %d", measure1.RangeMilliMeter, LOX_GROUND_UPPER_THRESHOLD_MM);
             success = false;
         }
         else if (measure1.RangeMilliMeter < LOX_GROUND_LOWER_THRESHOLD_MM) {
-            print_error("Tilt calibration failed! lox1 measurement lower than ground threshold: %d < %d", measure1.RangeMilliMeter, LOX_GROUND_LOWER_THRESHOLD_MM);
+            println_error("Tilt calibration failed! lox1 measurement lower than ground threshold: %d < %d", measure1.RangeMilliMeter, LOX_GROUND_LOWER_THRESHOLD_MM);
             success = false;
         }
     }
     if (measure2.RangeStatus != 0) {
         VL53L0X_get_range_status_string(measure2.RangeStatus, status_string);
-        print_error("Tilt calibration failed! lox2 measurement reported an error: %s", status_string);
+        println_error("Tilt calibration failed! lox2 measurement reported an error: %s", status_string);
         success = false;
     }
     else {
         if (measure2.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
-            print_error("Tilt calibration failed! lox2 measurement higher than ground threshold: %d > %d", measure2.RangeMilliMeter, LOX_GROUND_UPPER_THRESHOLD_MM);
+            println_error("Tilt calibration failed! lox2 measurement higher than ground threshold: %d > %d", measure2.RangeMilliMeter, LOX_GROUND_UPPER_THRESHOLD_MM);
             success = false;
         }
         else if (measure2.RangeMilliMeter < LOX_GROUND_LOWER_THRESHOLD_MM) {
-            print_error("Tilt calibration failed! lox2 measurement lower than ground threshold: %d < %d", measure2.RangeMilliMeter, LOX_GROUND_LOWER_THRESHOLD_MM);
+            println_error("Tilt calibration failed! lox2 measurement lower than ground threshold: %d < %d", measure2.RangeMilliMeter, LOX_GROUND_LOWER_THRESHOLD_MM);
             success = false;
         }
     }
 
     is_safe_to_move = success;
     if (success) {
-        print_info("Range tilter calibration successful!");
+        println_info("Range tilter calibration successful!");
     }
     else {
-        print_error("Range tilter calibration failed!!");
+        println_error("Range tilter calibration failed!!");
     }
 
     return success;
+}
+
+void check_for_contact()
+{
+    if (fsr_1_val < FSR_CONTACT_THRESHOLD && fsr_2_val < FSR_CONTACT_THRESHOLD) {
+        return;
+    }
+
+    toggle_speed_pid(false);
+    if (fsr_1_val >= FSR_CONTACT_THRESHOLD) {
+        println_info("Contact on the left bumper");
+    }
+    if (fsr_2_val >= FSR_CONTACT_THRESHOLD) {
+        println_info("Contact on the right bumper");
+    }
 }
 
 void set_standby(bool standby)
@@ -855,15 +930,18 @@ void set_standby(bool standby)
     if (is_on_standby == standby) {
         return;
     }
-    print_info("Setting standby to: %d", standby);
+    println_info("Setting standby to: %d", standby);
     is_on_standby = standby;
     set_motor_standby(standby);
     set_servo_standby(standby);
     if (standby) {
         is_safe_to_move = false;
+        toggle_speed_pid(false);
     }
     else {
-        calibrate_tilters();
+        if (calibrate_tilters()) {
+            toggle_speed_pid(true);
+        }
     }
 }
 
@@ -872,6 +950,18 @@ void reset()
     set_motorA(0);
     set_motorB(0);
     reset_encoders();
+}
+
+void drive_forward(double speed_cps)  // speed cm per s
+{
+    update_setpointA(speed_cps);  // cm per s
+    update_setpointB(speed_cps);  // cm per s
+}
+
+void rotate(double speed_cps)  // speed cm per s
+{
+    update_setpointA(-speed_cps);  // cm per s
+    update_setpointB(speed_cps);  // cm per s
 }
 
 
@@ -886,30 +976,42 @@ void callback_ir()
     }
 
     switch (ir_value) {
-        case 0x00ff: print_info("IR: VOL-"); break;  // VOL-
+        case 0x00ff: println_info("IR: VOL-"); break;  // VOL-
         case 0x807f:
-            print_info("IR: Play/Pause");
+            println_info("IR: Play/Pause");
             set_standby(!is_on_standby);
             break;  // Play/Pause
-        case 0x40bf: print_info("IR: VOL+"); break;  // VOL+
-        case 0x20df: print_info("IR: SETUP"); break;  // SETUP
-        case 0xa05f: print_info("IR: ^"); break;  // ^
-        case 0x609f: print_info("IR: MODE"); break;  // MODE
-        case 0x10ef: print_info("IR: <"); break;  // <
-        case 0x906f: print_info("IR: ENTER"); break;  // ENTER
-        case 0x50af: print_info("IR: >"); break;  // >
-        case 0x30cf: print_info("IR: 0 10+"); break;  // 0 10+
-        case 0xb04f: print_info("IR: v"); break;  // v
-        case 0x708f: print_info("IR: Del"); break;  // Del
-        case 0x08f7: print_info("IR: 1"); break;  // 1
-        case 0x8877: print_info("IR: 2"); break;  // 2
-        case 0x48B7: print_info("IR: 3"); break;  // 3
-        case 0x28D7: print_info("IR: 4"); break;  // 4
-        case 0xA857: print_info("IR: 5"); break;  // 5
-        case 0x6897: print_info("IR: 6"); break;  // 6
-        case 0x18E7: print_info("IR: 7"); break;  // 7
-        case 0x9867: print_info("IR: 8"); break;  // 8
-        case 0x58A7: print_info("IR: 9"); break;  // 9
+        case 0x40bf: println_info("IR: VOL+"); break;  // VOL+
+        case 0x20df: println_info("IR: SETUP"); break;  // SETUP
+        case 0xa05f:
+            println_info("IR: ^");
+            drive_forward(300.0);  // cm per s
+            break;  // ^
+        case 0x609f: println_info("IR: MODE"); break;  // MODE
+        case 0x10ef:
+            println_info("IR: <");
+            rotate(100.0);  // cm per s
+            break;  // <
+        case 0x906f: println_info("IR: ENTER"); break;  // ENTER
+        case 0x50af:
+            println_info("IR: >");
+            rotate(-100.0);  // cm per s
+            break;  // >
+        case 0x30cf: println_info("IR: 0 10+"); break;  // 0 10+
+        case 0xb04f:
+            println_info("IR: v");
+            drive_forward(-300.0);  // cm per s
+            break;  // v
+        case 0x708f: println_info("IR: Del"); break;  // Del
+        case 0x08f7: println_info("IR: 1"); break;  // 1
+        case 0x8877: println_info("IR: 2"); break;  // 2
+        case 0x48B7: println_info("IR: 3"); break;  // 3
+        case 0x28D7: println_info("IR: 4"); break;  // 4
+        case 0xA857: println_info("IR: 5"); break;  // 5
+        case 0x6897: println_info("IR: 6"); break;  // 6
+        case 0x18E7: println_info("IR: 7"); break;  // 7
+        case 0x9867: println_info("IR: 8"); break;  // 8
+        case 0x58A7: println_info("IR: 9"); break;  // 9
 
     }
     // String decode_type;
@@ -986,6 +1088,34 @@ void check_serial()
                         case 'p': toggle_speed_pid(data_buffer.charAt(1) == '1' ? true : false); break;
                     }
                     break;
+                case 'k':
+                    data_buffer = DATA_SERIAL.readStringUntil('\n');
+                    if (data_buffer.charAt(0) == 'a') {
+                        switch (data_buffer.charAt(0)) {
+                            case 'p':
+                                set_KAs(data_buffer.substring(1).toFloat(), Ki_A, Kd_A);
+                                break;
+                            case 'i':
+                                set_KAs(Kp_A, data_buffer.substring(1).toFloat(), Kd_A);
+                                break;
+                            case 'd':
+                                set_KAs(Kp_A, Ki_A, data_buffer.substring(1).toFloat());
+                                break;
+                        }
+                    }
+                    else if (data_buffer.charAt(0) == 'b') {
+                        switch (data_buffer.charAt(0)) {
+                            case 'p':
+                                set_KBs(data_buffer.substring(1).toFloat(), Ki_B, Kd_B);
+                                break;
+                            case 'i':
+                                set_KBs(Kp_B, data_buffer.substring(1).toFloat(), Kd_B);
+                                break;
+                            case 'd':
+                                set_KBs(Kp_B, Ki_B, data_buffer.substring(1).toFloat());
+                                break;
+                        }
+                    }
 
                 case 's':
                     data_buffer = DATA_SERIAL.readStringUntil('\n');
@@ -1076,14 +1206,16 @@ void report_data()
     }
     if (read_fsrs()) {
         report_fsrs();
+        check_for_contact();
     }
     if (read_IR()) {
         report_IR();
+        callback_ir();
     }
 
     display_data();
 
-    // update_speed_pid();
+    update_speed_pid();
 }
 
 
