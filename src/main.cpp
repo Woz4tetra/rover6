@@ -233,6 +233,21 @@ void set_back_tilter(int angle)
     set_servo(1, angle);
 }
 
+#define CAMERA_PAN_UP 0
+#define CAMERA_PAN_CENTER 105
+#define CAMERA_PAN_DOWN 150
+#define CAMERA_TILT_LEFT 90
+#define CAMERA_TILT_CENTER 45
+#define CAMERA_TILT_RIGHT 0
+
+void set_camera_pan(int angle) {
+    set_servo(2, angle);
+}
+
+void set_camera_tilt(int angle) {
+    set_servo(3, angle);
+}
+
 /*
  * Adafruit High-side current and voltage meter
  * INA219
