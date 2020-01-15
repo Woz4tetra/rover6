@@ -206,10 +206,10 @@ void set_servo(uint8_t n, int angle)
     }
 }
 
-#define FRONT_TILTER_UP 75
-#define FRONT_TILTER_DOWN 160
-#define BACK_TILTER_UP 75
-#define BACK_TILTER_DOWN 160
+#define FRONT_TILTER_UP 70
+#define FRONT_TILTER_DOWN 180
+#define BACK_TILTER_UP 70
+#define BACK_TILTER_DOWN 180
 
 void set_front_tilter(int angle)
 {
@@ -237,7 +237,7 @@ void set_back_tilter(int angle)
 #define CAMERA_PAN_CENTER 105
 #define CAMERA_PAN_DOWN 150
 #define CAMERA_TILT_LEFT 90
-#define CAMERA_TILT_CENTER 45
+#define CAMERA_TILT_CENTER 43
 #define CAMERA_TILT_RIGHT 0
 
 void set_camera_pan(int angle) {
@@ -362,7 +362,7 @@ void stop_motors() {
  */
 
 Encoder motorA_enc(MOTORA_ENCA, MOTORA_ENCB);
-Encoder motorB_enc(MOTORB_ENCA, MOTORB_ENCB);
+Encoder motorB_enc(MOTORB_ENCB, MOTORB_ENCA);
 
 long encA_pos, encB_pos = 0;
 double enc_speedA, enc_speedB = 0.0;  // cm/s
@@ -833,21 +833,21 @@ bool read_VL53L0X()
     lox_report_timer = CURRENT_TIME;
     if (is_moving()) {
         if (is_moving_forward()) {
-            set_front_tilter(FRONT_TILTER_UP);
-            set_back_tilter(BACK_TILTER_DOWN);
+            // set_front_tilter(FRONT_TILTER_UP);
+            // set_back_tilter(BACK_TILTER_DOWN);
             read_front_VL53L0X();
             return true;
         }
         else {
-            set_front_tilter(FRONT_TILTER_DOWN);
-            set_back_tilter(BACK_TILTER_UP);
+            // set_front_tilter(FRONT_TILTER_DOWN);
+            // set_back_tilter(BACK_TILTER_UP);
             read_back_VL53L0X();
             return true;
         }
     }
     else {
-        set_front_tilter(FRONT_TILTER_DOWN);
-        set_back_tilter(BACK_TILTER_DOWN);
+        // set_front_tilter(FRONT_TILTER_DOWN);
+        // set_back_tilter(BACK_TILTER_DOWN);
         read_front_VL53L0X();
         read_back_VL53L0X();
         return true;
@@ -1098,8 +1098,8 @@ void check_serial()
                     data_buffer = DATA_SERIAL.readStringUntil('\n');
                     DATA_SERIAL.println(data_buffer);
                     switch (data_buffer.charAt(0)) {
-                        case 'a': update_setpointA(data_buffer.substring(1).toFloat()); break;
-                        case 'b': update_setpointB(data_buffer.substring(1).toFloat()); break;
+                        case 'a': set_motorA(data_buffer.substring(1).toFloat()); break;//update_setpointA(data_buffer.substring(1).toFloat()); break;
+                        case 'b': set_motorB(data_buffer.substring(1).toFloat()); break;//update_setpointB(data_buffer.substring(1).toFloat()); break;
                         case 'p': toggle_speed_pid(data_buffer.charAt(1) == '1' ? true : false); break;
                     }
                     break;
@@ -1230,7 +1230,7 @@ void report_data()
 
     display_data();
 
-    update_speed_pid();
+    // update_speed_pid();
 }
 
 
