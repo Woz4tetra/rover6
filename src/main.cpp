@@ -268,7 +268,6 @@ bool calibrate_safety()
 
 
     if (success) {
-        safety_is_calibrated = true;
         enable_motors();
         println_info("Safety calibration successful!");
     }
@@ -299,10 +298,12 @@ void check_safety_systems()
         disable_motors();
     }
 
-    bool obstacle_in_front_detected = false;
-    bool obstacle_in_back_detected = false;
+    bool __obstacle_in_front = false;
+    bool __obstacle_in_back = false;
+    bool __is_safe_to_move = true;
+
     if (fsr_1_val > FSR_CONTACT_THRESHOLD || fsr_2_val > FSR_CONTACT_THRESHOLD) {
-        obstacle_in_front_detected = true;
+        __obstacle_in_front = true;
         if (fsr_1_val >= FSR_CONTACT_THRESHOLD) {
             println_info("Contact on the left bumper");
         }
@@ -315,39 +316,47 @@ void check_safety_systems()
         // rear sensor pointing down, check if robot is off the ground
         if (is_moving_forward()) {
             if (measure2.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
-                println_error("Front sensor reads robot is off the ground. Disabling motors.");
-                disable_motors();
+                println_error("Front sensor reads robot is off the ground. Not safe to move.");
+                __is_safe_to_move = false;
             }
             // If an obstacle is too close or a ledge is detected, set the flag
             else if (measure1.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure1.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM) {
                 if (!obstacle_in_front) {
                     println_info("Obstacle detected by front TOF sensor");
                 }
-                obstacle_in_front_detected = true;
+                __obstacle_in_front = true;
             }
         }
         else {
             if (measure1.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
-                println_error("Back sensor reads robot is off the ground. Disabling motors.");
-                disable_motors();
+                println_error("Back sensor reads robot is off the ground. Not safe to move.");
+                __is_safe_to_move = false;
             }
             else if (measure2.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM) {
                 if (!obstacle_in_back) {
                     println_info("Obstacle detected by back TOF sensor");
                 }
-                obstacle_in_back_detected = true;
+                __obstacle_in_back = true;
             }
         }
     }
     else {
         if (measure1.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
             println_error("Front and/or back sensor reads robot is off the ground. Disabling motors.");
-            disable_motors();
+            __is_safe_to_move = false;
         }
     }
 
-    obstacle_in_front = obstacle_in_front_detected;
-    obstacle_in_back = obstacle_in_back_detected;
+    // if safety checks passed and the safety system is calibrated, it's safe to move
+    if (safety_is_calibrated && __is_safe_to_move) {
+        is_safe_to_move = true;
+    }
+    else {
+        is_safe_to_move = __is_safe_to_move;
+    }
+
+    obstacle_in_front = __obstacle_in_front;
+    obstacle_in_back = __obstacle_in_back;
 }
 
 void set_standby_true()
@@ -429,22 +438,26 @@ void callback_ir()
         case 0x20df: println_info("IR: SETUP"); break;  // SETUP
         case 0xa05f:
             println_info("IR: ^");
-            drive_forward(300.0);  // cm per s
+            set_motors(255, 255);
+            // drive_forward(300.0);  // cm per s
             break;  // ^
         case 0x609f: println_info("IR: MODE"); break;  // MODE
         case 0x10ef:
             println_info("IR: <");
-            rotate(100.0);  // cm per s
+            set_motors(-100, 100);
+            // rotate(100.0);  // cm per s
             break;  // <
         case 0x906f: println_info("IR: ENTER"); break;  // ENTER
         case 0x50af:
             println_info("IR: >");
-            rotate(-100.0);  // cm per s
+            set_motors(100, -100);
+            // rotate(-100.0);  // cm per s
             break;  // >
         case 0x30cf: println_info("IR: 0 10+"); break;  // 0 10+
         case 0xb04f:
             println_info("IR: v");
-            drive_forward(-300.0);  // cm per s
+            set_motors(-255, -255);
+            // drive_forward(-300.0);  // cm per s
             break;  // v
         case 0x708f: println_info("IR: Del"); break;  // Del
         case 0x08f7: println_info("IR: 1"); break;  // 1

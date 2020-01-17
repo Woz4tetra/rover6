@@ -50,6 +50,7 @@ void disable_motors() {
 }
 
 void enable_motors() {
+    safety_is_calibrated = true;
     is_safe_to_move = true;
 }
 
