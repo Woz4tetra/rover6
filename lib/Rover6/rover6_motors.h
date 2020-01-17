@@ -26,6 +26,9 @@ uint32_t prev_commandB_time = 0;
 
 bool motors_on_standby = false;
 bool is_safe_to_move = false;
+bool obstacle_in_front = false;
+bool obstacle_in_back = false;
+
 
 TB6612 motorA(MOTORA_PWM, MOTORA_DR2, MOTORA_DR1);
 TB6612 motorB(MOTORB_PWM, MOTORB_DR1, MOTORB_DR2);
@@ -42,6 +45,7 @@ void set_motor_standby(bool standby)
 }
 
 void disable_motors() {
+    safety_is_calibrated = false;
     is_safe_to_move = false;
 }
 
@@ -73,12 +77,27 @@ bool is_moving() {
     return motorA.getSpeed() != 0 || motorB.getSpeed() != 0;
 }
 bool is_moving_forward() {
-    return motorA.getSpeed() + motorB.getSpeed() >= 0;
+    return (motorA.getSpeed() + motorB.getSpeed()) >> 1 >= 0;
 }
 
 void stop_motors() {
     motorA.setSpeed(0);
     motorB.setSpeed(0);
+}
+
+
+void set_motors(int speedA, int speedB)
+{
+    if (obstacle_in_front && is_moving_forward()) {  // if an obstacle is detected in the front, only allow backwards commands
+        stop_motors();
+        return;
+    }
+    if (obstacle_in_back && !is_moving_forward()) {  // if an obstacle is detected in the back, only allow forwards commands
+        stop_motors();
+        return;
+    }
+    set_motorA(speedA);
+    set_motorB(speedB);
 }
 
 void reset_motor_timeouts()
@@ -87,7 +106,7 @@ void reset_motor_timeouts()
     prev_commandB_time = CURRENT_TIME;
 }
 
-void check_motor_timeout()
+bool check_motor_timeout()
 {
     bool timedout = false;
     if (CURRENT_TIME - prev_commandA_time > MOTOR_COMMAND_TIMEOUT_MS) {

@@ -24,12 +24,15 @@ Adafruit_VL53L0X lox2;
 VL53L0X_RangingMeasurementData_t measure1;
 VL53L0X_RangingMeasurementData_t measure2;
 
+bool lox1_is_setup = false;
+bool lox2_is_setup = false;
+
 uint32_t lox_report_timer = 0;
 #define LOX_SAMPLERATE_FAST_DELAY_MS 150
 #define LOX_SAMPLERATE_SLOW_DELAY_MS 500
 unsigned int lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
 
-int LOX_GROUND_UPPER_THRESHOLD_MM = 80;
+int LOX_GROUND_UPPER_THRESHOLD_MM = 90;
 int LOX_GROUND_LOWER_THRESHOLD_MM = 10;
 
 int LOX_OBSTACLE_UPPER_THRESHOLD_MM = 100;
@@ -60,9 +63,11 @@ void setup_VL53L0X()
     digitalWrite(SHT_LOX2, LOW);
 
     // initing LOX1
-    if(!lox1.begin(LOX1_ADDRESS, false, &I2C_BUS_1)) {
+    if (!lox1.begin(LOX1_ADDRESS, false, &I2C_BUS_1)) {
         println_error("Failed to boot first VL53L0X");
-        while(1);
+    }
+    else {
+        lox1_is_setup = true;
     }
     delay(10);
 
@@ -71,9 +76,11 @@ void setup_VL53L0X()
     delay(10);
 
     //initing LOX2
-    if(!lox2.begin(LOX2_ADDRESS, false, &I2C_BUS_1)) {
+    if (!lox2.begin(LOX2_ADDRESS, false, &I2C_BUS_1)) {
         println_error("Failed to boot second VL53L0X");
-        while(1);
+    }
+    else {
+        lox2_is_setup = true;
     }
     println_info("VL53L0X's initialized.");
 }
@@ -98,30 +105,40 @@ void report_VL53L0X()
     );
 }
 
-void is_front_ok_VL53L0X() {
+bool is_front_ok_VL53L0X() {
     bool success = true;
     if (lox1.Status != VL53L0X_ERROR_NONE) {
         println_error("lox1 reported error %d", lox1.Status);
         success = false;
     }
     if (measure1.RangeStatus != 0) {
+        char* status_string = (char*) "";
         VL53L0X_get_range_status_string(measure1.RangeStatus, status_string);
         println_error("lox1 measurement reported an error: %s", status_string);
         success = false;
     }
+
+    if (!success) {
+        lox1_is_setup = false;
+    }
     return success;
 }
 
-void is_back_ok_VL53L0X() {
+bool is_back_ok_VL53L0X() {
     bool success = true;
     if (lox2.Status != VL53L0X_ERROR_NONE) {
         println_error("lox2 reported error %d", lox2.Status);
         success = false;
     }
     if (measure2.RangeStatus != 0) {
+        char* status_string = (char*) "";
         VL53L0X_get_range_status_string(measure2.RangeStatus, status_string);
         println_error("lox2 measurement reported an error: %s", status_string);
         success = false;
+    }
+
+    if (!success) {
+        lox2_is_setup = false;
     }
     return success;
 }

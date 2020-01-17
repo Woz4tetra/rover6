@@ -24,6 +24,9 @@ bool servos_on_standby = false;
 
 void set_servo_standby(bool standby)
 {
+    if (servos_on_standby == standby) {
+        return;
+    }
     servos_on_standby = standby;
     if (standby) {  // set servos to low power
         servos.sleep();
@@ -49,7 +52,7 @@ void setup_servos()
     pinMode(SERVO_STBY, OUTPUT);
     digitalWrite(SERVO_STBY, LOW);
 
-    set_servo_standby(true);
+    set_servo_standby(false);
 }
 
 void set_servo(uint8_t n, int angle)

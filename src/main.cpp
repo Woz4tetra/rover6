@@ -151,25 +151,11 @@ void update_speed_pid()
     motorA_pid.Compute();
     motorB_pid.Compute();
 
-    int command_intent = pid_commandA + pid_commandB;  // if it's 0, it's an in-place rotation
-    if (abs(command_intent) > 15) // allow in place rotation whether or not an obstacle is seen
-    {
-        if (obstacle_in_front && command_intent > 0) {  // if an obstacle is detected in the front, only allow backwards commands
-            pid_commandA = 0;
-            pid_commandB = 0;
-        }
-        if (obstacle_in_back && command_intent < 0) {  // if an obstacle is detected in the back, only allow forwards commands
-            pid_commandA = 0;
-            pid_commandB = 0;
-        }
-    }
-
     // print_info("command:");
     // DATA_SERIAL.print(pid_commandA);
     // DATA_SERIAL.print("\t");
     // DATA_SERIAL.println(pid_commandB);
-    set_motorA(pid_commandA);
-    set_motorB(pid_commandB);
+    set_motors(pid_commandA, pid_commandB);
 }
 
 void set_speed_pid(bool enabled) {
@@ -220,17 +206,20 @@ bool read_VL53L0X()
     return false;
 }
 
-bool safety_is_calibrated = false;
 
 bool calibrate_safety()
 {
-    safety_is_calibrated = false;
     disable_motors();
-    println_info("Calibrating range tilters");
+    println_info("Calibrating safety systems");
+
     if (servos_on_standby) {
-        println_error("Tilt calibration failed! Servos are on standby");
-        return false;
+        set_servo_standby(false);
     }
+
+    if (!lox1_is_setup || !lox2_is_setup) {
+        setup_VL53L0X();
+    }
+
     set_front_tilter(FRONT_TILTER_DOWN);
     set_back_tilter(BACK_TILTER_DOWN);
 
@@ -241,7 +230,6 @@ bool calibrate_safety()
 
     bool success = true;
 
-    char* status_string = (char*)"";
     if (is_front_ok_VL53L0X()) {
         println_error("Tilt calibration failed! Front sensor failed to read.");
         success = false;
@@ -298,18 +286,6 @@ void check_safety_systems()
     if (!safety_is_calibrated) {
         return;
     }
-    obstacle_in_front = false;
-    obstacle_in_back = false;
-    if (fsr_1_val > FSR_CONTACT_THRESHOLD || fsr_2_val > FSR_CONTACT_THRESHOLD) {
-        obstacle_in_front = true;
-        stop_motors();
-        if (fsr_1_val >= FSR_CONTACT_THRESHOLD) {
-            println_info("Contact on the left bumper");
-        }
-        if (fsr_2_val >= FSR_CONTACT_THRESHOLD) {
-            println_info("Contact on the right bumper");
-        }
-    }
 
     if (fsr_1_val < FSR_NOISE_THRESHOLD || fsr_2_val < FSR_NOISE_THRESHOLD) {
         println_error("FSRs reading below noise threshold. Check connections.");
@@ -323,6 +299,18 @@ void check_safety_systems()
         disable_motors();
     }
 
+    obstacle_in_front = false;
+    obstacle_in_back = false;
+    if (fsr_1_val > FSR_CONTACT_THRESHOLD || fsr_2_val > FSR_CONTACT_THRESHOLD) {
+        obstacle_in_front = true;
+        if (fsr_1_val >= FSR_CONTACT_THRESHOLD) {
+            println_info("Contact on the left bumper");
+        }
+        if (fsr_2_val >= FSR_CONTACT_THRESHOLD) {
+            println_info("Contact on the right bumper");
+        }
+    }
+
     // If an obstacle is too close or a ledge is detected, set the flag
     if (measure1.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure1.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM) {
         obstacle_in_front = true;
@@ -331,6 +319,26 @@ void check_safety_systems()
     if (measure2.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM) {
         obstacle_in_back = true;
     }
+
+    if (is_moving()) {
+        // rear sensor pointing down, check if robot is off the ground
+        if (is_moving_forward()) {
+            if (measure2.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
+                disable_motors();
+            }
+        }
+        else {
+            if (measure1.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
+                disable_motors();
+            }
+        }
+    }
+    else {
+        if (measure1.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
+            disable_motors();
+        }
+    }
+
 }
 
 void set_standby(bool standby)
@@ -344,19 +352,19 @@ void set_standby(bool standby)
     set_servo_standby(standby);
     if (standby) {
         disable_motors();
-        toggle_speed_pid(false);
+        set_speed_pid(false);
     }
     else {
         if (calibrate_safety()) {
-            toggle_speed_pid(true);
+            set_speed_pid(true);
         }
     }
 }
 
 void reset()
 {
-    set_motorA(0);
-    set_motorB(0);
+    stop_motors();
+    delay(200);
     reset_encoders();
 }
 
@@ -455,8 +463,16 @@ void begin()
     setup_INA219();   tft.print("INA219 ready!\n");
     setup_servos();   tft.print("Servos ready!\n");
     setup_VL53L0X();   tft.print("VL53L0Xs ready!\n");
+
+    set_standby(false);
+
+    set_front_tilter(FRONT_TILTER_DOWN);
+    set_back_tilter(BACK_TILTER_DOWN);
+    center_camera();
 }
 
+int segment_int = 0;
+float segment_float = 0.0;
 void check_serial()
 {
     if (DATA_SERIAL.available()) {
@@ -490,10 +506,12 @@ void check_serial()
                 case 'm':
                     data_buffer = DATA_SERIAL.readStringUntil('\n');
                     DATA_SERIAL.println(data_buffer);
+                    // segment_int = data_buffer.substring(1).toInt();
+                    segment_float = data_buffer.substring(1).toFloat();
                     switch (data_buffer.charAt(0)) {
-                        case 'a': set_motorA(data_buffer.substring(1).toFloat()); break;//update_setpointA(data_buffer.substring(1).toFloat()); break;
-                        case 'b': set_motorB(data_buffer.substring(1).toFloat()); break;//update_setpointB(data_buffer.substring(1).toFloat()); break;
-                        // case 'p': toggle_speed_pid(data_buffer.charAt(1) == '1' ? true : false); break;
+                        case 'a': set_motors(segment_int, motorA.getSpeed()); break;  //update_setpointA(segment_float); break;
+                        case 'b': set_motors(motorB.getSpeed(), segment_int); break;  //update_setpointB(segment_float); break;
+                        // case 'p': set_speed_pid(data_buffer.charAt(1) == '1' ? true : false); break;
                     }
                     break;
                 case 'k':
@@ -621,7 +639,6 @@ void report_data()
     }
 
     display_data();
-
 }
 
 
