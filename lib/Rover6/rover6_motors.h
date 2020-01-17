@@ -41,6 +41,14 @@ void set_motor_standby(bool standby)
     }
 }
 
+void disable_motors() {
+    is_safe_to_move = false;
+}
+
+void enable_motors() {
+    is_safe_to_move = true;
+}
+
 void setup_motors()
 {
     pinMode(MOTOR_STBY, OUTPUT);

@@ -18,6 +18,7 @@ uint32_t fsr_report_timer = 0;
 #define FSR_SAMPLERATE_DELAY_MS 250
 
 #define FSR_CONTACT_THRESHOLD 50
+#define FSR_NOISE_THRESHOLD 7
 
 void setup_fsrs()
 {

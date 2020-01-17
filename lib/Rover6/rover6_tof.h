@@ -29,8 +29,11 @@ uint32_t lox_report_timer = 0;
 #define LOX_SAMPLERATE_SLOW_DELAY_MS 500
 unsigned int lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
 
-#define LOX_GROUND_UPPER_THRESHOLD_MM 80
-#define LOX_GROUND_LOWER_THRESHOLD_MM 10
+int LOX_GROUND_UPPER_THRESHOLD_MM = 80;
+int LOX_GROUND_LOWER_THRESHOLD_MM = 10;
+
+int LOX_OBSTACLE_UPPER_THRESHOLD_MM = 100;
+int LOX_OBSTACLE_LOWER_THRESHOLD_MM = 150;
 
 
 void setup_VL53L0X()
@@ -93,6 +96,34 @@ void report_VL53L0X()
         measure1.RangeStatus, measure2.RangeStatus,
         lox1.Status, lox2.Status  // lookup table in vl53l0x_def.h line 133
     );
+}
+
+void is_front_ok_VL53L0X() {
+    bool success = true;
+    if (lox1.Status != VL53L0X_ERROR_NONE) {
+        println_error("lox1 reported error %d", lox1.Status);
+        success = false;
+    }
+    if (measure1.RangeStatus != 0) {
+        VL53L0X_get_range_status_string(measure1.RangeStatus, status_string);
+        println_error("lox1 measurement reported an error: %s", status_string);
+        success = false;
+    }
+    return success;
+}
+
+void is_back_ok_VL53L0X() {
+    bool success = true;
+    if (lox2.Status != VL53L0X_ERROR_NONE) {
+        println_error("lox2 reported error %d", lox2.Status);
+        success = false;
+    }
+    if (measure2.RangeStatus != 0) {
+        VL53L0X_get_range_status_string(measure2.RangeStatus, status_string);
+        println_error("lox2 measurement reported an error: %s", status_string);
+        success = false;
+    }
+    return success;
 }
 
 #endif  // ROVER6_TOF

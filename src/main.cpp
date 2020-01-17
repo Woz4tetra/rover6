@@ -90,13 +90,15 @@ void set_camera_tilt(int angle)
 //
 
 double speed_setpointA, speed_setpointB = 0.0;  // cm/s
-double pid_commandA, pid_commandB = 0.0;  // -255...255
+int pid_commandA, pid_commandB = 0.0;  // -255...255
 double Kp_A = 200.0, Ki_A = 0.0, Kd_A = 0.0;
 double Kp_B = 200.0, Ki_B = 0.0, Kd_B = 0.0;
 bool speed_pid_enabled = false;
+bool obstacle_in_front = false;
+bool obstacle_in_back = false;
 uint32_t prev_setpointA_time = 0;
 uint32_t prev_setpointB_time = 0;
-#define SPEED_COMMAND_TIMEOUT_MS 1000
+#define PID_COMMAND_TIMEOUT_MS 1000
 
 PID motorA_pid(&enc_speedA, &pid_commandA, &speed_setpointA, Kp_A, Ki_A, Kd_A, DIRECT);
 PID motorB_pid(&enc_speedB, &pid_commandB, &speed_setpointB, Kp_B, Ki_B, Kd_B, DIRECT);
@@ -121,18 +123,6 @@ void setup_pid()
     motorB_pid.SetMode(AUTOMATIC);
 }
 
-
-void toggle_speed_pid(bool enabled)
-{
-    if (enabled == speed_pid_enabled) {
-        return;
-    }
-    speed_pid_enabled = enabled;
-    if (!speed_pid_enabled) {
-        stop_motors();
-    }
-}
-
 void update_setpointA(double new_setpoint)
 {
     speed_setpointA = new_setpoint;
@@ -151,22 +141,39 @@ void update_speed_pid()
         return;
     }
 
-    if (CURRENT_TIME - prev_setpointA_time > SPEED_COMMAND_TIMEOUT_MS) {
+    if (CURRENT_TIME - prev_setpointA_time > PID_COMMAND_TIMEOUT_MS) {
         update_setpointA(0.0);
     }
-    if (CURRENT_TIME - prev_setpointB_time > SPEED_COMMAND_TIMEOUT_MS) {
+    if (CURRENT_TIME - prev_setpointB_time > PID_COMMAND_TIMEOUT_MS) {
         update_setpointB(0.0);
     }
 
     motorA_pid.Compute();
     motorB_pid.Compute();
 
+    int command_intent = pid_commandA + pid_commandB;  // if it's 0, it's an in-place rotation
+    if (abs(command_intent) > 15) // allow in place rotation whether or not an obstacle is seen
+    {
+        if (obstacle_in_front && command_intent > 0) {  // if an obstacle is detected in the front, only allow backwards commands
+            pid_commandA = 0;
+            pid_commandB = 0;
+        }
+        if (obstacle_in_back && command_intent < 0) {  // if an obstacle is detected in the back, only allow forwards commands
+            pid_commandA = 0;
+            pid_commandB = 0;
+        }
+    }
+
     // print_info("command:");
     // DATA_SERIAL.print(pid_commandA);
     // DATA_SERIAL.print("\t");
     // DATA_SERIAL.println(pid_commandB);
-    set_motorA((int)pid_commandA);
-    set_motorB((int)pid_commandB);
+    set_motorA(pid_commandA);
+    set_motorB(pid_commandB);
+}
+
+void set_speed_pid(bool enabled) {
+    speed_pid_enabled = enabled;
 }
 
 
@@ -191,21 +198,21 @@ bool read_VL53L0X()
     lox_report_timer = CURRENT_TIME;
     if (is_moving()) {
         if (is_moving_forward()) {
-            // set_front_tilter(FRONT_TILTER_UP);
-            // set_back_tilter(BACK_TILTER_DOWN);
+            set_front_tilter(FRONT_TILTER_UP);
+            set_back_tilter(BACK_TILTER_DOWN);
             read_front_VL53L0X();
             return true;
         }
         else {
-            // set_front_tilter(FRONT_TILTER_DOWN);
-            // set_back_tilter(BACK_TILTER_UP);
+            set_front_tilter(FRONT_TILTER_DOWN);
+            set_back_tilter(BACK_TILTER_UP);
             read_back_VL53L0X();
             return true;
         }
     }
     else {
-        // set_front_tilter(FRONT_TILTER_DOWN);
-        // set_back_tilter(BACK_TILTER_DOWN);
+        set_front_tilter(FRONT_TILTER_DOWN);
+        set_back_tilter(BACK_TILTER_DOWN);
         read_front_VL53L0X();
         read_back_VL53L0X();
         return true;
@@ -213,12 +220,15 @@ bool read_VL53L0X()
     return false;
 }
 
+bool safety_is_calibrated = false;
+
 bool calibrate_safety()
 {
+    safety_is_calibrated = false;
+    disable_motors();
     println_info("Calibrating range tilters");
     if (servos_on_standby) {
         println_error("Tilt calibration failed! Servos are on standby");
-        is_safe_to_move = false;
         return false;
     }
     set_front_tilter(FRONT_TILTER_DOWN);
@@ -231,19 +241,9 @@ bool calibrate_safety()
 
     bool success = true;
 
-    if (lox1.Status != VL53L0X_ERROR_NONE) {
-        println_error("Tilt calibration failed! lox1 reported error %d", lox1.Status);
-        success = false;
-    }
-    if (lox2.Status != VL53L0X_ERROR_NONE) {
-        println_error("Tilt calibration failed! lox2 reported error %d", lox2.Status);
-        success = false;
-    }
-
     char* status_string = (char*)"";
-    if (measure1.RangeStatus != 0) {
-        VL53L0X_get_range_status_string(measure1.RangeStatus, status_string);
-        println_error("Tilt calibration failed! lox1 measurement reported an error: %s", status_string);
+    if (is_front_ok_VL53L0X()) {
+        println_error("Tilt calibration failed! Front sensor failed to read.");
         success = false;
     }
     else {
@@ -256,9 +256,8 @@ bool calibrate_safety()
             success = false;
         }
     }
-    if (measure2.RangeStatus != 0) {
-        VL53L0X_get_range_status_string(measure2.RangeStatus, status_string);
-        println_error("Tilt calibration failed! lox2 measurement reported an error: %s", status_string);
+    if (is_back_ok_VL53L0X()) {
+        println_error("Tilt calibration failed! Back sensor failed to read.");
         success = false;
     }
     else {
@@ -272,29 +271,65 @@ bool calibrate_safety()
         }
     }
 
-    is_safe_to_move = success;
+    if (fsr_1_val > FSR_CONTACT_THRESHOLD || fsr_2_val > FSR_CONTACT_THRESHOLD) {
+        println_error("FSRs reading above contact threshold. Remove obstructions.");
+        success = false;
+    }
+    if (fsr_1_val < FSR_NOISE_THRESHOLD || fsr_2_val < FSR_NOISE_THRESHOLD) {
+        println_error("FSRs reading below noise threshold. Check connections.");
+        success = false;
+    }
+
+
     if (success) {
-        println_info("Range tilter calibration successful!");
+        safety_is_calibrated = true;
+        enable_motors();
+        println_info("Safety calibration successful!");
     }
     else {
-        println_error("Range tilter calibration failed!!");
+        println_error("Safety calibration failed!!");
     }
 
     return success;
 }
 
-void check_for_contact()
+void check_safety_systems()
 {
-    if (fsr_1_val < FSR_CONTACT_THRESHOLD && fsr_2_val < FSR_CONTACT_THRESHOLD) {
+    if (!safety_is_calibrated) {
         return;
     }
-
-    toggle_speed_pid(false);
-    if (fsr_1_val >= FSR_CONTACT_THRESHOLD) {
-        println_info("Contact on the left bumper");
+    obstacle_in_front = false;
+    obstacle_in_back = false;
+    if (fsr_1_val > FSR_CONTACT_THRESHOLD || fsr_2_val > FSR_CONTACT_THRESHOLD) {
+        obstacle_in_front = true;
+        stop_motors();
+        if (fsr_1_val >= FSR_CONTACT_THRESHOLD) {
+            println_info("Contact on the left bumper");
+        }
+        if (fsr_2_val >= FSR_CONTACT_THRESHOLD) {
+            println_info("Contact on the right bumper");
+        }
     }
-    if (fsr_2_val >= FSR_CONTACT_THRESHOLD) {
-        println_info("Contact on the right bumper");
+
+    if (fsr_1_val < FSR_NOISE_THRESHOLD || fsr_2_val < FSR_NOISE_THRESHOLD) {
+        println_error("FSRs reading below noise threshold. Check connections.");
+        disable_motors();
+    }
+
+    if (!is_front_ok_VL53L0X()) {
+        disable_motors();
+    }
+    if (!is_back_ok_VL53L0X()) {
+        disable_motors();
+    }
+
+    // If an obstacle is too close or a ledge is detected, set the flag
+    if (measure1.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure1.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM) {
+        obstacle_in_front = true;
+    }
+
+    if (measure2.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM) {
+        obstacle_in_back = true;
     }
 }
 
@@ -308,7 +343,7 @@ void set_standby(bool standby)
     set_motor_standby(standby);
     set_servo_standby(standby);
     if (standby) {
-        is_safe_to_move = false;
+        disable_motors();
         toggle_speed_pid(false);
     }
     else {
@@ -412,14 +447,14 @@ void begin()
     setup_serial();
     setup_i2c();
     initialize_display();
-    setup_servos();
-    setup_INA219();
-    setup_motors();
-    reset_encoders();
-    setup_VL53L0X();
-    setup_fsrs();
-    setup_BNO055();
-    setup_IR();
+    reset_encoders();  tft.print("Encoders ready!\n");
+    setup_fsrs();  tft.print("FSRs ready!\n");
+    setup_IR();   tft.print("IR ready!\n");
+    setup_motors();   tft.print("Motors ready!\n");
+    setup_BNO055();   tft.print("BNO055 ready!\n");
+    setup_INA219();   tft.print("INA219 ready!\n");
+    setup_servos();   tft.print("Servos ready!\n");
+    setup_VL53L0X();   tft.print("VL53L0Xs ready!\n");
 }
 
 void check_serial()
@@ -458,7 +493,7 @@ void check_serial()
                     switch (data_buffer.charAt(0)) {
                         case 'a': set_motorA(data_buffer.substring(1).toFloat()); break;//update_setpointA(data_buffer.substring(1).toFloat()); break;
                         case 'b': set_motorB(data_buffer.substring(1).toFloat()); break;//update_setpointB(data_buffer.substring(1).toFloat()); break;
-                        case 'p': toggle_speed_pid(data_buffer.charAt(1) == '1' ? true : false); break;
+                        // case 'p': toggle_speed_pid(data_buffer.charAt(1) == '1' ? true : false); break;
                     }
                     break;
                 case 'k':
@@ -579,7 +614,6 @@ void report_data()
     }
     if (read_fsrs()) {
         report_fsrs();
-        check_for_contact();
     }
     if (read_IR()) {
         report_IR();
@@ -588,7 +622,6 @@ void report_data()
 
     display_data();
 
-    // update_speed_pid();
 }
 
 
@@ -601,4 +634,6 @@ void loop() {
 
     check_serial();
     report_data();
+    update_speed_pid();
+    check_safety_systems();
 }
