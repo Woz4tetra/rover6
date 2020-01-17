@@ -20,17 +20,18 @@
 #define CAMERA_PAN_SERVO_NUM 2
 #define CAMERA_TILT_SERVO_NUM 3
 
-int FRONT_TILTER_UP = 70;
-int FRONT_TILTER_DOWN = 180;
-int BACK_TILTER_UP = 70;
-int BACK_TILTER_DOWN = 180;
+#define FRONT_TILTER_UP = 70;
+#define FRONT_TILTER_DOWN = 180;
+#define BACK_TILTER_UP = 70;
+#define BACK_TILTER_DOWN = 180;
+
 
 void set_front_tilter(int angle)
 {
-    if (angle > FRONT_TILTER_UP) {
+    if (angle < FRONT_TILTER_UP) {
         angle = FRONT_TILTER_UP;
     }
-    if (angle < FRONT_TILTER_DOWN) {
+    if (angle > FRONT_TILTER_DOWN) {
         angle = FRONT_TILTER_DOWN;
     }
     set_servo(FRONT_TILTER_SERVO_NUM, angle);
@@ -38,10 +39,10 @@ void set_front_tilter(int angle)
 
 void set_back_tilter(int angle)
 {
-    if (angle > BACK_TILTER_UP) {
+    if (angle < BACK_TILTER_UP) {
         angle = BACK_TILTER_UP;
     }
-    if (angle < BACK_TILTER_DOWN) {
+    if (angle > BACK_TILTER_DOWN) {
         angle = BACK_TILTER_DOWN;
     }
     set_servo(BACK_TILTER_SERVO_NUM, angle);
@@ -180,30 +181,38 @@ bool read_VL53L0X()
         return false;
     }
     lox_report_timer = CURRENT_TIME;
+
     if (is_moving()) {
         if (is_moving_forward()) {
-            println_info("Moving forward");
-            set_front_tilter(FRONT_TILTER_UP);
-            set_back_tilter(BACK_TILTER_DOWN);
+            // set_front_tilter(FRONT_TILTER_UP);
+            // set_back_tilter(BACK_TILTER_DOWN);
             read_front_VL53L0X();
             return true;
         }
         else {
-            println_info("Moving backward");
-            set_front_tilter(FRONT_TILTER_DOWN);
-            set_back_tilter(BACK_TILTER_UP);
+            // set_front_tilter(FRONT_TILTER_DOWN);
+            // set_back_tilter(BACK_TILTER_UP);
             read_back_VL53L0X();
             return true;
         }
     }
     else {
-        println_info("Not moving");
-        set_front_tilter(FRONT_TILTER_DOWN);
-        set_back_tilter(BACK_TILTER_DOWN);
+        // set_front_tilter(FRONT_TILTER_DOWN);
+        // set_back_tilter(BACK_TILTER_DOWN);
         read_front_VL53L0X();
         read_back_VL53L0X();
         return true;
     }
+
+    if (!is_front_ok_VL53L0X()) {
+        println_error("Front TOF sensor read and error. Disabling motors.");
+        disable_motors();
+    }
+    if (!is_back_ok_VL53L0X()) {
+        println_error("Back TOF sensor read and error. Disabling motors.");
+        disable_motors();
+    }
+
     return false;
 }
 
@@ -291,15 +300,6 @@ void check_safety_systems()
     //     println_error("FSRs reading below noise threshold. Check connections. Disabling motors.");
     //     disable_motors();
     // }
-
-    if (!is_front_ok_VL53L0X()) {
-        println_error("Front TOF sensor read and error. Disabling motors.");
-        disable_motors();
-    }
-    if (!is_back_ok_VL53L0X()) {
-        println_error("Back TOF sensor read and error. Disabling motors.");
-        disable_motors();
-    }
 
     bool __obstacle_in_front = false;
     bool __obstacle_in_back = false;
@@ -451,7 +451,10 @@ void callback_ir()
             set_motors(-100, 100);
             // rotate(100.0);  // cm per s
             break;  // <
-        case 0x906f: println_info("IR: ENTER"); break;  // ENTER
+        case 0x906f:
+            println_info("IR: ENTER");
+            stop_motors();
+            break;  // ENTER
         case 0x50af:
             println_info("IR: >");
             set_motors(100, -100);

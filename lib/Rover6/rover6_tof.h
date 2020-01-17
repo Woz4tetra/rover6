@@ -29,7 +29,7 @@ bool lox2_is_setup = false;
 
 uint32_t lox_report_timer = 0;
 #define LOX_SAMPLERATE_FAST_DELAY_MS 150
-#define LOX_SAMPLERATE_SLOW_DELAY_MS 500
+#define LOX_SAMPLERATE_SLOW_DELAY_MS 1000
 unsigned int lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
 
 int LOX_GROUND_UPPER_THRESHOLD_MM = 90;
