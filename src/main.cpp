@@ -47,12 +47,12 @@ void set_back_tilter(int angle)
     set_servo(BACK_TILTER_SERVO_NUM, angle);
 }
 
-#define CAMERA_PAN_UP 0
-#define CAMERA_PAN_CENTER 105
-#define CAMERA_PAN_DOWN 150
-#define CAMERA_TILT_LEFT 90
-#define CAMERA_TILT_CENTER 43
-#define CAMERA_TILT_RIGHT 0
+#define CAMERA_PAN_UP 90
+#define CAMERA_PAN_CENTER 43
+#define CAMERA_PAN_DOWN 0
+#define CAMERA_TILT_LEFT 0
+#define CAMERA_TILT_CENTER 105
+#define CAMERA_TILT_RIGHT 150
 
 void center_camera()
 {
@@ -90,12 +90,10 @@ void set_camera_tilt(int angle)
 //
 
 double speed_setpointA, speed_setpointB = 0.0;  // cm/s
-int pid_commandA, pid_commandB = 0.0;  // -255...255
+double pid_commandA, pid_commandB = 0.0;  // -255...255
 double Kp_A = 200.0, Ki_A = 0.0, Kd_A = 0.0;
 double Kp_B = 200.0, Ki_B = 0.0, Kd_B = 0.0;
 bool speed_pid_enabled = false;
-bool obstacle_in_front = false;
-bool obstacle_in_back = false;
 uint32_t prev_setpointA_time = 0;
 uint32_t prev_setpointB_time = 0;
 #define PID_COMMAND_TIMEOUT_MS 1000
@@ -127,12 +125,16 @@ void update_setpointA(double new_setpoint)
 {
     speed_setpointA = new_setpoint;
     prev_setpointA_time = CURRENT_TIME;
+    print_info("speed_setpointA: ");
+    DATA_SERIAL.println(speed_setpointA);
 }
 
 void update_setpointB(double new_setpoint)
 {
     speed_setpointB = new_setpoint;
     prev_setpointB_time = CURRENT_TIME;
+    print_info("speed_setpointB: ");
+    DATA_SERIAL.println(speed_setpointB);
 }
 
 void update_speed_pid()
@@ -151,11 +153,7 @@ void update_speed_pid()
     motorA_pid.Compute();
     motorB_pid.Compute();
 
-    // print_info("command:");
-    // DATA_SERIAL.print(pid_commandA);
-    // DATA_SERIAL.print("\t");
-    // DATA_SERIAL.println(pid_commandB);
-    set_motors(pid_commandA, pid_commandB);
+    set_motors((int)pid_commandA, (int)pid_commandB);
 }
 
 void set_speed_pid(bool enabled) {
@@ -231,10 +229,6 @@ bool calibrate_safety()
     bool success = true;
 
     if (is_front_ok_VL53L0X()) {
-        println_error("Tilt calibration failed! Front sensor failed to read.");
-        success = false;
-    }
-    else {
         if (measure1.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
             println_error("Tilt calibration failed! lox1 measurement higher than ground threshold: %d > %d", measure1.RangeMilliMeter, LOX_GROUND_UPPER_THRESHOLD_MM);
             success = false;
@@ -244,11 +238,11 @@ bool calibrate_safety()
             success = false;
         }
     }
-    if (is_back_ok_VL53L0X()) {
-        println_error("Tilt calibration failed! Back sensor failed to read.");
+    else {
+        println_error("Tilt calibration failed! Front sensor failed to read.");
         success = false;
     }
-    else {
+    if (is_back_ok_VL53L0X()) {
         if (measure2.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
             println_error("Tilt calibration failed! lox2 measurement higher than ground threshold: %d > %d", measure2.RangeMilliMeter, LOX_GROUND_UPPER_THRESHOLD_MM);
             success = false;
@@ -258,15 +252,19 @@ bool calibrate_safety()
             success = false;
         }
     }
+    else {
+        println_error("Tilt calibration failed! Back sensor failed to read.");
+        success = false;
+    }
 
     if (fsr_1_val > FSR_CONTACT_THRESHOLD || fsr_2_val > FSR_CONTACT_THRESHOLD) {
         println_error("FSRs reading above contact threshold. Remove obstructions.");
         success = false;
     }
-    if (fsr_1_val < FSR_NOISE_THRESHOLD || fsr_2_val < FSR_NOISE_THRESHOLD) {
-        println_error("FSRs reading below noise threshold. Check connections.");
-        success = false;
-    }
+    // if (fsr_1_val < FSR_NOISE_THRESHOLD || fsr_2_val < FSR_NOISE_THRESHOLD) {
+    //     println_error("FSRs reading below noise threshold. Check connections.");
+    //     success = false;
+    // }
 
 
     if (success) {
@@ -287,22 +285,24 @@ void check_safety_systems()
         return;
     }
 
-    if (fsr_1_val < FSR_NOISE_THRESHOLD || fsr_2_val < FSR_NOISE_THRESHOLD) {
-        println_error("FSRs reading below noise threshold. Check connections.");
-        disable_motors();
-    }
+    // if (fsr_1_val < FSR_NOISE_THRESHOLD || fsr_2_val < FSR_NOISE_THRESHOLD) {
+    //     println_error("FSRs reading below noise threshold. Check connections. Disabling motors.");
+    //     disable_motors();
+    // }
 
     if (!is_front_ok_VL53L0X()) {
+        println_error("Front TOF sensor read and error. Disabling motors.");
         disable_motors();
     }
     if (!is_back_ok_VL53L0X()) {
+        println_error("Back TOF sensor read and error. Disabling motors.");
         disable_motors();
     }
 
-    obstacle_in_front = false;
-    obstacle_in_back = false;
+    bool obstacle_in_front_detected = false;
+    bool obstacle_in_back_detected = false;
     if (fsr_1_val > FSR_CONTACT_THRESHOLD || fsr_2_val > FSR_CONTACT_THRESHOLD) {
-        obstacle_in_front = true;
+        obstacle_in_front_detected = true;
         if (fsr_1_val >= FSR_CONTACT_THRESHOLD) {
             println_info("Contact on the left bumper");
         }
@@ -311,53 +311,76 @@ void check_safety_systems()
         }
     }
 
-    // If an obstacle is too close or a ledge is detected, set the flag
-    if (measure1.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure1.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM) {
-        obstacle_in_front = true;
-    }
-
-    if (measure2.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM) {
-        obstacle_in_back = true;
-    }
-
     if (is_moving()) {
         // rear sensor pointing down, check if robot is off the ground
         if (is_moving_forward()) {
             if (measure2.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
+                println_error("Front sensor reads robot is off the ground. Disabling motors.");
                 disable_motors();
+            }
+            // If an obstacle is too close or a ledge is detected, set the flag
+            else if (measure1.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure1.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM) {
+                if (!obstacle_in_front) {
+                    println_info("Obstacle detected by front TOF sensor");
+                }
+                obstacle_in_front_detected = true;
             }
         }
         else {
             if (measure1.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
+                println_error("Back sensor reads robot is off the ground. Disabling motors.");
                 disable_motors();
+            }
+            else if (measure2.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM) {
+                if (!obstacle_in_back) {
+                    println_info("Obstacle detected by back TOF sensor");
+                }
+                obstacle_in_back_detected = true;
             }
         }
     }
     else {
         if (measure1.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_GROUND_UPPER_THRESHOLD_MM) {
+            println_error("Front and/or back sensor reads robot is off the ground. Disabling motors.");
             disable_motors();
         }
     }
 
+    obstacle_in_front = obstacle_in_front_detected;
+    obstacle_in_back = obstacle_in_back_detected;
+}
+
+void set_standby_true()
+{
+    is_on_standby = true;
+    set_motor_standby(true);
+    set_servo_standby(true);
+    disable_motors();
+    set_speed_pid(false);
+}
+
+void set_standby_false()
+{
+    is_on_standby = false;
+    set_motor_standby(false);
+    set_servo_standby(false);
+    if (calibrate_safety()) {
+        set_speed_pid(true);
+    }
 }
 
 void set_standby(bool standby)
 {
-    if (is_on_standby == standby) {
+    if (safety_is_calibrated && is_on_standby == standby) {
         return;
     }
     println_info("Setting standby to: %d", standby);
-    is_on_standby = standby;
-    set_motor_standby(standby);
-    set_servo_standby(standby);
+
     if (standby) {
-        disable_motors();
-        set_speed_pid(false);
+        set_standby_true();
     }
     else {
-        if (calibrate_safety()) {
-            set_speed_pid(true);
-        }
+        set_standby_false();
     }
 }
 
@@ -395,7 +418,12 @@ void callback_ir()
         case 0x00ff: println_info("IR: VOL-"); break;  // VOL-
         case 0x807f:
             println_info("IR: Play/Pause");
-            set_standby(!is_on_standby);
+            if (!safety_is_calibrated) {
+                set_standby(false);
+            }
+            else {
+                set_standby(!is_on_standby);
+            }
             break;  // Play/Pause
         case 0x40bf: println_info("IR: VOL+"); break;  // VOL+
         case 0x20df: println_info("IR: SETUP"); break;  // SETUP
@@ -463,12 +491,14 @@ void begin()
     setup_INA219();   tft.print("INA219 ready!\n");
     setup_servos();   tft.print("Servos ready!\n");
     setup_VL53L0X();   tft.print("VL53L0Xs ready!\n");
+    setup_pid();
 
-    set_standby(false);
+    set_standby_true();
 
     set_front_tilter(FRONT_TILTER_DOWN);
     set_back_tilter(BACK_TILTER_DOWN);
     center_camera();
+    tft.fillScreen(ST77XX_BLACK);
 }
 
 int segment_int = 0;
