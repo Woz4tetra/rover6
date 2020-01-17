@@ -182,12 +182,14 @@ bool read_VL53L0X()
     lox_report_timer = CURRENT_TIME;
     if (is_moving()) {
         if (is_moving_forward()) {
+            println_info("Moving forward");
             set_front_tilter(FRONT_TILTER_UP);
             set_back_tilter(BACK_TILTER_DOWN);
             read_front_VL53L0X();
             return true;
         }
         else {
+            println_info("Moving backward");
             set_front_tilter(FRONT_TILTER_DOWN);
             set_back_tilter(BACK_TILTER_UP);
             read_back_VL53L0X();
@@ -195,6 +197,7 @@ bool read_VL53L0X()
         }
     }
     else {
+        println_info("Not moving");
         set_front_tilter(FRONT_TILTER_DOWN);
         set_back_tilter(BACK_TILTER_DOWN);
         read_front_VL53L0X();
@@ -374,7 +377,8 @@ void set_standby_false()
     set_motor_standby(false);
     set_servo_standby(false);
     if (calibrate_safety()) {
-        set_speed_pid(true);
+        set_speed_pid(false);
+        // set_speed_pid(true);
     }
 }
 
@@ -696,4 +700,5 @@ void loop() {
     report_data();
     update_speed_pid();
     check_safety_systems();
+    check_motor_timeout();
 }

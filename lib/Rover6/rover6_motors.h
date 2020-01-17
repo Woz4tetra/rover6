@@ -63,13 +63,21 @@ void setup_motors()
     set_motor_standby(true);
 }
 
+void reset_motor_timeouts()
+{
+    prev_commandA_time = CURRENT_TIME;
+    prev_commandB_time = CURRENT_TIME;
+}
+
 void set_motorA(int speed) {
     if (is_safe_to_move || speed == 0) {
+        reset_motor_timeouts();
         motorA.setSpeed(speed);
     }
 }
 void set_motorB(int speed) {
     if (is_safe_to_move || speed == 0) {
+        reset_motor_timeouts();
         motorB.setSpeed(speed);
     }
 }
@@ -101,11 +109,6 @@ void set_motors(int speedA, int speedB)
     set_motorB(speedB);
 }
 
-void reset_motor_timeouts()
-{
-    prev_commandA_time = CURRENT_TIME;
-    prev_commandB_time = CURRENT_TIME;
-}
 
 bool check_motor_timeout()
 {
