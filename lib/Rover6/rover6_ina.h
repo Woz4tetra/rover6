@@ -44,7 +44,7 @@ bool read_INA219()
 }
 void report_INA219()
 {
-    if (!is_reporting_enabled) {
+    if (!rover_state.is_reporting_enabled) {
         return;
     }
     print_data("ina", "lfff", millis(), ina219_current_mA, ina219_power_mW, ina219_loadvoltage);

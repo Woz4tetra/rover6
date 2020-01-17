@@ -10,6 +10,7 @@
 #include <SPI.h>
 
 #include "rover6_general.h"
+#include "rover6_serial.h"
 
 
 /*

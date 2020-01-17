@@ -6,6 +6,7 @@
 #include "rover6_i2c.h"
 #include "rover6_serial.h"
 #include "rover6_general.h"
+#include "rover6_motors.h"
 
 /*
  * Adafruit TOF distance sensor
@@ -19,8 +20,8 @@
 #define SHT_LOX1 7
 #define SHT_LOX2 5
 
-Adafruit_VL53L0X lox1;
-Adafruit_VL53L0X lox2;
+Adafruit_VL53L0X lox1;  // front
+Adafruit_VL53L0X lox2;  // back
 VL53L0X_RangingMeasurementData_t measure1;
 VL53L0X_RangingMeasurementData_t measure2;
 
@@ -95,7 +96,7 @@ void read_back_VL53L0X() {
 
 void report_VL53L0X()
 {
-    if (!is_reporting_enabled) {
+    if (!rover_state.is_reporting_enabled) {
         return;
     }
     print_data("lox", "ldddddd", millis(),
@@ -142,5 +143,58 @@ bool is_back_ok_VL53L0X() {
     }
     return success;
 }
+
+bool does_front_tof_see_obstacle() {
+    return measure1.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure1.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM;
+}
+
+bool does_back_tof_see_obstacle() {
+    return measure2.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM;
+}
+
+bool read_VL53L0X()
+{
+    if (is_moving()) {
+        lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
+    }
+    else {
+        lox_samplerate_delay_ms = LOX_SAMPLERATE_SLOW_DELAY_MS;
+    }
+    if (CURRENT_TIME - lox_report_timer < lox_samplerate_delay_ms) {
+        return false;
+    }
+    lox_report_timer = CURRENT_TIME;
+
+    bool new_measurement = false;
+
+    if (is_moving()) {
+        if (is_moving_forward()) {
+            read_front_VL53L0X();
+            safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
+            safety_struct.is_back_tof_trig = false;
+            new_measurement = true;
+        }
+        else {
+            read_back_VL53L0X();
+            safety_struct.is_front_tof_trig = false;
+            safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
+            new_measurement = true;
+        }
+    }
+    else {
+        safety_struct.is_back_tof_trig = false;
+        safety_struct.is_front_tof_trig = false;
+
+    //     read_front_VL53L0X();
+    //     read_back_VL53L0X();
+    //     return true;
+    }
+
+    safety_struct.is_front_tof_ok = is_front_ok_VL53L0X();
+    safety_struct.is_back_tof_ok = is_back_ok_VL53L0X();
+
+    return new_measurement;
+}
+
 
 #endif  // ROVER6_TOF

@@ -44,7 +44,7 @@ bool read_IR()
 }
 void report_IR()
 {
-    if (!is_reporting_enabled) {
+    if (!rover_state.is_reporting_enabled) {
         return;
     }
     print_data("irr", "ldd", millis(), ir_type, ir_value);

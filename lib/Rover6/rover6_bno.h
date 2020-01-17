@@ -61,7 +61,7 @@ bool read_BNO055()
 
 void report_BNO055()
 {
-    if (!is_reporting_enabled) {
+    if (!rover_state.is_reporting_enabled) {
         return;
     }
 

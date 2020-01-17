@@ -70,7 +70,7 @@ bool read_encoders()
 
 void report_encoders()
 {
-    if (!is_reporting_enabled) {
+    if (!rover_state.is_reporting_enabled) {
         return;
     }
     print_data("enc", "lll", millis(), encA_pos, encB_pos);
