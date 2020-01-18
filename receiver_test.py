@@ -1,23 +1,25 @@
+import time
 import datetime
 from device_port import DevicePort
 
 PACKET_CODES = {
     "ina": "lfff",
-    "enc": "lll",
+    "enc": "lllff",
     "fsr": "ldd",
     "irr": "ldd",
     "bno": "lfffffffff",
-    "lox": "lddd"
+    "lox": "ldddddd"
 }
 
 def parse_packet(packet):
-    fields = packet.split("\t")[:-1]
-    if len(fields) <= 1:
+    fields = packet.split("\t")
+    if len(fields) <= 2:
         return
     identifier = fields[0]
     data = []
 
     if identifier in PACKET_CODES:
+        fields = fields[:-1]
         packet_code = PACKET_CODES[identifier]
 
         num_fields = len(fields) - 2
@@ -37,7 +39,22 @@ def parse_packet(packet):
                 data.append(float(field))
             else:
                 print("Invalid data type: '%s' in packet '%s'" % (data_type, packet))
+    elif identifier == "msg":
+        data.append(fields[1])
+        data.append(fields[2].strip())
     return identifier, data
+
+def set_speed(speed):
+    uart_port.write("ma%s\n" % speed)
+    uart_port.write("mb%s\n" % speed)
+
+def set_k(kp, ki, kd):
+    uart_port.write("kap%s\n" % kp)
+    uart_port.write("kai%s\n" % ki)
+    uart_port.write("kad%s\n" % kd)
+    uart_port.write("kbp%s\n" % kp)
+    uart_port.write("kbi%s\n" % ki)
+    uart_port.write("kbd%s\n" % kd)
 
 
 # usb_port = DevicePort("/dev/serial/by-id/usb-Teensyduino_USB_Serial_5816830-if00")
@@ -54,7 +71,20 @@ data_frame = {}
 try:
     uart_port.write(">")
     uart_port.write("]")
+    set_k(0.75, 0, 0.05)
+
+    # for i in range(0, 50, 5):
+    #     uart_port.write("ma%s\n" % i)
+    #     uart_port.write("mb%s\n" % i)
+    #     time.sleep(0.25)
+    #     print("speed:", i)
+
+    prev_time = time.time()
     while True:
+        if time.time() - prev_time > 0.5:
+            set_speed(150)
+            prev_time = time.time()
+        
         uart_waiting = uart_port.in_waiting()
         if uart_waiting:
             receive_time, packets = uart_port.read(uart_waiting)
@@ -63,16 +93,22 @@ try:
 
             for packet in packets:
                 result = parse_packet(packet)
-                identifier, data = result
-                print("%s:\t%s" % (identifier, data))
                 if result is None:
                     continue
+                identifier, data = result
+                # print("%s:\t%s" % (identifier, data))
 
                 data_frame[identifier] = data
                 if identifier == "irr":
-                    print("IR data: %s" % [hex(x) for x in data[1:]])
-                    for i, d in data_frame.items():
-                        print("%s:\t%s" % (i, d))
+                    print("data: %s" % [hex(x) for x in data[1:]])
+                    # for i, d in data_frame.items():
+                    #     print("%s:\t%s" % (i, d))
+                elif identifier == "enc":
+                    # print("%s:\t%s" % (identifier, data))
+                    print("speed; a: {3}, b: {4}".format(*data))
+                elif identifier == "msg":
+                    print(data[0], data[1])
+
 
 
 except BaseException:

@@ -20,11 +20,14 @@
 
 double speed_setpointA, speed_setpointB = 0.0;  // cm/s
 double pid_commandA, pid_commandB = 0.0;  // -255...255
-double Kp_A = 200.0, Ki_A = 0.0, Kd_A = 0.0;
-double Kp_B = 200.0, Ki_B = 0.0, Kd_B = 0.0;
+double Kp_A = 0.1, Ki_A = 0.0, Kd_A = 0.0;
+double Kp_B = 0.1, Ki_B = 0.0, Kd_B = 0.0;
 uint32_t prev_setpointA_time = 0;
 uint32_t prev_setpointB_time = 0;
 #define PID_COMMAND_TIMEOUT_MS 1000
+#define PID_UPDATE_DELAY_MS 33  // ~30 Hz
+uint32_t prev_pid_time = 0;
+
 
 PID motorA_pid(&enc_speedA, &pid_commandA, &speed_setpointA, Kp_A, Ki_A, Kd_A, DIRECT);
 PID motorB_pid(&enc_speedB, &pid_commandB, &speed_setpointB, Kp_B, Ki_B, Kd_B, DIRECT);
@@ -32,15 +35,17 @@ PID motorB_pid(&enc_speedB, &pid_commandB, &speed_setpointB, Kp_B, Ki_B, Kd_B, D
 void set_KAs(double Kp, double Ki, double Kd)
 {
     Kp_A = Kp;
-    Kp_A = Ki;
-    Kp_A = Kd;
+    Ki_A = Ki;
+    Kd_A = Kd;
+    motorA_pid.SetTunings(Kp_A, Ki_A, Kd_A);
 }
 
 void set_KBs(double Kp, double Ki, double Kd)
 {
     Kp_B = Kp;
-    Kp_B = Ki;
-    Kp_B = Kd;
+    Ki_B = Ki;
+    Kd_B = Kd;
+    motorB_pid.SetTunings(Kp_B, Ki_B, Kd_B);
 }
 
 void setup_pid()
@@ -71,10 +76,18 @@ void update_speed_pid()
         return;
     }
 
+    if (CURRENT_TIME - prev_pid_time < PID_UPDATE_DELAY_MS) {
+        return;
+    }
+    prev_pid_time = CURRENT_TIME;
+    
+
     if (CURRENT_TIME - prev_setpointA_time > PID_COMMAND_TIMEOUT_MS) {
+        println_info("PID A setpoint timed out");
         update_setpointA(0.0);
     }
     if (CURRENT_TIME - prev_setpointB_time > PID_COMMAND_TIMEOUT_MS) {
+        println_info("PID B setpoint timed out");
         update_setpointB(0.0);
     }
 
@@ -99,6 +112,10 @@ void set_active(bool active)
     set_motors_active(active);
     set_servos_active(active);
     set_speed_pid(active);
+    if (!active) {
+        stop_motors();
+    }
+    
 }
 
 void reset()
@@ -141,14 +158,14 @@ void callback_ir()
         case 0x20df: println_info("IR: SETUP"); break;  // SETUP
         case 0xa05f:
             println_info("IR: ^");
-            set_motors(255, 255);
-            // drive_forward(300.0);  // cm per s
+            // set_motors(255, 255);
+            drive_forward(300.0);  // cm per s
             break;  // ^
         case 0x609f: println_info("IR: MODE"); break;  // MODE
         case 0x10ef:
             println_info("IR: <");
-            set_motors(-100, 100);
-            // rotate(100.0);  // cm per s
+            // set_motors(-100, 100);
+            rotate(100.0);  // cm per s
             break;  // <
         case 0x906f:
             println_info("IR: ENTER");
@@ -156,14 +173,14 @@ void callback_ir()
             break;  // ENTER
         case 0x50af:
             println_info("IR: >");
-            set_motors(100, -100);
-            // rotate(-100.0);  // cm per s
+            // set_motors(100, -100);
+            rotate(-100.0);  // cm per s
             break;  // >
         case 0x30cf: println_info("IR: 0 10+"); break;  // 0 10+
         case 0xb04f:
             println_info("IR: v");
-            set_motors(-255, -255);
-            // drive_forward(-300.0);  // cm per s
+            // set_motors(-255, -255);
+            drive_forward(-300.0);  // cm per s
             break;  // v
         case 0x708f: println_info("IR: Del"); break;  // Del
         case 0x08f7: println_info("IR: 1"); break;  // 1
@@ -201,7 +218,11 @@ float segment_float = 0.0;
 void check_serial()
 {
     if (DATA_SERIAL.available()) {
-        char command = DATA_SERIAL.read();
+        data_buffer = DATA_SERIAL.readStringUntil('\n');
+        print_info("data_buffer: ");
+        DATA_SERIAL.println(data_buffer);
+        // char command = DATA_SERIAL.read();
+        char command = data_buffer.charAt(0);
 
         if (command == '>') {
             set_active(true);
@@ -229,47 +250,45 @@ void check_serial()
         else {
             switch (command) {
                 case 'm':
-                    data_buffer = DATA_SERIAL.readStringUntil('\n');
                     DATA_SERIAL.println(data_buffer);
-                    // segment_int = data_buffer.substring(1).toInt();
-                    segment_float = data_buffer.substring(1).toFloat();
-                    switch (data_buffer.charAt(0)) {
-                        case 'a': set_motors(segment_int, motorA.getSpeed()); break;  //update_setpointA(segment_float); break;
-                        case 'b': set_motors(motorB.getSpeed(), segment_int); break;  //update_setpointB(segment_float); break;
-                        // case 'p': set_speed_pid(data_buffer.charAt(1) == '1' ? true : false); break;
+                    // segment_int = data_buffer.substring(2).toInt();
+                    segment_float = data_buffer.substring(2).toFloat();
+                    switch (data_buffer.charAt(1)) {
+                        case 'a': update_setpointA(segment_float); break;  // set_motors(segment_int, motorA.getSpeed()); break;
+                        case 'b': update_setpointB(segment_float); break;  // set_motors(motorB.getSpeed(), segment_int); break;
+                        // case 'p': set_speed_pid(data_buffer.charAt(2) == '1' ? true : false); break;
                     }
                     break;
                 case 'k':
-                    data_buffer = DATA_SERIAL.readStringUntil('\n');
-                    if (data_buffer.charAt(0) == 'a') {
-                        switch (data_buffer.charAt(0)) {
+                    segment_float = data_buffer.substring(3).toFloat();
+                    if (data_buffer.charAt(1) == 'a') {
+                        switch (data_buffer.charAt(2)) {
                             case 'p':
-                                set_KAs(data_buffer.substring(1).toFloat(), Ki_A, Kd_A);
+                                set_KAs(segment_float, Ki_A, Kd_A);
                                 break;
                             case 'i':
-                                set_KAs(Kp_A, data_buffer.substring(1).toFloat(), Kd_A);
+                                set_KAs(Kp_A, segment_float, Kd_A);
                                 break;
                             case 'd':
-                                set_KAs(Kp_A, Ki_A, data_buffer.substring(1).toFloat());
+                                set_KAs(Kp_A, Ki_A, segment_float);
                                 break;
                         }
                     }
-                    else if (data_buffer.charAt(0) == 'b') {
-                        switch (data_buffer.charAt(0)) {
+                    else if (data_buffer.charAt(1) == 'b') {
+                        switch (data_buffer.charAt(2)) {
                             case 'p':
-                                set_KBs(data_buffer.substring(1).toFloat(), Ki_B, Kd_B);
+                                set_KBs(segment_float, Ki_B, Kd_B);
                                 break;
                             case 'i':
-                                set_KBs(Kp_B, data_buffer.substring(1).toFloat(), Kd_B);
+                                set_KBs(Kp_B, segment_float, Kd_B);
                                 break;
                             case 'd':
-                                set_KBs(Kp_B, Ki_B, data_buffer.substring(1).toFloat());
+                                set_KBs(Kp_B, Ki_B, segment_float);
                                 break;
                         }
                     }
 
                 case 's':
-                    data_buffer = DATA_SERIAL.readStringUntil('\n');
                     if (data_buffer.charAt(0) == 't') {
                         // tell servo positions
                     }
@@ -419,7 +438,7 @@ void loop() {
 
     check_serial();
     report_data();
-    // update_speed_pid();
+    update_speed_pid();
     check_motor_timeout();
     // println_info("safety: %d, %d, %d, %d, %d", safety_struct.voltage_ok, safety_struct.are_servos_active, safety_struct.are_motors_active, safety_struct.is_front_tof_ok, safety_struct.is_back_tof_ok);
 }

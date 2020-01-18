@@ -20,6 +20,8 @@
 Encoder motorA_enc(MOTORA_ENCA, MOTORA_ENCB);
 Encoder motorB_enc(MOTORB_ENCB, MOTORB_ENCA);
 
+#define ENCODER_SAMPLERATE_DELAY_MS 17  // ~60 Hz
+
 long encA_pos, encB_pos = 0;
 double enc_speedA, enc_speedB = 0.0;  // cm/s
 uint32_t prev_enc_time = 0;
@@ -46,26 +48,22 @@ void reset_encoders()
 
 bool read_encoders()
 {
+    if (CURRENT_TIME - prev_enc_time < ENCODER_SAMPLERATE_DELAY_MS) {
+        return false;
+    }
+    
     long new_encA_pos = motorA_enc.read();
     long new_encB_pos = motorB_enc.read();
 
-    if (encA_pos != new_encA_pos || encB_pos != new_encB_pos) {
-        if (prev_enc_time > CURRENT_TIME) {  // wrap-around event
-            prev_enc_time = CURRENT_TIME;
-            return false;
-        }
-        enc_speedA = (new_encA_pos - encA_pos) * cm_per_tick / (CURRENT_TIME - prev_enc_time);
-        enc_speedB = (new_encB_pos - encB_pos) * cm_per_tick / (CURRENT_TIME - prev_enc_time);
+    enc_speedA = (new_encA_pos - encA_pos) * cm_per_tick / (CURRENT_TIME - prev_enc_time) * 1000.0;
+    enc_speedB = (new_encB_pos - encB_pos) * cm_per_tick / (CURRENT_TIME - prev_enc_time) * 1000.0;
 
-        encA_pos = new_encA_pos;
-        encB_pos = new_encB_pos;
-        prev_enc_time = CURRENT_TIME;
+    encA_pos = new_encA_pos;
+    encB_pos = new_encB_pos;
 
-        return true;
-    }
-    else {
-        return false;
-    }
+    prev_enc_time = CURRENT_TIME;
+
+    return true;
 }
 
 void report_encoders()
@@ -73,7 +71,7 @@ void report_encoders()
     if (!rover_state.is_reporting_enabled) {
         return;
     }
-    print_data("enc", "lll", millis(), encA_pos, encB_pos);
+    print_data("enc", "lllff", millis(), encA_pos, encB_pos, enc_speedA, enc_speedB);
 }
 
 #endif  // ROVER6_ENCODERS
