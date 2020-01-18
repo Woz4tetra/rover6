@@ -40,10 +40,10 @@ def parse_packet(packet):
     return identifier, data
 
 
-usb_port = DevicePort("/dev/serial/by-id/usb-Teensyduino_USB_Serial_5816830-if00")
+# usb_port = DevicePort("/dev/serial/by-id/usb-Teensyduino_USB_Serial_5816830-if00")
 uart_port = DevicePort("/dev/serial0", baud=500000)
 
-usb_port.configure()
+# usb_port.configure()
 uart_port.configure()
 
 uart_port.check_protocol("?", "!")
@@ -54,15 +54,6 @@ data_frame = {}
 try:
     uart_port.write(">")
     while True:
-        usb_waiting = usb_port.in_waiting()
-        if usb_waiting:
-            receive_time, packets = usb_port.read(usb_waiting)
-            receive_date = datetime.datetime.fromtimestamp(receive_time)
-            receive_str = datetime.datetime.strftime(receive_date, "%c")
-            print("USB %s:" % (receive_str))
-            for packet in packets:
-                print("\t%s" % packet)
-
         uart_waiting = uart_port.in_waiting()
         if uart_waiting:
             receive_time, packets = uart_port.read(uart_waiting)
@@ -85,7 +76,6 @@ try:
 
 except BaseException:
     uart_port.write("<")
-    usb_port.stop()
     uart_port.stop()
 
     raise

@@ -108,6 +108,7 @@ Thumbs.db
 .idea/
 .pioenvs/
 .sconsign.dblite/
+.vscode/
 
 # Xcode Project Files #
 #######################
