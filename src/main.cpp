@@ -27,10 +27,12 @@ uint32_t prev_setpointB_time = 0;
 #define PID_COMMAND_TIMEOUT_MS 1000
 #define PID_UPDATE_DELAY_MS 33  // ~30 Hz
 uint32_t prev_pid_time = 0;
+double ff_command_A, ff_command_B = 0;  // feed forward commands
+double ff_speed_A, ff_speed_B = 0;  // feed forward speed. enc_speed - setpoint
 
 
-PID motorA_pid(&enc_speedA, &pid_commandA, &speed_setpointA, Kp_A, Ki_A, Kd_A, DIRECT);
-PID motorB_pid(&enc_speedB, &pid_commandB, &speed_setpointB, Kp_B, Ki_B, Kd_B, DIRECT);
+PID motorA_pid(&ff_speed_A, &pid_commandA, &speed_setpointA, Kp_A, Ki_A, Kd_A, DIRECT);
+PID motorB_pid(&ff_speed_B, &pid_commandB, &speed_setpointB, Kp_B, Ki_B, Kd_B, DIRECT);
 
 void set_KAs(double Kp, double Ki, double Kd)
 {
@@ -57,6 +59,7 @@ void setup_pid()
 void update_setpointA(double new_setpoint)
 {
     speed_setpointA = new_setpoint;
+    ff_command_A = speed_setpointA * cps_to_cmd;
     prev_setpointA_time = CURRENT_TIME;
     print_info("speed_setpointA: ");
     DATA_SERIAL.println(speed_setpointA);
@@ -65,6 +68,7 @@ void update_setpointA(double new_setpoint)
 void update_setpointB(double new_setpoint)
 {
     speed_setpointB = new_setpoint;
+    ff_command_B = speed_setpointB * cps_to_cmd;
     prev_setpointB_time = CURRENT_TIME;
     print_info("speed_setpointB: ");
     DATA_SERIAL.println(speed_setpointB);
@@ -80,7 +84,8 @@ void update_speed_pid()
         return;
     }
     prev_pid_time = CURRENT_TIME;
-    
+    ff_speed_A = enc_speedA - speed_setpointA;
+    ff_speed_B = enc_speedB - speed_setpointB;
 
     if (CURRENT_TIME - prev_setpointA_time > PID_COMMAND_TIMEOUT_MS) {
         println_info("PID A setpoint timed out");
@@ -93,6 +98,10 @@ void update_speed_pid()
 
     motorA_pid.Compute();
     motorB_pid.Compute();
+
+    // apply feed forward commands
+    pid_commandA += ff_command_A;
+    pid_commandB += ff_command_B;
 
     set_motors((int)pid_commandA, (int)pid_commandB);
 }
