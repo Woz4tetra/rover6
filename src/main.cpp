@@ -340,9 +340,11 @@ void display_data()
     tft.print(",");
     tft.print(measure2.RangeMilliMeter);
     tft.print(",");
-    tft.print(measure1.RangeStatus);
+    tft.print(safety_struct.is_front_tof_ok);
+    // tft.print(measure1.RangeStatus);
     tft.print(",");
-    tft.print(measure2.RangeStatus);
+    tft.print(safety_struct.is_back_tof_ok);
+    // tft.print(measure2.RangeStatus);
     tft.println("        ");
 
     tft.print("fsr: ");
@@ -419,4 +421,5 @@ void loop() {
     report_data();
     // update_speed_pid();
     check_motor_timeout();
+    // println_info("safety: %d, %d, %d, %d, %d", safety_struct.voltage_ok, safety_struct.are_servos_active, safety_struct.are_motors_active, safety_struct.is_front_tof_ok, safety_struct.is_back_tof_ok);
 }

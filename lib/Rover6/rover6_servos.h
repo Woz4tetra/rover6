@@ -30,10 +30,10 @@ void set_servos_active(bool active)
     }
     safety_struct.are_servos_active = active;
     if (active) {  // set servos to low power
-        servos.sleep();
+        servos.wakeup();
     }
     else {  // bring servos out of active mode
-        servos.wakeup();
+        servos.sleep();
     }
 }
 
@@ -79,7 +79,7 @@ int get_servo(uint8_t n) {
 #define CAMERA_PAN_SERVO_NUM 2
 #define CAMERA_TILT_SERVO_NUM 3
 
-#define FRONT_TILTER_UP 70
+#define FRONT_TILTER_UP 80
 #define FRONT_TILTER_DOWN 180
 #define BACK_TILTER_UP 70
 #define BACK_TILTER_DOWN 180

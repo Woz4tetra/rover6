@@ -23,11 +23,22 @@ float ina219_power_mW = 0.0;
 uint32_t ina_report_timer = 0;
 
 #define INA_SAMPLERATE_DELAY_MS 1000
+#define INA_VOLTAGE_THRESHOLD 5.5
+
 
 void setup_INA219()
 {
     ina219.begin(&I2C_BUS_1);
     println_info("INA219 initialized.");
+}
+
+void check_voltage()
+{
+    bool status = ina219_loadvoltage > INA_VOLTAGE_THRESHOLD;
+    if (safety_struct.voltage_ok != status && !status) {
+        println_error("INA reports battery is critically low!");
+    }
+    safety_struct.voltage_ok = status;
 }
 
 bool read_INA219()
@@ -40,6 +51,9 @@ bool read_INA219()
     ina219_current_mA = ina219.getCurrent_mA();
     ina219_power_mW = ina219.getPower_mW();
     ina219_loadvoltage = ina219_busvoltage + (ina219_shuntvoltage / 1000);
+
+    check_voltage();
+
     return true;
 }
 void report_INA219()

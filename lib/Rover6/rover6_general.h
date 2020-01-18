@@ -32,6 +32,7 @@ struct safety {
     bool is_back_tof_ok;
     bool are_servos_active;
     bool are_motors_active;
+    bool voltage_ok;
 } safety_struct;
 
 struct state {
@@ -49,6 +50,7 @@ void init_structs() {
     safety_struct.is_back_tof_ok = false;
     safety_struct.are_servos_active = false;
     safety_struct.are_motors_active = false;
+    safety_struct.voltage_ok = false;
 
     rover_state.is_active = false;
     rover_state.is_reporting_enabled = false;
@@ -56,7 +58,7 @@ void init_structs() {
 }
 
 bool is_safe_to_move() {
-    return safety_struct.are_servos_active && safety_struct.are_motors_active && safety_struct.is_front_tof_ok && safety_struct.is_back_tof_ok;
+    return safety_struct.voltage_ok && safety_struct.are_servos_active && safety_struct.are_motors_active && safety_struct.is_front_tof_ok && safety_struct.is_back_tof_ok;
 }
 
 bool is_obstacle_in_front() {

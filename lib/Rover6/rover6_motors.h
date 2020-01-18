@@ -79,7 +79,7 @@ bool is_moving(int speedA, int speedB) {  // check a command that's about to sen
     return speedA != 0 || speedB != 0;
 }
 bool is_moving_forward() {
-    return (motorA.getSpeed() + motorB.getSpeed()) >> 1 >= 0;
+    return motorA.getSpeed() + motorB.getSpeed() >= 0;
 }
 bool is_moving_forward(int speedA, int speedB) {
     return (speedA + speedB) >> 1 >= 0;
@@ -94,12 +94,12 @@ void stop_motors() {
 void set_motors(int speedA, int speedB)
 {
     if (is_obstacle_in_front() && is_moving_forward(speedA, speedB)) {  // if an obstacle is detected in the front, only allow backwards commands
-        stop_motors();
-        return;
+        speedA = 0;
+        speedB = 0;
     }
     if (is_obstacle_in_back() && !is_moving_forward(speedA, speedB)) {  // if an obstacle is detected in the back, only allow forwards commands
-        stop_motors();
-        return;
+        speedA = 0;
+        speedB = 0;
     }
     set_motorA(speedA);
     set_motorB(speedB);
@@ -117,6 +117,14 @@ bool check_motor_timeout()
         motorB.setSpeed(0);
         timedout = true;
     }
+
+    if (is_obstacle_in_front() && is_moving_forward()) {  // if an obstacle is detected in the front, only allow backwards commands
+        stop_motors();
+    }
+    if (is_obstacle_in_back() && !is_moving_forward()) {  // if an obstacle is detected in the back, only allow forwards commands
+        stop_motors();
+    }
+
     return timedout;
 }
 
