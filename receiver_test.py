@@ -53,6 +53,7 @@ data_frame = {}
 
 try:
     uart_port.write(">")
+    uart_port.write("]")
     while True:
         uart_waiting = uart_port.in_waiting()
         if uart_waiting:
@@ -62,11 +63,11 @@ try:
 
             for packet in packets:
                 result = parse_packet(packet)
-                # print("%s:\t%s" % (identifier, data))
+                identifier, data = result
+                print("%s:\t%s" % (identifier, data))
                 if result is None:
                     continue
 
-                identifier, data = result
                 data_frame[identifier] = data
                 if identifier == "irr":
                     print("IR data: %s" % [hex(x) for x in data[1:]])
@@ -75,6 +76,7 @@ try:
 
 
 except BaseException:
+    uart_port.write("[")
     uart_port.write("<")
     uart_port.stop()
 
