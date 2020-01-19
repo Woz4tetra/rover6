@@ -10,6 +10,7 @@
 #include <rover6_servos.h>
 #include <rover6_tft.h>
 #include <rover6_tof.h>
+#include <rover6_menus.h>
 
 #include <PID_v1.h>
 
@@ -358,81 +359,15 @@ void check_serial()
     }
 }
 
-void display_data()
+void update_display()
 {
     if (CURRENT_TIME - tft_display_timer < TFT_UPDATE_DELAY_MS) {
         return;
     }
     tft_display_timer = CURRENT_TIME;
 
-    tft.setCursor(0, 0);
+    draw_main_menu();
 
-    tft.print(String(ina219_current_mA));
-    tft.print("mA, ");
-    tft.print(String(ina219_loadvoltage));
-    tft.println("V         ");
-
-    tft.print("bno: ");
-    tft.print(String(orientationData.orientation.x));
-    tft.print(",");
-    tft.print(String(orientationData.orientation.y));
-    tft.print(",");
-    tft.print(String(orientationData.orientation.z));
-    tft.println("        ");
-
-    tft.print("motor: ");
-    tft.print(motorA.getSpeed());
-    tft.print(",");
-    tft.print(motorB.getSpeed());
-    tft.print(",");
-    tft.print(safety_struct.are_motors_active);
-    tft.println("        ");
-
-    tft.print("servo: ");
-    tft.print(get_servo(FRONT_TILTER_SERVO_NUM));
-    tft.print(",");
-    tft.print(get_servo(BACK_TILTER_SERVO_NUM));
-    tft.print(",");
-    tft.print(get_servo(CAMERA_PAN_SERVO_NUM));
-    tft.print(",");
-    tft.print(get_servo(CAMERA_TILT_SERVO_NUM));
-    tft.print(",");
-    tft.print(safety_struct.are_motors_active);
-    tft.println("        ");
-
-    tft.print("enc: ");
-    tft.print(encA_pos);
-    tft.print(",");
-    tft.print(encB_pos);
-    tft.println("        ");
-
-    tft.print("lox: ");
-    tft.print(measure1.RangeMilliMeter);
-    tft.print(",");
-    tft.print(measure2.RangeMilliMeter);
-    tft.print(",");
-    tft.print(safety_struct.is_front_tof_ok);
-    tft.print(",");
-    tft.print(safety_struct.is_back_tof_ok);
-    tft.print(",");
-    tft.print(measure1.RangeStatus);
-    tft.print(",");
-    tft.print(measure2.RangeStatus);
-    tft.println("        ");
-
-    tft.print("fsr: ");
-    tft.print(fsr_1_val);
-    tft.print(",");
-    tft.print(fsr_2_val);
-    tft.println("        ");
-
-    tft.print("safety: ");
-    tft.print(is_safe_to_move());
-    tft.print(",");
-    tft.print(is_obstacle_in_front());
-    tft.print(",");
-    tft.print(is_obstacle_in_back());
-    tft.println("        ");
 }
 
 
@@ -458,7 +393,6 @@ void report_data()
         callback_ir();
     }
 
-    display_data();
 }
 
 
@@ -493,6 +427,7 @@ void loop() {
 
     check_serial();
     report_data();
+    update_display();
     update_speed_pid();
     check_motor_timeout();
     // println_info("safety: %d, %d, %d, %d, %d", safety_struct.voltage_ok, safety_struct.are_servos_active, safety_struct.are_motors_active, safety_struct.is_front_tof_ok, safety_struct.is_back_tof_ok);

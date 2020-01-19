@@ -14,7 +14,7 @@
 
 
 /*
- * Adafruit TFT 1.8" display
+ * Adafruit TFT 1.8" display, 160x128
  * ST7735
  */
 
@@ -27,6 +27,7 @@ const float TFT_PI = 3.1415926;
 char TFT_MSG_BUFFER[TFT_BUFFER_SIZE];
 uint32_t tft_display_timer = 0;
 #define TFT_UPDATE_DELAY_MS 250
+
 
 Adafruit_ST7735 tft(TFT_CS, TFT_DC, TFT_RST);
 uint8_t tft_brightness;
