@@ -29,10 +29,10 @@ uint32_t prev_setpointB_time = 0;
 uint32_t prev_pid_time = 0;
 double ff_command_A, ff_command_B = 0;  // feed forward commands
 double ff_speed_A, ff_speed_B = 0;  // feed forward speed. enc_speed - setpoint
+double ff_setpoint_A, ff_setpoint_B = 0.0;  // always zero
 
-
-PID motorA_pid(&ff_speed_A, &pid_commandA, &speed_setpointA, Kp_A, Ki_A, Kd_A, DIRECT);
-PID motorB_pid(&ff_speed_B, &pid_commandB, &speed_setpointB, Kp_B, Ki_B, Kd_B, DIRECT);
+PID motorA_pid(&ff_speed_A, &pid_commandA, &ff_setpoint_A, Kp_A, Ki_A, Kd_A, DIRECT);
+PID motorB_pid(&ff_speed_B, &pid_commandB, &ff_setpoint_B, Kp_B, Ki_B, Kd_B, DIRECT);
 
 void set_KAs(double Kp, double Ki, double Kd)
 {
@@ -61,8 +61,8 @@ void update_setpointA(double new_setpoint)
     speed_setpointA = new_setpoint;
     ff_command_A = speed_setpointA * cps_to_cmd;
     prev_setpointA_time = CURRENT_TIME;
-    print_info("speed_setpointA: ");
-    DATA_SERIAL.println(speed_setpointA);
+    // print_info("speed_setpointA: ");
+    // DATA_SERIAL.println(speed_setpointA);
 }
 
 void update_setpointB(double new_setpoint)
@@ -70,8 +70,8 @@ void update_setpointB(double new_setpoint)
     speed_setpointB = new_setpoint;
     ff_command_B = speed_setpointB * cps_to_cmd;
     prev_setpointB_time = CURRENT_TIME;
-    print_info("speed_setpointB: ");
-    DATA_SERIAL.println(speed_setpointB);
+    // print_info("speed_setpointB: ");
+    // DATA_SERIAL.println(speed_setpointB);
 }
 
 void update_speed_pid()
@@ -87,23 +87,33 @@ void update_speed_pid()
     ff_speed_A = enc_speedA - speed_setpointA;
     ff_speed_B = enc_speedB - speed_setpointB;
 
-    if (CURRENT_TIME - prev_setpointA_time > PID_COMMAND_TIMEOUT_MS) {
-        println_info("PID A setpoint timed out");
-        update_setpointA(0.0);
+    // print_info("ff_speed_A: ");
+    // DATA_SERIAL.println(ff_speed_A);
+    // print_info("ff_speed_B: ");
+    // DATA_SERIAL.println(ff_speed_B);
+
+    if (speed_setpointA != 0.0) {
+        if (CURRENT_TIME - prev_setpointA_time > PID_COMMAND_TIMEOUT_MS) {
+            println_info("PID A setpoint timed out");
+            update_setpointA(0.0);
+        }
     }
-    if (CURRENT_TIME - prev_setpointB_time > PID_COMMAND_TIMEOUT_MS) {
-        println_info("PID B setpoint timed out");
-        update_setpointB(0.0);
+    
+    if (speed_setpointB != 0.0) {
+        if (CURRENT_TIME - prev_setpointB_time > PID_COMMAND_TIMEOUT_MS) {
+            println_info("PID B setpoint timed out");
+            update_setpointB(0.0);
+        }
     }
 
     motorA_pid.Compute();
     motorB_pid.Compute();
 
     // apply feed forward commands
-    pid_commandA += ff_command_A;
-    pid_commandB += ff_command_B;
+    int sum_commandA = pid_commandA + ff_command_A;
+    int sum_commandB = pid_commandB + ff_command_B;
 
-    set_motors((int)pid_commandA, (int)pid_commandB);
+    set_motors(sum_commandA, sum_commandB);
 }
 
 void set_speed_pid(bool enabled) {
@@ -222,95 +232,128 @@ void callback_ir()
 }
 
 
-int segment_int = 0;
-float segment_float = 0.0;
+float setpoint_parse_float = 0.0;
+float pid_k_parse_float = 0.0;
+int servo_num_parse_int = 0;
+int servo_pos_parse_int = 0;
+int lox_parse_int = 0;
 void check_serial()
 {
-    if (DATA_SERIAL.available()) {
-        data_buffer = DATA_SERIAL.readStringUntil('\n');
-        print_info("data_buffer: ");
-        DATA_SERIAL.println(data_buffer);
-        // char command = DATA_SERIAL.read();
-        char command = data_buffer.charAt(0);
+    if (!DATA_SERIAL.available()) {
+        return;
+    }
+    data_buffer = DATA_SERIAL.readStringUntil('\n');
+    print_info("data_buffer: ");
+    DATA_SERIAL.println(data_buffer);
+    // char command = DATA_SERIAL.read();
+    char command = data_buffer.charAt(0);
 
-        if (command == '>') {
-            set_active(true);
+    if (command == '>') {
+        set_active(true);
+    }
+    else if (command == '<') {
+        set_active(false);
+    }
+    else if (command == '?') {
+        DATA_SERIAL.print("!\n");
+    }
+    else if (command == ']') {
+        rover_state.is_reporting_enabled = true;
+    }
+    else if (command == '[') {
+        rover_state.is_reporting_enabled = false;
+    }
+    else if (command == 'r') {
+        reset();
+    }
+    else if (command == '+') {
+        if (DATA_SERIAL.read() == '!') {  // you sure you want to reset?
+            soft_restart();
         }
-        else if (command == '<') {
-            set_active(false);
-        }
-        else if (command == '?') {
-            DATA_SERIAL.print("!\n");
-        }
-        else if (command == ']') {
-            rover_state.is_reporting_enabled = true;
-        }
-        else if (command == '[') {
-            rover_state.is_reporting_enabled = false;
-        }
-        else if (command == 'r') {
-            reset();
-        }
-        else if (command == '+') {
-            if (DATA_SERIAL.read() == '!') {  // you sure you want to reset?
-                soft_restart();
-            }
-        }
-        else {
-            switch (command) {
-                case 'm':
-                    DATA_SERIAL.println(data_buffer);
-                    // segment_int = data_buffer.substring(2).toInt();
-                    segment_float = data_buffer.substring(2).toFloat();
-                    switch (data_buffer.charAt(1)) {
-                        case 'a': update_setpointA(segment_float); break;  // set_motors(segment_int, motorA.getSpeed()); break;
-                        case 'b': update_setpointB(segment_float); break;  // set_motors(motorB.getSpeed(), segment_int); break;
-                        // case 'p': set_speed_pid(data_buffer.charAt(2) == '1' ? true : false); break;
+    }
+    else {
+        switch (command) {
+            case 'm':
+                if (data_buffer.length() < 3) {
+                    println_error("Serial input less than required length");
+                    return;
+                }
+                
+                // segment_int = data_buffer.substring(2).toInt();
+                setpoint_parse_float = data_buffer.substring(2).toFloat();
+                switch (data_buffer.charAt(1)) {
+                    case 'a': update_setpointA(setpoint_parse_float); break;  // set_motors(segment_int, motorA.getSpeed()); break;
+                    case 'b': update_setpointB(setpoint_parse_float); break;  // set_motors(motorB.getSpeed(), segment_int); break;
+                    // case 'p': set_speed_pid(data_buffer.charAt(2) == '1' ? true : false); break;
+                }
+                break;
+            case 'k':
+                if (data_buffer.length() < 4) {
+                    println_error("Serial input less than required length");
+                    return;
+                }
+                pid_k_parse_float = data_buffer.substring(3).toFloat();
+                if (data_buffer.charAt(1) == 'a') {
+                    switch (data_buffer.charAt(2)) {
+                        case 'p':
+                            set_KAs(pid_k_parse_float, Ki_A, Kd_A);
+                            break;
+                        case 'i':
+                            set_KAs(Kp_A, pid_k_parse_float, Kd_A);
+                            break;
+                        case 'd':
+                            set_KAs(Kp_A, Ki_A, pid_k_parse_float);
+                            break;
                     }
-                    break;
-                case 'k':
-                    segment_float = data_buffer.substring(3).toFloat();
-                    if (data_buffer.charAt(1) == 'a') {
-                        switch (data_buffer.charAt(2)) {
-                            case 'p':
-                                set_KAs(segment_float, Ki_A, Kd_A);
-                                break;
-                            case 'i':
-                                set_KAs(Kp_A, segment_float, Kd_A);
-                                break;
-                            case 'd':
-                                set_KAs(Kp_A, Ki_A, segment_float);
-                                break;
-                        }
+                }
+                else if (data_buffer.charAt(1) == 'b') {
+                    switch (data_buffer.charAt(2)) {
+                        case 'p':
+                            set_KBs(pid_k_parse_float, Ki_B, Kd_B);
+                            break;
+                        case 'i':
+                            set_KBs(Kp_B, pid_k_parse_float, Kd_B);
+                            break;
+                        case 'd':
+                            set_KBs(Kp_B, Ki_B, pid_k_parse_float);
+                            break;
                     }
-                    else if (data_buffer.charAt(1) == 'b') {
-                        switch (data_buffer.charAt(2)) {
-                            case 'p':
-                                set_KBs(segment_float, Ki_B, Kd_B);
-                                break;
-                            case 'i':
-                                set_KBs(Kp_B, segment_float, Kd_B);
-                                break;
-                            case 'd':
-                                set_KBs(Kp_B, Ki_B, segment_float);
-                                break;
-                        }
-                    }
+                }
+                break;
 
-                case 's':
-                    if (data_buffer.charAt(0) == 't') {
-                        // tell servo positions
-                    }
-                    else {
-                        set_servo(
-                            data_buffer.substring(0, 2).toInt(),
-                            data_buffer.substring(2).toInt()
-                        );
-                    }
-                    break;
+            case 's':
+                if (data_buffer.length() < 5) {
+                    println_error("Serial input less than required length");
+                    return;
+                }
+                switch (data_buffer.charAt(1))
+                {
+                    case 't': report_servo_pos(); break;
+                    case 'p': 
+                        servo_num_parse_int = data_buffer.substring(2, 4).toInt();
+                        servo_pos_parse_int = data_buffer.substring(4).toInt();
+                        set_servo(servo_num_parse_int, servo_pos_parse_int);
+                        break;
+                    case 'd':
+                        servo_num_parse_int = data_buffer.substring(0).toInt();
+                        set_servo(servo_num_parse_int);
+                        break;
+                }
+                break;
 
-                default: break;
-            }
+            case 'l':
+                if (data_buffer.length() < 3) {
+                    println_error("Serial input less than required length");
+                    return;
+                }
+                lox_parse_int = data_buffer.substring(2).toInt();
+                switch (data_buffer.charAt(1))
+                {
+                    case 'u': LOX_OBSTACLE_UPPER_THRESHOLD_MM = lox_parse_int; break;
+                    case 'l': LOX_OBSTACLE_LOWER_THRESHOLD_MM = lox_parse_int; break;
+                    default: break;
+                }
+            default: break;
         }
     }
 }
@@ -369,10 +412,12 @@ void display_data()
     tft.print(measure2.RangeMilliMeter);
     tft.print(",");
     tft.print(safety_struct.is_front_tof_ok);
-    // tft.print(measure1.RangeStatus);
     tft.print(",");
     tft.print(safety_struct.is_back_tof_ok);
-    // tft.print(measure2.RangeStatus);
+    tft.print(",");
+    tft.print(measure1.RangeStatus);
+    tft.print(",");
+    tft.print(measure2.RangeStatus);
     tft.println("        ");
 
     tft.print("fsr: ");
@@ -435,6 +480,7 @@ void setup()
     setup_pid();
 
     set_active(true);
+    // set_servos_default();
 
     set_front_tilter(FRONT_TILTER_UP);
     set_back_tilter(BACK_TILTER_UP);

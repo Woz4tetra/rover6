@@ -35,8 +35,9 @@ double cm_per_tick = 2.0 * PI * wheel_radius_cm / 1920.0; //  * ticks / rotation
 // 160 rpm @ 6V
 // 135 rpm @ 5V
 // 60 rpm @ 3V
-double max_rpm = 135.0;
-double max_linear_speed_cps = max_rpm * 2.0 * PI * wheel_radius_cm / 60.0;  // cm per s, no load
+// double max_rpm = 135.0;
+// double max_linear_speed_cps = max_rpm * 2.0 * PI * wheel_radius_cm / 60.0;  // cm per s, no load
+double max_linear_speed_cps = 915.0;
 double cps_to_cmd = 255.0 / max_linear_speed_cps;
 
 void reset_encoders()

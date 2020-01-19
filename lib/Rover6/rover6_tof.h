@@ -32,9 +32,6 @@ uint32_t lox_report_timer = 0;
 #define LOX_SAMPLERATE_SLOW_DELAY_MS 1000
 unsigned int lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
 
-int LOX_GROUND_UPPER_THRESHOLD_MM = 90;
-int LOX_GROUND_LOWER_THRESHOLD_MM = 10;
-
 int LOX_OBSTACLE_UPPER_THRESHOLD_MM = 0xffff;
 int LOX_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 
@@ -128,10 +125,18 @@ void report_VL53L0X()
 }
 
 bool does_front_tof_see_obstacle() {
+    if (measure1.RangeMilliMeter == 0 || measure1.RangeStatus != 0) {
+        return false;
+    }
+    
     return measure1.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure1.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM;
 }
 
 bool does_back_tof_see_obstacle() {
+    if (measure2.RangeMilliMeter == 0 || measure2.RangeStatus != 0) {
+        return false;
+    }
+    
     return measure2.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM;
 }
 
@@ -156,29 +161,24 @@ bool read_VL53L0X()
             read_front_VL53L0X();
             safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
             safety_struct.is_back_tof_trig = false;
-            if (safety_struct.is_front_tof_trig) {
-                stop_motors();
-            }
-            return true;
         }
         else {
             read_back_VL53L0X();
             safety_struct.is_front_tof_trig = false;
             safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
-            if (safety_struct.is_back_tof_trig) {
-                stop_motors();
-            }
-            return true;
         }
     }
     else {
-        safety_struct.is_back_tof_trig = false;
-        safety_struct.is_front_tof_trig = false;
-
         read_front_VL53L0X();
         read_back_VL53L0X();
-        return true;
+        safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
+        safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
     }
+
+    if (safety_struct.is_back_tof_trig || safety_struct.is_front_tof_trig) {
+        stop_motors();
+    }
+    return true;
 }
 
 

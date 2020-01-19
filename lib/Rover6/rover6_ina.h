@@ -46,6 +46,7 @@ bool read_INA219()
     if (CURRENT_TIME - ina_report_timer < INA_SAMPLERATE_DELAY_MS) {
         return false;
     }
+    ina_report_timer = CURRENT_TIME;
     ina219_shuntvoltage = ina219.getShuntVoltage_mV();
     ina219_busvoltage = ina219.getBusVoltage_V();
     ina219_current_mA = ina219.getCurrent_mA();
