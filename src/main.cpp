@@ -179,28 +179,32 @@ void callback_ir()
         case 0xa05f:
             println_info("IR: ^");
             // set_motors(255, 255);
-            drive_forward(300.0);  // cm per s
+            // drive_forward(300.0);  // cm per s
+            MAIN_MENU_SELECT_INDEX -= 1;
+            draw_main_menu();
             break;  // ^
         case 0x609f: println_info("IR: MODE"); break;  // MODE
         case 0x10ef:
             println_info("IR: <");
             // set_motors(-100, 100);
-            rotate(100.0);  // cm per s
+            // rotate(100.0);  // cm per s
             break;  // <
         case 0x906f:
             println_info("IR: ENTER");
-            stop_motors();
+            // stop_motors();
             break;  // ENTER
         case 0x50af:
             println_info("IR: >");
             // set_motors(100, -100);
-            rotate(-100.0);  // cm per s
+            // rotate(-100.0);  // cm per s
             break;  // >
         case 0x30cf: println_info("IR: 0 10+"); break;  // 0 10+
         case 0xb04f:
             println_info("IR: v");
             // set_motors(-255, -255);
-            drive_forward(-300.0);  // cm per s
+            // drive_forward(-300.0);  // cm per s
+            MAIN_MENU_SELECT_INDEX += 1;
+            draw_main_menu();
             break;  // v
         case 0x708f: println_info("IR: Del"); break;  // Del
         case 0x08f7: println_info("IR: 1"); break;  // 1
@@ -366,7 +370,6 @@ void update_display()
     }
     tft_display_timer = CURRENT_TIME;
 
-    draw_main_menu();
 
 }
 
@@ -420,6 +423,8 @@ void setup()
     set_back_tilter(BACK_TILTER_UP);
     center_camera();
     tft.fillScreen(ST77XX_BLACK);
+    init_menus();
+    draw_main_menu();
 }
 
 void loop() {

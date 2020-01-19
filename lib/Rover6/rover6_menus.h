@@ -11,13 +11,15 @@
 
 
 unsigned int ROW_SIZE = 10;
+unsigned int BORDER_OFFSET_W = 3;
+unsigned int BORDER_OFFSET_H = 1;
 
 void init_menus()
 {
     int16_t  x1, y1;
     uint16_t w, h;
     tft.getTextBounds("A", 0, 0, &x1, &y1, &w, &h);
-    ROW_SIZE = h + 3;
+    ROW_SIZE = h + BORDER_OFFSET_H;
 }
 
 void draw_sensor_data()
@@ -92,25 +94,60 @@ void draw_sensor_data()
     tft.println("        ");
 }
 
+const char* const MAIN_MENU_ENTRIES[] PROGMEM = {
+    "Entry 1",
+    "Entry 2",
+    "Entry 3",
+    "Entry 4",
+    "Entry 5",
+    "Entry 6",
+    "Entry 7",
+    "Entry 8",
+    "Entry 9",
+    "Entry 10",
+    "Entry 11",
+    "Entry 12"
+};
+#define MAIN_MENU_ENTRIES_LEN 12
 
+bool MAIN_MENU_VISIBLE = false;
+int MAIN_MENU_SELECT_INDEX = 0;
+int PREV_MAIN_MENU_SELECT_INDEX = -1;
 void draw_main_menu()
 {
-    tft.drawRect(0, 0, tft.width(), ROW_SIZE, ST7735_BLUE);
-    draw_sensor_data();
+    MAIN_MENU_VISIBLE = true;
+    if (MAIN_MENU_SELECT_INDEX < 0) {
+        MAIN_MENU_SELECT_INDEX = 0;
+    }
+    if (MAIN_MENU_SELECT_INDEX >= MAIN_MENU_ENTRIES_LEN) {
+        MAIN_MENU_SELECT_INDEX = MAIN_MENU_ENTRIES_LEN - 1;
+    }
+    
+    // draw_sensor_data();
 
-    // tft.println("Entry 1");
-    // tft.println("Entry 2");
-    // tft.println("Entry 3");
-    // tft.println("Entry 4");
-    // tft.println("Entry 5");
-    // tft.println("Entry 6");
-    // tft.println("Entry 7");
-    // tft.println("Entry 8");
-    // tft.println("Entry 9");
-    // tft.println("Entry 10");
-    // tft.println("Entry 11");
-    // tft.println("Entry 12");
-    // tft.println("Entry 13");
-    // tft.println("Entry 14");
-    // tft.println("Entry 15");
+    // tft.fillScreen(ST7735_BLACK);
+    if (PREV_MAIN_MENU_SELECT_INDEX >= 0)
+    {
+        tft.drawRect(
+            BORDER_OFFSET_W - 1,
+            ROW_SIZE * PREV_MAIN_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1,
+            tft.width() - BORDER_OFFSET_W - 1,
+            ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_BLACK
+        );
+    }
+    
+    for (size_t i = 0; i < MAIN_MENU_ENTRIES_LEN; i++)
+    {
+        tft.setCursor(BORDER_OFFSET_W, ROW_SIZE * i + BORDER_OFFSET_H);
+        tft.print(MAIN_MENU_ENTRIES[i]);
+    }
+
+    tft.drawRect(
+        BORDER_OFFSET_W - 1,
+        ROW_SIZE * MAIN_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1,
+        tft.width() - BORDER_OFFSET_W - 1,
+        ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_BLUE
+    );
+
+    PREV_MAIN_MENU_SELECT_INDEX = MAIN_MENU_SELECT_INDEX;
 }
