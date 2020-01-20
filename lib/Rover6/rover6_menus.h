@@ -1,3 +1,7 @@
+#ifndef ROVER6_MENUS
+#define ROVER6_MENUS
+
+
 #include "rover6_general.h"
 #include "rover6_serial.h"
 #include "rover6_tft.h"
@@ -8,6 +12,7 @@
 #include "rover6_motors.h"
 #include "rover6_servos.h"
 #include "rover6_tof.h"
+#include "rover6_pid.h"
 
 
 unsigned int ROW_SIZE = 10;
@@ -102,15 +107,12 @@ uint8_t topbar_rpi_icon_y = TOP_BAR_H / 2;
 uint8_t topbar_rpi_icon_r = (TOP_BAR_H - 4) / 2;
 void draw_rpi_icon()
 {
-    if (DATA_SERIAL) {
-        if (rover_state.is_reporting_enabled) {
-            tft.fillCircle(topbar_rpi_icon_x, topbar_rpi_icon_y, topbar_rpi_icon_r, ST77XX_GREEN);
-            return;
-        }
-        tft.fillCircle(topbar_rpi_icon_x, topbar_rpi_icon_y, topbar_rpi_icon_r, ST77XX_YELLOW);
-        return;
+    if (rover_state.is_reporting_enabled) {
+        tft.fillCircle(topbar_rpi_icon_x, topbar_rpi_icon_y, topbar_rpi_icon_r, ST77XX_GREEN);
     }
-    tft.fillCircle(topbar_rpi_icon_x, topbar_rpi_icon_y, topbar_rpi_icon_r, ST77XX_RED);
+    else {
+        tft.fillCircle(topbar_rpi_icon_x, topbar_rpi_icon_y, topbar_rpi_icon_r, ST77XX_RED);
+    }
 }
 
 uint8_t topbar_active_icon_x = 30;
@@ -120,9 +122,10 @@ void draw_active_icon()
 {
     if (rover_state.is_active) {
         tft.fillCircle(topbar_active_icon_x, topbar_active_icon_y, topbar_active_icon_r, ST77XX_GREEN);
-        return;
     }
-    tft.fillCircle(topbar_active_icon_x, topbar_active_icon_y, topbar_active_icon_r, ST77XX_RED);
+    else {
+        tft.fillCircle(topbar_active_icon_x, topbar_active_icon_y, topbar_active_icon_r, ST77XX_RED);
+    }
 }
 
 void draw_datestr()
@@ -146,8 +149,8 @@ String battery_mA_menu_str;
 String battery_V_menu_str;
 void draw_battery()
 {
-    battery_mA_menu_str = String(ina219_current_mA) + "mA";
-    battery_V_menu_str = String(ina219_loadvoltage) + "V";
+    battery_mA_menu_str = "  " + String((int)ina219_current_mA) + "mA";
+    battery_V_menu_str = "  " + String(ina219_loadvoltage) + "V";
     int16_t  x1, y1;
     uint16_t w, h;
     tft.getTextBounds(battery_mA_menu_str, 0, 0, &x1, &y1, &w, &h);
@@ -161,10 +164,10 @@ void draw_battery()
 
 void draw_topbar()
 {
+    draw_battery();
     draw_rpi_icon();
     draw_active_icon();
     draw_datestr();
-    draw_battery();
 }
 
 // 
@@ -253,7 +256,8 @@ int16_t imu_draw_y0 = 0;
 int16_t imu_draw_x1 = 0;
 int16_t imu_draw_y1 = 0;
 double imu_draw_prev_angle = 0.0;
-void draw_imu_menu() {
+void draw_imu_menu()
+{
     tft.setCursor(BORDER_OFFSET_W, TOP_BAR_H + 5); tft.println("X: " + String(orientationData.orientation.x) + "   ");
     tft.setCursor(BORDER_OFFSET_W, ROW_SIZE + TOP_BAR_H + 5); tft.println("Y: " + String(orientationData.orientation.y) + "   ");
     tft.setCursor(BORDER_OFFSET_W, ROW_SIZE * 2 + TOP_BAR_H + 5); tft.println("Z: " + String(orientationData.orientation.z) + "   ");
@@ -278,6 +282,30 @@ void draw_imu_menu() {
 }
 
 
+// 
+// Motor menu
+// 
+
+
+void drive_rover_forward(double speed_cps)
+{
+    update_setpointA(speed_cps);  // cm per s
+    update_setpointB(speed_cps);  // cm per s
+}
+
+void rotate_rover(double speed_cps)
+{
+    update_setpointA(speed_cps);  // cm per s
+    update_setpointB(-speed_cps);  // cm per s
+}
+
+void draw_motors_menu()
+{
+    tft.setCursor(BORDER_OFFSET_W, TOP_BAR_H + 5); tft.println("A: " + String(encA_pos) + "   ");
+    tft.setCursor(BORDER_OFFSET_W, ROW_SIZE + TOP_BAR_H + 5); tft.println("B: " + String(encB_pos) + "   ");
+    tft.setCursor(BORDER_OFFSET_W, ROW_SIZE * 2 + TOP_BAR_H + 5); tft.println("sA: " + String(enc_speedA) + "   ");
+    tft.setCursor(BORDER_OFFSET_W, ROW_SIZE * 3 + TOP_BAR_H + 5); tft.println("sB: " + String(enc_speedB) + "   ");
+}
 
 // 
 // Menu events
@@ -286,39 +314,49 @@ void draw_imu_menu() {
 void down_menu_event() {
     switch (DISPLAYED_MENU_INDEX) {
         case MAIN_MENU_INDEX: MAIN_MENU_SELECT_INDEX += 1; break;
+        case MOTORS_MENU_INDEX: drive_rover_forward(-900.0); break;
     }
 }
 
 void up_menu_event() {
     switch (DISPLAYED_MENU_INDEX) {
         case MAIN_MENU_INDEX: MAIN_MENU_SELECT_INDEX -= 1; break;
+        case MOTORS_MENU_INDEX: drive_rover_forward(900.0); break;
     }
 }
 
 void left_menu_event() {
-
+    switch (DISPLAYED_MENU_INDEX) {
+        case MOTORS_MENU_INDEX: rotate_rover(-450.0); break;
+        // add new menu entry callbacks (if needed)
+    }
 }
 
 void right_menu_event() {
-
+    switch (DISPLAYED_MENU_INDEX) {
+        case MOTORS_MENU_INDEX: rotate_rover(450.0); break;
+        // add new menu entry callbacks (if needed)
+    }
 }
 
 void enter_menu_event() {
     switch (DISPLAYED_MENU_INDEX) {
         case MAIN_MENU_INDEX: DISPLAYED_MENU_INDEX = MAIN_MENU_SELECT_INDEX; break;
+        case MOTORS_MENU_INDEX: drive_rover_forward(0.0); break;
+        // add new menu entry callbacks (if needed)
     }
 }
 void back_menu_event() {
     if (DISPLAYED_MENU_INDEX != MAIN_MENU_INDEX) {
         DISPLAYED_MENU_INDEX = MAIN_MENU_INDEX;
     }
-    println_info("DISPLAYED_MENU_INDEX: %d", DISPLAYED_MENU_INDEX);
 }
 
 void screen_change_event() {
     switch (DISPLAYED_MENU_INDEX) {
         case MAIN_MENU_INDEX: PREV_MAIN_MENU_SELECT_INDEX = -1; break;  // force a redraw of the menu list when switching
         case IMU_MENU_INDEX: imu_draw_prev_angle += 1; break;  // force compass redraw
+        // add new menu entry callbacks (if needed)
     }
 }
 
@@ -331,8 +369,12 @@ void draw_menus()
     switch (DISPLAYED_MENU_INDEX) {
         case MAIN_MENU_INDEX: draw_main_menu(); break;
         case IMU_MENU_INDEX: draw_imu_menu(); break;
+        case MOTORS_MENU_INDEX: draw_motors_menu(); break;
+        // add new menu entry callbacks
     }
     PREV_DISPLAYED_MENU_INDEX = DISPLAYED_MENU_INDEX;
 
     draw_topbar();
 }
+
+#endif  // ROVER6_MENUS
