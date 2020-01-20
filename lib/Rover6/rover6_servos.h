@@ -37,12 +37,12 @@ int servo_default_positions[NUM_SERVOS];
 #define BACK_TILTER_UP 70
 #define BACK_TILTER_DOWN 180
 
-#define CAMERA_PAN_UP 90
+#define CAMERA_PAN_RIGHT 90
 #define CAMERA_PAN_CENTER 43
-#define CAMERA_PAN_DOWN 0
-#define CAMERA_TILT_LEFT 0
+#define CAMERA_PAN_LEFT 0
+#define CAMERA_TILT_UP 0
 #define CAMERA_TILT_CENTER 105
-#define CAMERA_TILT_RIGHT 150
+#define CAMERA_TILT_DOWN 150
 
 
 #define FRONT_TILTER_DEFAULT FRONT_TILTER_UP
@@ -75,13 +75,13 @@ void setup_servos()
 
     servo_max_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_DOWN;
     servo_max_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_DOWN;
-    servo_max_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_UP;
-    servo_max_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_RIGHT;
+    servo_max_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_RIGHT;
+    servo_max_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_DOWN;
     
     servo_max_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_UP;
     servo_max_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_UP;
-    servo_max_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_DOWN;
-    servo_max_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_LEFT;
+    servo_max_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_LEFT;
+    servo_max_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_UP;
 
     servo_default_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_UP;
     servo_default_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_UP;
@@ -144,7 +144,7 @@ int get_servo(uint8_t n) {
 }
 
 void report_servo_pos() {
-    print_data("servo", "ldddddddddddddddd", millis(),
+    print_data("servo", "ldddddddddddddddd", CURRENT_TIME,
         servo_positions[0], servo_positions[1], servo_positions[2], servo_positions[3],
         servo_positions[4], servo_positions[5], servo_positions[6], servo_positions[7],
         servo_positions[8], servo_positions[9], servo_positions[10], servo_positions[11],

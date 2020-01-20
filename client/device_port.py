@@ -5,6 +5,13 @@ import logging
 from default_params import *
 
 
+class DevicePortWriteException(Exception):
+    pass
+
+class DevicePortReadException(Exception):
+    pass
+
+
 class DevicePort:
     def __init__(self, address, log_level=logging.DEBUG, device=None, start_time=None, first_packet="", whoiam="", baud=DEFAULT_RATE):
         """
@@ -99,7 +106,7 @@ class DevicePort:
 
                 # return None if read failed
                 if packet is None:
-                    raise RuntimeError(
+                    raise DevicePortReadException(
                         "Serial read failed for address '%s'... Board never signalled ready" % self.address)
 
                 # parse received packet
@@ -128,12 +135,12 @@ class DevicePort:
             # return None if operation timed out
             if (time.time() - protocol_start_time) > protocol_timeout:
                 if ask_packet:
-                    raise RuntimeError(
+                    raise DevicePortReadException(
                         "Didn't receive response for packet '%s' on address '%s'. "
                         "Operation timed out after %ss." % (
                             ask_packet, self.address, protocol_timeout))
                 else:
-                    raise RuntimeError(
+                    raise DevicePortReadException(
                         "Didn't receive response waiting for packet '%s' on address '%s'. "
                         "Operation timed out after %ss" % (
                             recv_packet_header, self.address, protocol_timeout))
@@ -143,6 +150,10 @@ class DevicePort:
     def write(self, packet):
         """Write a string. "packet" should not have a new line in it. This is sent for you."""
         data = bytearray(str(packet) + PACKET_END, 'ascii')
+        if not self.device:
+            raise DevicePortWriteException("Device '%s' was never opened for writing" % self.address)
+        if not self.is_open():
+            raise DevicePortWriteException("Device '%s' is not open for writing" % self.address)
         self.device.write(data)
 
     def in_waiting(self):

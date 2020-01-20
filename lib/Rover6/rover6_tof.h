@@ -117,7 +117,7 @@ void report_VL53L0X()
     if (!rover_state.is_reporting_enabled) {
         return;
     }
-    print_data("lox", "ldddddd", millis(),
+    print_data("lox", "ldddddd", CURRENT_TIME,
         measure1.RangeMilliMeter, measure2.RangeMilliMeter,
         measure1.RangeStatus, measure2.RangeStatus,
         lox1.Status, lox2.Status  // lookup table in vl53l0x_def.h line 133

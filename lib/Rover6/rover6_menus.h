@@ -177,29 +177,27 @@ void draw_topbar()
 #define MAIN_MENU_INDEX -1
 #define IMU_MENU_INDEX 0
 #define MOTORS_MENU_INDEX 1
-#define TURRET_MENU_INDEX 2
-#define SAFETY_MENU_INDEX 3
-#define HOTSPOT_MENU_INDEX 4
-#define WIFI_MENU_INDEX 5
-#define PICTURE_MENU_INDEX 6
-#define LIDAR_MENU_INDEX 7
-#define SHUTDOWN_MENU_INDEX 8
+#define SAFETY_MENU_INDEX 2
+#define HOTSPOT_MENU_INDEX 3
+#define WIFI_MENU_INDEX 4
+#define CAMERA_MENU_INDEX 5
+#define LIDAR_MENU_INDEX 6
+#define SHUTDOWN_MENU_INDEX 7
 
 const char* const MAIN_MENU_ENTRIES[] PROGMEM = {
     "IMU",
     "Motors",
-    "Camera turret",
     "Safety Systems",
     "Hotspot",
     "Show Wifi Settings",
-    "Take a picture",
+    "Camera",
     "LIDAR",
     "Shutdown/restart"
     // "Entry 10",
     // "Entry 11",
     // "Entry 12"
 };
-const int MAIN_MENU_ENTRIES_LEN = 9;
+const int MAIN_MENU_ENTRIES_LEN = 8;
 
 int DISPLAYED_MENU_INDEX = -1;  // -1 is main menu. The rest is MAIN_MENU_ENTRIES
 int MAIN_MENU_SELECT_INDEX = 0;
@@ -255,6 +253,8 @@ int16_t imu_draw_x0 = 0;
 int16_t imu_draw_y0 = 0;
 int16_t imu_draw_x1 = 0;
 int16_t imu_draw_y1 = 0;
+int16_t imu_draw_center_x = 0;
+int16_t imu_draw_center_y = 0;
 double imu_draw_prev_angle = 0.0;
 void draw_imu_menu()
 {
@@ -268,17 +268,21 @@ void draw_imu_menu()
     imu_draw_prev_angle = orientationData.orientation.x;
 
     tft.drawLine(imu_draw_x0, imu_draw_y0, imu_draw_x1, imu_draw_y1, ST7735_BLACK);
+    tft.drawCircle(imu_draw_x1, imu_draw_y1, 5, ST7735_BLACK);
 
     double angle_rad = 2 * PI - orientationData.orientation.x * PI / 180.0 - PI / 2;
-    double x = IMU_DRAW_COMPASS_RADIUS * cos(angle_rad);
-    double y = IMU_DRAW_COMPASS_RADIUS * sin(angle_rad);
+    double x = IMU_DRAW_COMPASS_RADIUS * cos(angle_rad) / 2;
+    double y = IMU_DRAW_COMPASS_RADIUS * sin(angle_rad) / 2;
 
-    imu_draw_x0 = tft.width() / 2;
-    imu_draw_y0 = tft.height() / 2;
-    imu_draw_x1 = imu_draw_x0 + (int16_t)x;
-    imu_draw_y1 = imu_draw_y0 + (int16_t)y;
+    imu_draw_center_x = tft.width() / 2;
+    imu_draw_center_y = tft.height() / 2;
+    imu_draw_x0 = imu_draw_center_x - (int16_t)x;
+    imu_draw_y0 = imu_draw_center_y - (int16_t)y;
+    imu_draw_x1 = imu_draw_center_x + (int16_t)x;
+    imu_draw_y1 = imu_draw_center_y + (int16_t)y;
 
     tft.drawLine(imu_draw_x0, imu_draw_y0, imu_draw_x1, imu_draw_y1, ST7735_WHITE);
+    tft.drawCircle(imu_draw_x1, imu_draw_y1, 5, ST7735_WHITE);
 }
 
 
@@ -301,10 +305,22 @@ void rotate_rover(double speed_cps)
 
 void draw_motors_menu()
 {
-    tft.setCursor(BORDER_OFFSET_W, TOP_BAR_H + 5); tft.println("A: " + String(encA_pos) + "   ");
-    tft.setCursor(BORDER_OFFSET_W, ROW_SIZE + TOP_BAR_H + 5); tft.println("B: " + String(encB_pos) + "   ");
-    tft.setCursor(BORDER_OFFSET_W, ROW_SIZE * 2 + TOP_BAR_H + 5); tft.println("sA: " + String(enc_speedA) + "   ");
-    tft.setCursor(BORDER_OFFSET_W, ROW_SIZE * 3 + TOP_BAR_H + 5); tft.println("sB: " + String(enc_speedB) + "   ");
+    int y_offset = TOP_BAR_H + 5;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("A: " + String(encA_pos) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("B: " + String(encB_pos) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("sA: " + String(enc_speedA) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("sB: " + String(enc_speedB) + "   ");  // y_offset += ROW_SIZE;
+}
+
+// 
+// Safety menu
+// 
+void draw_safety_menu()
+{
+    int y_offset = TOP_BAR_H + 5;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("safe: " + String(is_safe_to_move()) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("front: " + String(is_obstacle_in_front()) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("back: " + String(is_obstacle_in_back()) + "   ");  // y_offset += ROW_SIZE;
 }
 
 // 
@@ -370,6 +386,7 @@ void draw_menus()
         case MAIN_MENU_INDEX: draw_main_menu(); break;
         case IMU_MENU_INDEX: draw_imu_menu(); break;
         case MOTORS_MENU_INDEX: draw_motors_menu(); break;
+        case SAFETY_MENU_INDEX: draw_safety_menu(); break;
         // add new menu entry callbacks
     }
     PREV_DISPLAYED_MENU_INDEX = DISPLAYED_MENU_INDEX;

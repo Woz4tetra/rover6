@@ -69,6 +69,23 @@ bool is_obstacle_in_back() {
     return safety_struct.is_back_tof_trig;
 }
 
+void report_structs() {
+    print_data("safe", "ldddddddddddd", CURRENT_TIME,
+        safety_struct.is_left_bumper_trig,
+        safety_struct.is_right_bumper_trig,
+        safety_struct.is_front_tof_trig,
+        safety_struct.is_back_tof_trig,
+        safety_struct.is_front_tof_ok,
+        safety_struct.is_back_tof_ok,
+        safety_struct.are_servos_active,
+        safety_struct.are_motors_active,
+        safety_struct.voltage_ok,
+        rover_state.is_active,
+        rover_state.is_reporting_enabled,
+        rover_state.is_speed_pid_enabled
+    );
+}
+
 // RPi connection
 uint32_t prev_date_str_update = 0;
 String rpi_date_str = "12:00:00AM";

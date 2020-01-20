@@ -67,7 +67,7 @@ void report_BNO055()
 
     print_data(
         "bno", "lfffffffff",
-        millis(),
+        CURRENT_TIME,
         orientationData.orientation.x,
         orientationData.orientation.y,
         orientationData.orientation.z,

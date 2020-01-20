@@ -73,7 +73,7 @@ void report_encoders()
     if (!rover_state.is_reporting_enabled) {
         return;
     }
-    print_data("enc", "lllff", millis(), encA_pos, encB_pos, enc_speedA, enc_speedB);
+    print_data("enc", "lllff", CURRENT_TIME, encA_pos, encB_pos, enc_speedA, enc_speedB);
 }
 
 #endif  // ROVER6_ENCODERS
