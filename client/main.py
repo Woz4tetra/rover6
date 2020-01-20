@@ -27,11 +27,16 @@ def main():
 
     prev_open_attempt_time = time.time()
     try:
+        rover.set_k(0.40, 0.0, 0.01)
+        rover.set_safety_thresholds(10, 10, 1000)
+
         while True:
             if not device:
-                if time.time() - prev_open_attempt_time > 1000:
+                if time.time() - prev_open_attempt_time > 1:
                     device = open_joystick()
                     prev_open_attempt_time = time.time()
+                    if device:
+                        print("Joystick opened")
                 else:
                     time.sleep(1)
             else:

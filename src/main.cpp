@@ -119,16 +119,11 @@ float pid_k_parse_float = 0.0;
 int servo_num_parse_int = 0;
 int servo_pos_parse_int = 0;
 int lox_parse_int = 0;
-void check_serial()
+// method header defined in rover6_serial.h
+void process_serial_packet(String packet)
 {
-    if (!DATA_SERIAL.available()) {
-        return;
-    }
-    data_buffer = DATA_SERIAL.readStringUntil('\n');
-    print_info("data_buffer: ");
-    DATA_SERIAL.println(data_buffer);
-    // char command = DATA_SERIAL.read();
-    char command = data_buffer.charAt(0);
+    println_info("current packet: '%s'", packet.c_str());
+    char command = packet.charAt(0);
 
     if (command == '>') {
         set_active(true);
@@ -157,30 +152,30 @@ void check_serial()
         switch (command) {
             case 't':
                 prev_date_str_update = CURRENT_TIME;
-                rpi_date_str = data_buffer.substring(1);
+                rpi_date_str = packet.substring(1);
                 break;
             case 'm':
-                if (data_buffer.length() < 3) {
+                if (packet.length() < 3) {
                     println_error("Serial input less than required length");
                     return;
                 }
                 
-                // segment_int = data_buffer.substring(2).toInt();
-                setpoint_parse_float = data_buffer.substring(2).toFloat();
-                switch (data_buffer.charAt(1)) {
+                // segment_int = packet.substring(2).toInt();
+                setpoint_parse_float = packet.substring(2).toFloat();
+                switch (packet.charAt(1)) {
                     case 'a': update_setpointA(setpoint_parse_float); break;  // set_motors(segment_int, motorA.getSpeed()); break;
                     case 'b': update_setpointB(setpoint_parse_float); break;  // set_motors(motorB.getSpeed(), segment_int); break;
-                    // case 'p': set_speed_pid(data_buffer.charAt(2) == '1' ? true : false); break;
+                    // case 'p': set_speed_pid(packet.charAt(2) == '1' ? true : false); break;
                 }
                 break;
             case 'k':
-                if (data_buffer.length() < 4) {
+                if (packet.length() < 4) {
                     println_error("Serial input less than required length");
                     return;
                 }
-                pid_k_parse_float = data_buffer.substring(3).toFloat();
-                if (data_buffer.charAt(1) == 'a') {
-                    switch (data_buffer.charAt(2)) {
+                pid_k_parse_float = packet.substring(3).toFloat();
+                if (packet.charAt(1) == 'a') {
+                    switch (packet.charAt(2)) {
                         case 'p':
                             set_KAs(pid_k_parse_float, Ki_A, Kd_A);
                             break;
@@ -192,8 +187,8 @@ void check_serial()
                             break;
                     }
                 }
-                else if (data_buffer.charAt(1) == 'b') {
-                    switch (data_buffer.charAt(2)) {
+                else if (packet.charAt(1) == 'b') {
+                    switch (packet.charAt(2)) {
                         case 'p':
                             set_KBs(pid_k_parse_float, Ki_B, Kd_B);
                             break;
@@ -208,35 +203,55 @@ void check_serial()
                 break;
 
             case 's':
-                if (data_buffer.length() < 5) {
+                if (packet.length() < 2) {
                     println_error("Serial input less than required length");
                     return;
                 }
-                switch (data_buffer.charAt(1))
+                switch (packet.charAt(1))
                 {
                     case 't': report_servo_pos(); break;
                     case 'p': 
-                        servo_num_parse_int = data_buffer.substring(2, 4).toInt();
-                        servo_pos_parse_int = data_buffer.substring(4).toInt();
+                        if (packet.length() < 5) {
+                            println_error("Serial input less than required length");
+                            return;
+                        }
+                        servo_num_parse_int = packet.substring(2, 4).toInt();
+                        servo_pos_parse_int = packet.substring(4).toInt();
+                        println_info("Setting servo %d: %d", servo_num_parse_int, servo_pos_parse_int);
                         set_servo(servo_num_parse_int, servo_pos_parse_int);
                         break;
                     case 'd':
-                        servo_num_parse_int = data_buffer.substring(0).toInt();
+                        if (packet.length() < 4) {
+                            println_error("Serial input less than required length");
+                            return;
+                        }
+                        servo_num_parse_int = packet.substring(0).toInt();
                         set_servo(servo_num_parse_int);
                         break;
                 }
                 break;
 
             case 'l':
-                if (data_buffer.length() < 3) {
+                if (packet.length() < 4) {
                     println_error("Serial input less than required length");
                     return;
                 }
-                lox_parse_int = data_buffer.substring(2).toInt();
-                switch (data_buffer.charAt(1))
+                lox_parse_int = packet.substring(3).toInt();
+                switch (packet.charAt(1))
                 {
-                    case 'u': LOX_OBSTACLE_UPPER_THRESHOLD_MM = lox_parse_int; break;
-                    case 'l': LOX_OBSTACLE_LOWER_THRESHOLD_MM = lox_parse_int; break;
+                    case 'u': 
+                        switch (packet.charAt(2)) {
+                            case 'f': LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM = lox_parse_int; break;
+                            case 'b': LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM = lox_parse_int; break;
+                        }
+                        break;
+
+                    case 'l':
+                        switch (packet.charAt(2)) {
+                            case 'f': LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM = lox_parse_int; break;
+                            case 'b': LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = lox_parse_int; break;
+                        }
+                        break;
                     default: break;
                 }
             default: break;
@@ -310,7 +325,7 @@ void setup()
 void loop() {
     // current_time = millis();
 
-    check_serial();
+    read_all_serial();
     report_data();
     update_display();
     update_speed_pid();

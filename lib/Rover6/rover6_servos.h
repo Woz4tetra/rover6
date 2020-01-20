@@ -78,10 +78,10 @@ void setup_servos()
     servo_max_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_RIGHT;
     servo_max_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_DOWN;
     
-    servo_max_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_UP;
-    servo_max_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_UP;
-    servo_max_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_LEFT;
-    servo_max_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_UP;
+    servo_min_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_UP;
+    servo_min_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_UP;
+    servo_min_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_LEFT;
+    servo_min_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_UP;
 
     servo_default_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_UP;
     servo_default_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_UP;
@@ -105,10 +105,11 @@ void set_servos_active(bool active)
         return;
     }
     safety_struct.are_servos_active = active;
-    if (active) {  // set servos to low power
+    if (active) {  // bring servos out of active mode
         servos.wakeup();
+        set_servos_default();
     }
-    else {  // bring servos out of active mode
+    else {  // set servos to low power
         servos.sleep();
     }
 }
@@ -116,6 +117,9 @@ void set_servos_active(bool active)
 
 void set_servo(uint8_t n, int angle)
 {
+    if (!(0 <= n && n < NUM_SERVOS)) {
+        return;
+    }
     if (angle < servo_min_positions[n]) {
         angle = servo_min_positions[n];
     }

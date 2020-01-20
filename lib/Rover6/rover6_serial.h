@@ -8,7 +8,51 @@
 char SERIAL_MSG_BUFFER[SERIAL_MSG_BUFFER_SIZE];
 #define PACKET_END '\n'
 bool is_reporting_enabled = false;
-String data_buffer;
+String data_buffer = "";
+String prev_packet = "";
+String current_packet = "";
+
+void process_serial_packet(String packet);
+
+
+void read_all_serial()
+{
+    if (!DATA_SERIAL.available()) {
+        return;
+    }
+    size_t counter = 0;
+    while (DATA_SERIAL.available()) {
+        current_packet = DATA_SERIAL.readStringUntil('\n');
+        process_serial_packet(current_packet);
+        counter++;
+        if (counter > 20) {
+            break;
+        }
+    }
+    // char c;
+    // size_t index = 0;
+    // current_packet = prev_packet;
+    // prev_packet = "";
+    // while (DATA_SERIAL.available()) {
+    //     c = DATA_SERIAL.read();
+    //     if (c == '\n') {
+    //         process_serial_packet(current_packet);
+    //         current_packet = "";
+    //     }
+    //     else {
+    //         current_packet += String(c);
+    //     }
+    //     index++;
+
+    //     if (index > 0x100) {
+    //         break;
+    //     }
+    // }
+
+    // if (current_packet.length() > 0) {
+    //     prev_packet = current_packet;
+    // }
+}
 
 void print_data(String name, const char *formats, ...)
 {

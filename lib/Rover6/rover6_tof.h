@@ -32,8 +32,10 @@ uint32_t lox_report_timer = 0;
 #define LOX_SAMPLERATE_SLOW_DELAY_MS 1000
 unsigned int lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
 
-int LOX_OBSTACLE_UPPER_THRESHOLD_MM = 0xffff;
-int LOX_OBSTACLE_LOWER_THRESHOLD_MM = 100;
+int LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM = 0xffff;
+int LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM = 0xffff;
+int LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM = 100;
+int LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 
 void read_front_VL53L0X() {
     lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
@@ -129,7 +131,7 @@ bool does_front_tof_see_obstacle() {
         return false;
     }
     
-    return measure1.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure1.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM;
+    return measure1.RangeMilliMeter < LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM || measure1.RangeMilliMeter > LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM;
 }
 
 bool does_back_tof_see_obstacle() {
@@ -137,7 +139,7 @@ bool does_back_tof_see_obstacle() {
         return false;
     }
     
-    return measure2.RangeMilliMeter < LOX_OBSTACLE_LOWER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_OBSTACLE_UPPER_THRESHOLD_MM;
+    return measure2.RangeMilliMeter < LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM;
 }
 
 bool read_VL53L0X()

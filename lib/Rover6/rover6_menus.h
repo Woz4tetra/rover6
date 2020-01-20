@@ -171,18 +171,42 @@ void draw_topbar()
 }
 
 // 
+// Notifications
+// 
+
+
+
+// 
 // Main menu
 // 
 
-#define MAIN_MENU_INDEX -1
-#define IMU_MENU_INDEX 0
-#define MOTORS_MENU_INDEX 1
-#define SAFETY_MENU_INDEX 2
-#define HOTSPOT_MENU_INDEX 3
-#define WIFI_MENU_INDEX 4
-#define CAMERA_MENU_INDEX 5
-#define LIDAR_MENU_INDEX 6
-#define SHUTDOWN_MENU_INDEX 7
+enum menu_names {
+    MAIN_MENU,
+    IMU_MENU,
+    MOTORS_MENU,
+    SAFETY_MENU,
+    HOTSPOT_MENU,
+    WIFI_MENU,
+    CAMERA_MENU,
+    LIDAR_MENU,
+    SHUTDOWN_MENU,
+    NONE_MENU,
+    NOTIFICATION_MENU
+};
+
+const menu_names MAIN_MENU_ENUM_MAPPING[] PROGMEM = {
+    IMU_MENU,
+    MOTORS_MENU,
+    SAFETY_MENU,
+    HOTSPOT_MENU,
+    WIFI_MENU,
+    CAMERA_MENU,
+    LIDAR_MENU,
+    SHUTDOWN_MENU
+    // "Entry 10",
+    // "Entry 11",
+    // "Entry 12"
+};
 
 const char* const MAIN_MENU_ENTRIES[] PROGMEM = {
     "IMU",
@@ -199,10 +223,11 @@ const char* const MAIN_MENU_ENTRIES[] PROGMEM = {
 };
 const int MAIN_MENU_ENTRIES_LEN = 8;
 
-int DISPLAYED_MENU_INDEX = -1;  // -1 is main menu. The rest is MAIN_MENU_ENTRIES
+menu_names DISPLAYED_MENU = MAIN_MENU;
+menu_names PREV_DISPLAYED_MENU = NONE_MENU;  // for detecting screen change events
+
 int MAIN_MENU_SELECT_INDEX = 0;
 int PREV_MAIN_MENU_SELECT_INDEX = -1;
-int PREV_DISPLAYED_MENU_INDEX = -1;  // for detecting screen change events
 void draw_main_menu()
 {
     if (MAIN_MENU_SELECT_INDEX < 0) {
@@ -320,7 +345,11 @@ void draw_safety_menu()
     int y_offset = TOP_BAR_H + 5;
     tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("safe: " + String(is_safe_to_move()) + "   "); y_offset += ROW_SIZE;
     tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("front: " + String(is_obstacle_in_front()) + "   "); y_offset += ROW_SIZE;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("back: " + String(is_obstacle_in_back()) + "   ");  // y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("back: " + String(is_obstacle_in_back()) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("tof f: " + String(measure1.RangeMilliMeter) + "   ");  y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("back f: " + String(measure2.RangeMilliMeter) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr f: " + String(fsr_1_val) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr b: " + String(fsr_2_val) + "   "); // y_offset += ROW_SIZE;
 }
 
 // 
@@ -328,68 +357,75 @@ void draw_safety_menu()
 // 
 
 void down_menu_event() {
-    switch (DISPLAYED_MENU_INDEX) {
-        case MAIN_MENU_INDEX: MAIN_MENU_SELECT_INDEX += 1; break;
-        case MOTORS_MENU_INDEX: drive_rover_forward(-900.0); break;
+    switch (DISPLAYED_MENU) {
+        case MAIN_MENU: MAIN_MENU_SELECT_INDEX += 1; break;
+        case MOTORS_MENU: drive_rover_forward(-900.0); break;
+        default: break;
     }
 }
 
 void up_menu_event() {
-    switch (DISPLAYED_MENU_INDEX) {
-        case MAIN_MENU_INDEX: MAIN_MENU_SELECT_INDEX -= 1; break;
-        case MOTORS_MENU_INDEX: drive_rover_forward(900.0); break;
+    switch (DISPLAYED_MENU) {
+        case MAIN_MENU: MAIN_MENU_SELECT_INDEX -= 1; break;
+        case MOTORS_MENU: drive_rover_forward(900.0); break;
+        default: break;
     }
 }
 
 void left_menu_event() {
-    switch (DISPLAYED_MENU_INDEX) {
-        case MOTORS_MENU_INDEX: rotate_rover(-450.0); break;
+    switch (DISPLAYED_MENU) {
+        case MOTORS_MENU: rotate_rover(-450.0); break;
+        default: break;
         // add new menu entry callbacks (if needed)
     }
 }
 
 void right_menu_event() {
-    switch (DISPLAYED_MENU_INDEX) {
-        case MOTORS_MENU_INDEX: rotate_rover(450.0); break;
+    switch (DISPLAYED_MENU) {
+        case MOTORS_MENU: rotate_rover(450.0); break;
+        default: break;
         // add new menu entry callbacks (if needed)
     }
 }
 
 void enter_menu_event() {
-    switch (DISPLAYED_MENU_INDEX) {
-        case MAIN_MENU_INDEX: DISPLAYED_MENU_INDEX = MAIN_MENU_SELECT_INDEX; break;
-        case MOTORS_MENU_INDEX: drive_rover_forward(0.0); break;
+    switch (DISPLAYED_MENU) {
+        case MAIN_MENU: DISPLAYED_MENU = MAIN_MENU_ENUM_MAPPING[MAIN_MENU_SELECT_INDEX]; break;
+        case MOTORS_MENU: drive_rover_forward(0.0); break;
+        default: break;
         // add new menu entry callbacks (if needed)
     }
 }
 void back_menu_event() {
-    if (DISPLAYED_MENU_INDEX != MAIN_MENU_INDEX) {
-        DISPLAYED_MENU_INDEX = MAIN_MENU_INDEX;
+    if (DISPLAYED_MENU != MAIN_MENU) {
+        DISPLAYED_MENU = MAIN_MENU;
     }
 }
 
 void screen_change_event() {
-    switch (DISPLAYED_MENU_INDEX) {
-        case MAIN_MENU_INDEX: PREV_MAIN_MENU_SELECT_INDEX = -1; break;  // force a redraw of the menu list when switching
-        case IMU_MENU_INDEX: imu_draw_prev_angle += 1; break;  // force compass redraw
+    switch (DISPLAYED_MENU) {
+        case MAIN_MENU: PREV_MAIN_MENU_SELECT_INDEX = -1; break;  // force a redraw of the menu list when switching
+        case IMU_MENU: imu_draw_prev_angle += 1; break;  // force compass redraw
+        default: break;
         // add new menu entry callbacks (if needed)
     }
 }
 
 void draw_menus()
 {
-    if (PREV_DISPLAYED_MENU_INDEX != DISPLAYED_MENU_INDEX) {
+    if (PREV_DISPLAYED_MENU != DISPLAYED_MENU) {
         tft.fillScreen(ST7735_BLACK);
         screen_change_event();
     }
-    switch (DISPLAYED_MENU_INDEX) {
-        case MAIN_MENU_INDEX: draw_main_menu(); break;
-        case IMU_MENU_INDEX: draw_imu_menu(); break;
-        case MOTORS_MENU_INDEX: draw_motors_menu(); break;
-        case SAFETY_MENU_INDEX: draw_safety_menu(); break;
+    switch (DISPLAYED_MENU) {
+        case MAIN_MENU: draw_main_menu(); break;
+        case IMU_MENU: draw_imu_menu(); break;
+        case MOTORS_MENU: draw_motors_menu(); break;
+        case SAFETY_MENU: draw_safety_menu(); break;
+        default: break;
         // add new menu entry callbacks
     }
-    PREV_DISPLAYED_MENU_INDEX = DISPLAYED_MENU_INDEX;
+    PREV_DISPLAYED_MENU = DISPLAYED_MENU;
 
     draw_topbar();
 }

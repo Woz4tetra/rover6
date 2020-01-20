@@ -4,38 +4,8 @@ import datetime
 import threading
 from device_port import DevicePort
 
-
-class RoverConfig:
-    def __init__(self):
-        self.wheel_radius_cm = 32.5
-        self.cm_per_tick = 2.0 * math.pi * self.wheel_radius_cm / 1920.0
-        self.max_linear_speed_cps = 915.0
-        self.cps_to_cmd = 255.0 / self.max_linear_speed_cps
-        self.tof_off_axis_mm = 15.0  # how far the sensor is from the axis of rotation
-        self.tof_ground_dist_mm = 28.7  # how far the axis of rotation is off the ground 
-        self.tof_front_wall_dist_mm = 28.7  # how far the front wall is from the axis of rotation
-        self.tof_front_wall_dist_mm = 28.7  # how far the back wall is from the axis of rotation
-
-        self.kp = 1.0
-        self.ki = 0.0
-        self.kd = 0.0
-
-        self.front_ledge_y_mm = 100
-        self.front_obstacle_x_mm = 100
-        self.back_ledge_y_mm = 100
-        self.back_obstacle_x_mm = 100
-
-        self.tof_servo_upper_command = 70
-        self.tof_servo_lower_command = 180
-        self.tof_servo_upper_angle_deg = 360.0
-        self.tof_servo_lower_angle_deg = 270.0
-
-        self.front_tilter_servo_num = 0
-        self.back_tilter_servo_num = 1
-
-        self.camera_pan_servo_num = 2
-        self.camera_tilt_servo_num = 3
-
+from rover_config import RoverConfig
+import tof_obstacles
 
 class RoverClient:
 
@@ -64,7 +34,6 @@ class RoverClient:
     def __init__(self):
         self.device = DevicePort("/dev/serial0", baud=500000)
         self.data_frame = {header: None for header in self.PACKET_CODES.keys()}
-        self.config = RoverConfig()
         self.name_index_mapping = {}
         for header, names in self.PACKET_NAMES.items():
             self.name_index_mapping[header] = {name: index for index, name in enumerate(names)}
@@ -88,6 +57,7 @@ class RoverClient:
     def write(self, packet):
         if len(packet) == 0:
             return
+        print("writing: ", packet)
         self.device.write(packet)
         # time.sleep(0.001)
     
@@ -122,6 +92,8 @@ class RoverClient:
         elif identifier == "msg":
             data.append(fields[1])
             data.append(fields[2].strip())
+        else:
+            print("Unparsed packet:", packet)
         return identifier, data
 
     def update(self, should_stop):
@@ -158,6 +130,9 @@ class RoverClient:
     def on_receive(self, identifier):
         if identifier == "ina":
             print(self.get(identifier, "voltage_V"))
+        elif identifier == "servo":
+            print([self.get(identifier, str(index)) for index in range(4)])
+
 
     def get(self, identifier, name):
         return self.data_frame[identifier][1][self.name_index_mapping[identifier][name]]
@@ -167,9 +142,9 @@ class RoverClient:
         self.write("mb%0.2f" % speed_B)
 
     def set_k(self, kp, ki, kd):
-        self.config.kp = kp
-        self.config.ki = ki
-        self.config.kd = kd
+        RoverConfig.kp = kp
+        RoverConfig.ki = ki
+        RoverConfig.kd = kd
         self.write("kap%s" % float(kp))
         self.write("kai%s" % float(ki))
         self.write("kad%s" % float(kd))
@@ -182,45 +157,56 @@ class RoverClient:
 
     def set_servo(self, n, command):
         self.write("sp%02d%03d" % (int(n), int(command)))
+        time.sleep(0.01)
         self.tell_servo()
     
-    def set_obstacle_thresholds(self, lower, upper):
-        self.write("ll%s" % (int(lower))
-        self.write("lu%s" % (int(upper))
+    def set_obstacle_thresholds(self, lower, upper, direction: int):
+        # direction: 0 = front, 1 = Back
+        direction_key = 'f' if direction == 0 else 'b'
+        self.write("ll%s%s" % (direction_key, int(lower)))
+        self.write("lu%s%s" % (direction_key, int(upper)))
 
 
     def angle_rad_to_tof_servo_command(self, angle_rad):
-        angle_rad = angle_rad + math.pi * 2 if angle_rad <= 0.0  # bound to 270...360 deg
+        angle_rad = angle_rad + (math.pi * 2 if angle_rad <= 0.0 else 0)  # bound to 270...360 deg
         angle_deg = math.degrees(angle_rad)
-        y0 = self.tof_servo_lower_command
-        y1 = self.tof_servo_upper_command
-        x0 = self.tof_servo_lower_angle_deg
-        x1 = self.tof_servo_upper_angle_deg
+        y0 = RoverConfig.tof_servo_lower_command
+        y1 = RoverConfig.tof_servo_upper_command
+        x0 = RoverConfig.tof_servo_lower_angle_deg
+        x1 = RoverConfig.tof_servo_upper_angle_deg
 
         servo_command = (x1 - x0) / (y1 - y0) * (angle_deg - x0) + y0
         return int(servo_command)
 
-    def calculate_tof_thresholds(self, obstacle_x, ledge_y, buffer_x):
-        gaze_x = obstacle_x + buffer_x  # X coordinate where the sensor is pointing at
-        offset_ledge_y = ledge_y + self.config.tof_ground_dist_mm  # Y threshold relative to the axis of rotation
-        sensor_angle = math.atan2(-self.config.tof_ground_dist_mm, gaze_x)
+    def calculate_tof_thresholds(self, obstacle_x, ledge_y, buffer_x, wall_offset):
+        gaze_x = obstacle_x + buffer_x + wall_offset  # X coordinate where the sensor is pointing at
+        threshold_x = obstacle_x + wall_offset  # X coordinate where threshold starts
+        offset_ledge_y = ledge_y + RoverConfig.tof_ground_dist_mm  # Y threshold relative to the axis of rotation
+        sensor_angle = math.atan2(-RoverConfig.tof_ground_dist_mm, gaze_x)
         
         # sensor lower threshold accounting for sensor's distance away from the axis of rotation
-        obstacle_threshold = gaze_x / math.cos(sensor_angle) - self.config.tof_off_axis_mm
+        obstacle_threshold = threshold_x / math.cos(sensor_angle) - RoverConfig.tof_off_axis_mm
 
         # sensor upper threshold accounting for sensor's distance away from the axis of rotation
-        ledge_threshold = offset_ledge_y / math.sin(sensor_angle) - self.config.tof_off_axis_mm
+        ledge_threshold = abs(offset_ledge_y / math.sin(sensor_angle) - RoverConfig.tof_off_axis_mm)
 
-        servo_command = self.angle_rad_to_servo_command(sensor_angle)
+        servo_command = self.angle_rad_to_tof_servo_command(sensor_angle)
         return obstacle_threshold, ledge_threshold, servo_command
 
-    def set_front_tof_angle(self, obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm=20.0):
-        obstacle_threshold, ledge_threshold, servo_command = \
-            calculate_tof_thresholds(obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm)
+    def set_safety_thresholds(self, obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm=100.0):
+        # obstacle_threshold_x_mm: measured from the maximum point of the front or back of the robot
+        # ledge_threshold_y_mm: measured from the ground plane where the robot sits flat on the ground
+        # buffer_x_mm: x buffer distance to account for robot stopping time and update rate delay
 
-        self.set_servo(self.config.front_tilter_servo_num, servo_command)
-        self.set_servo(self.config.back_tilter_servo_num, servo_command)
-        self.set_obstacle_thresholds(obstacle_threshold, ledge_threshold)
+        tof_thresholds = tof_obstacles.get_stopping_thresholds(obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm)
+        self.set_servo(RoverConfig.front_tilter_servo_num, tof_thresholds.front_servo)
+        self.set_obstacle_thresholds(tof_thresholds.front_lower, tof_thresholds.front_upper, 0)
+        print("front:", tof_thresholds.front_lower, tof_thresholds.front_upper, tof_thresholds.front_servo)
+
+        self.set_servo(RoverConfig.back_tilter_servo_num, tof_thresholds.back_servo)
+        self.set_obstacle_thresholds(tof_thresholds.back_lower, tof_thresholds.back_upper, 1)
+        print("back:", tof_thresholds.back_lower, tof_thresholds.back_upper, tof_thresholds.back_servo)
+
 
     def __del__(self):
         self.stop()
