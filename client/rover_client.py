@@ -33,6 +33,7 @@ class RoverClient:
         for header, names in self.PACKET_NAMES.items():
             self.name_index_mapping[header] = {name: index for index, name in enumerate(names)}
         
+        self.prev_time_command_update = time.time()
         self.should_stop = False
         self.thread = threading.Thread(target=self.update, args=(lambda: self.should_stop,))
 
@@ -45,6 +46,7 @@ class RoverClient:
         self.thread.start()
     
     def stop(self):
+        self.write("[")
         self.should_stop = True
     
     def write(self, packet):
@@ -91,6 +93,10 @@ class RoverClient:
             if should_stop():
                 print("Exiting read thread")
                 return
+            
+            if time.time() - self.prev_time_command_update > 0.5:
+                self.write("t" + datetime.datetime.now().strftime("%I:%M:%S%p"))
+                self.prev_time_command_update = time.time()
 
             in_waiting = self.device.in_waiting()
             if in_waiting:

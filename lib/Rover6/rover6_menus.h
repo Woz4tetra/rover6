@@ -1,4 +1,5 @@
 #include "rover6_general.h"
+#include "rover6_serial.h"
 #include "rover6_tft.h"
 #include "rover6_bno.h"
 #include "rover6_encoders.h"
@@ -9,10 +10,12 @@
 #include "rover6_tof.h"
 
 
-
 unsigned int ROW_SIZE = 10;
 unsigned int BORDER_OFFSET_W = 3;
 unsigned int BORDER_OFFSET_H = 1;
+
+unsigned int TOP_BAR_H = 20;
+
 
 void init_menus()
 {
@@ -25,11 +28,6 @@ void init_menus()
 void draw_sensor_data()
 {
     tft.setCursor(0, 0);
-
-    tft.print(String(ina219_current_mA));
-    tft.print("mA, ");
-    tft.print(String(ina219_loadvoltage));
-    tft.println("V         ");
 
     tft.print("bno: ");
     tft.print(String(orientationData.orientation.x));
@@ -94,33 +92,127 @@ void draw_sensor_data()
     tft.println("        ");
 }
 
-const char* const MAIN_MENU_ENTRIES[] PROGMEM = {
-    "Entry 1",
-    "Entry 2",
-    "Entry 3",
-    "Entry 4",
-    "Entry 5",
-    "Entry 6",
-    "Entry 7",
-    "Entry 8",
-    "Entry 9",
-    "Entry 10",
-    "Entry 11",
-    "Entry 12"
-};
-#define MAIN_MENU_ENTRIES_LEN 12
 
-bool MAIN_MENU_VISIBLE = false;
+// 
+// Top bar
+// 
+
+uint8_t topbar_rpi_icon_x = 10;
+uint8_t topbar_rpi_icon_y = TOP_BAR_H / 2;
+uint8_t topbar_rpi_icon_r = (TOP_BAR_H - 4) / 2;
+void draw_rpi_icon()
+{
+    if (DATA_SERIAL) {
+        if (rover_state.is_reporting_enabled) {
+            tft.fillCircle(topbar_rpi_icon_x, topbar_rpi_icon_y, topbar_rpi_icon_r, ST77XX_GREEN);
+            return;
+        }
+        tft.fillCircle(topbar_rpi_icon_x, topbar_rpi_icon_y, topbar_rpi_icon_r, ST77XX_YELLOW);
+        return;
+    }
+    tft.fillCircle(topbar_rpi_icon_x, topbar_rpi_icon_y, topbar_rpi_icon_r, ST77XX_RED);
+}
+
+uint8_t topbar_active_icon_x = 30;
+uint8_t topbar_active_icon_y = topbar_rpi_icon_y;
+uint8_t topbar_active_icon_r = topbar_rpi_icon_r;
+void draw_active_icon()
+{
+    if (rover_state.is_active) {
+        tft.fillCircle(topbar_active_icon_x, topbar_active_icon_y, topbar_active_icon_r, ST77XX_GREEN);
+        return;
+    }
+    tft.fillCircle(topbar_active_icon_x, topbar_active_icon_y, topbar_active_icon_r, ST77XX_RED);
+}
+
+void draw_datestr()
+{
+    int16_t  x1, y1;
+    uint16_t w, h;
+    tft.getTextBounds(rpi_date_str, 0, 0, &x1, &y1, &w, &h);
+    tft.setCursor(tft.width() / 2 - w / 2, TOP_BAR_H / 2 - h / 2);
+    if (CURRENT_TIME - prev_date_str_update > 1000) {
+        tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
+        if (CURRENT_TIME - prev_date_str_update > 5000) {
+            tft.setTextColor(ST77XX_RED, ST77XX_BLACK);
+        }
+    }
+
+    tft.print(rpi_date_str);
+    tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+}
+
+String battery_mA_menu_str;
+String battery_V_menu_str;
+void draw_battery()
+{
+    battery_mA_menu_str = String(ina219_current_mA) + "mA";
+    battery_V_menu_str = String(ina219_loadvoltage) + "V";
+    int16_t  x1, y1;
+    uint16_t w, h;
+    tft.getTextBounds(battery_mA_menu_str, 0, 0, &x1, &y1, &w, &h);
+    tft.setCursor(tft.width() - w - 2, TOP_BAR_H / 2 - h);
+    tft.print(battery_mA_menu_str);
+
+    tft.getTextBounds(battery_V_menu_str, 0, 0, &x1, &y1, &w, &h);
+    tft.setCursor(tft.width() - w - 2, TOP_BAR_H / 2);
+    tft.print(battery_V_menu_str);
+}
+
+void draw_topbar()
+{
+    draw_rpi_icon();
+    draw_active_icon();
+    draw_datestr();
+    draw_battery();
+}
+
+// 
+// Main menu
+// 
+
+#define MAIN_MENU_INDEX -1
+#define IMU_MENU_INDEX 0
+#define MOTORS_MENU_INDEX 1
+#define TURRET_MENU_INDEX 2
+#define SAFETY_MENU_INDEX 3
+#define HOTSPOT_MENU_INDEX 4
+#define WIFI_MENU_INDEX 5
+#define PICTURE_MENU_INDEX 6
+#define LIDAR_MENU_INDEX 7
+#define SHUTDOWN_MENU_INDEX 8
+
+const char* const MAIN_MENU_ENTRIES[] PROGMEM = {
+    "IMU",
+    "Motors",
+    "Camera turret",
+    "Safety Systems",
+    "Hotspot",
+    "Show Wifi Settings",
+    "Take a picture",
+    "LIDAR",
+    "Shutdown/restart"
+    // "Entry 10",
+    // "Entry 11",
+    // "Entry 12"
+};
+const int MAIN_MENU_ENTRIES_LEN = 9;
+
+int DISPLAYED_MENU_INDEX = -1;  // -1 is main menu. The rest is MAIN_MENU_ENTRIES
 int MAIN_MENU_SELECT_INDEX = 0;
 int PREV_MAIN_MENU_SELECT_INDEX = -1;
+int PREV_DISPLAYED_MENU_INDEX = -1;  // for detecting screen change events
 void draw_main_menu()
 {
-    MAIN_MENU_VISIBLE = true;
     if (MAIN_MENU_SELECT_INDEX < 0) {
         MAIN_MENU_SELECT_INDEX = 0;
     }
     if (MAIN_MENU_SELECT_INDEX >= MAIN_MENU_ENTRIES_LEN) {
         MAIN_MENU_SELECT_INDEX = MAIN_MENU_ENTRIES_LEN - 1;
+    }
+
+    if (PREV_MAIN_MENU_SELECT_INDEX == MAIN_MENU_SELECT_INDEX) {
+        return;
     }
     
     // draw_sensor_data();
@@ -130,24 +222,117 @@ void draw_main_menu()
     {
         tft.drawRect(
             BORDER_OFFSET_W - 1,
-            ROW_SIZE * PREV_MAIN_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1,
+            ROW_SIZE * PREV_MAIN_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1 + TOP_BAR_H,
             tft.width() - BORDER_OFFSET_W - 1,
             ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_BLACK
         );
     }
     
-    for (size_t i = 0; i < MAIN_MENU_ENTRIES_LEN; i++)
+    for (int i = 0; i < MAIN_MENU_ENTRIES_LEN; i++)
     {
-        tft.setCursor(BORDER_OFFSET_W, ROW_SIZE * i + BORDER_OFFSET_H);
+        tft.setCursor(BORDER_OFFSET_W, ROW_SIZE * i + BORDER_OFFSET_H + TOP_BAR_H);
         tft.print(MAIN_MENU_ENTRIES[i]);
     }
 
     tft.drawRect(
         BORDER_OFFSET_W - 1,
-        ROW_SIZE * MAIN_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1,
+        ROW_SIZE * MAIN_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1 + TOP_BAR_H,
         tft.width() - BORDER_OFFSET_W - 1,
         ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_BLUE
     );
 
     PREV_MAIN_MENU_SELECT_INDEX = MAIN_MENU_SELECT_INDEX;
+}
+
+// 
+// IMU menu
+// 
+const double IMU_DRAW_COMPASS_RADIUS = 30;
+int16_t imu_draw_x0 = 0;
+int16_t imu_draw_y0 = 0;
+int16_t imu_draw_x1 = 0;
+int16_t imu_draw_y1 = 0;
+double imu_draw_prev_angle = 0.0;
+void draw_imu_menu() {
+    tft.setCursor(BORDER_OFFSET_W, TOP_BAR_H + 5); tft.println("X: " + String(orientationData.orientation.x) + "   ");
+    tft.setCursor(BORDER_OFFSET_W, ROW_SIZE + TOP_BAR_H + 5); tft.println("Y: " + String(orientationData.orientation.y) + "   ");
+    tft.setCursor(BORDER_OFFSET_W, ROW_SIZE * 2 + TOP_BAR_H + 5); tft.println("Z: " + String(orientationData.orientation.z) + "   ");
+
+    if (imu_draw_prev_angle == orientationData.orientation.x) {
+        return;
+    }
+    imu_draw_prev_angle = orientationData.orientation.x;
+
+    tft.drawLine(imu_draw_x0, imu_draw_y0, imu_draw_x1, imu_draw_y1, ST7735_BLACK);
+
+    double angle_rad = 2 * PI - orientationData.orientation.x * PI / 180.0 - PI / 2;
+    double x = IMU_DRAW_COMPASS_RADIUS * cos(angle_rad);
+    double y = IMU_DRAW_COMPASS_RADIUS * sin(angle_rad);
+
+    imu_draw_x0 = tft.width() / 2;
+    imu_draw_y0 = tft.height() / 2;
+    imu_draw_x1 = imu_draw_x0 + (int16_t)x;
+    imu_draw_y1 = imu_draw_y0 + (int16_t)y;
+
+    tft.drawLine(imu_draw_x0, imu_draw_y0, imu_draw_x1, imu_draw_y1, ST7735_WHITE);
+}
+
+
+
+// 
+// Menu events
+// 
+
+void down_menu_event() {
+    switch (DISPLAYED_MENU_INDEX) {
+        case MAIN_MENU_INDEX: MAIN_MENU_SELECT_INDEX += 1; break;
+    }
+}
+
+void up_menu_event() {
+    switch (DISPLAYED_MENU_INDEX) {
+        case MAIN_MENU_INDEX: MAIN_MENU_SELECT_INDEX -= 1; break;
+    }
+}
+
+void left_menu_event() {
+
+}
+
+void right_menu_event() {
+
+}
+
+void enter_menu_event() {
+    switch (DISPLAYED_MENU_INDEX) {
+        case MAIN_MENU_INDEX: DISPLAYED_MENU_INDEX = MAIN_MENU_SELECT_INDEX; break;
+    }
+}
+void back_menu_event() {
+    if (DISPLAYED_MENU_INDEX != MAIN_MENU_INDEX) {
+        DISPLAYED_MENU_INDEX = MAIN_MENU_INDEX;
+    }
+    println_info("DISPLAYED_MENU_INDEX: %d", DISPLAYED_MENU_INDEX);
+}
+
+void screen_change_event() {
+    switch (DISPLAYED_MENU_INDEX) {
+        case MAIN_MENU_INDEX: PREV_MAIN_MENU_SELECT_INDEX = -1; break;  // force a redraw of the menu list when switching
+        case IMU_MENU_INDEX: imu_draw_prev_angle += 1; break;  // force compass redraw
+    }
+}
+
+void draw_menus()
+{
+    if (PREV_DISPLAYED_MENU_INDEX != DISPLAYED_MENU_INDEX) {
+        tft.fillScreen(ST7735_BLACK);
+        screen_change_event();
+    }
+    switch (DISPLAYED_MENU_INDEX) {
+        case MAIN_MENU_INDEX: draw_main_menu(); break;
+        case IMU_MENU_INDEX: draw_imu_menu(); break;
+    }
+    PREV_DISPLAYED_MENU_INDEX = DISPLAYED_MENU_INDEX;
+
+    draw_topbar();
 }

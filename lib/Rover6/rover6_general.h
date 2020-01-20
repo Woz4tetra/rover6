@@ -69,4 +69,9 @@ bool is_obstacle_in_back() {
     return safety_struct.is_back_tof_trig;
 }
 
+// RPi connection
+uint32_t prev_date_str_update = 0;
+String rpi_date_str = "12:00:00AM";
+bool broadcasting_hotspot = false;
+
 #endif // ROVER6_GENERAL

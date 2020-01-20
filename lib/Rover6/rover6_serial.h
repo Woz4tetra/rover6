@@ -6,11 +6,9 @@
 #define DATA_SERIAL  Serial5
 #define SERIAL_MSG_BUFFER_SIZE 0xff
 char SERIAL_MSG_BUFFER[SERIAL_MSG_BUFFER_SIZE];
-const uint16_t FAST_SAMPLERATE_DELAY_MS = 10;
 #define PACKET_END '\n'
 bool is_reporting_enabled = false;
 String data_buffer;
-
 
 void print_data(String name, const char *formats, ...)
 {

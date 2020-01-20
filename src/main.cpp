@@ -178,35 +178,30 @@ void callback_ir()
         case 0x20df: println_info("IR: SETUP"); break;  // SETUP
         case 0xa05f:
             println_info("IR: ^");
-            // set_motors(255, 255);
-            // drive_forward(300.0);  // cm per s
-            MAIN_MENU_SELECT_INDEX -= 1;
-            draw_main_menu();
+            up_menu_event();
             break;  // ^
         case 0x609f: println_info("IR: MODE"); break;  // MODE
         case 0x10ef:
             println_info("IR: <");
-            // set_motors(-100, 100);
-            // rotate(100.0);  // cm per s
+            left_menu_event();
             break;  // <
         case 0x906f:
             println_info("IR: ENTER");
-            // stop_motors();
+            enter_menu_event();
             break;  // ENTER
         case 0x50af:
             println_info("IR: >");
-            // set_motors(100, -100);
-            // rotate(-100.0);  // cm per s
+            right_menu_event();
             break;  // >
         case 0x30cf: println_info("IR: 0 10+"); break;  // 0 10+
         case 0xb04f:
             println_info("IR: v");
-            // set_motors(-255, -255);
-            // drive_forward(-300.0);  // cm per s
-            MAIN_MENU_SELECT_INDEX += 1;
-            draw_main_menu();
+            down_menu_event();
             break;  // v
-        case 0x708f: println_info("IR: Del"); break;  // Del
+        case 0x708f:
+            println_info("IR: Del");
+            back_menu_event();
+            break;  // Del
         case 0x08f7: println_info("IR: 1"); break;  // 1
         case 0x8877: println_info("IR: 2"); break;  // 2
         case 0x48B7: println_info("IR: 3"); break;  // 3
@@ -278,6 +273,10 @@ void check_serial()
     }
     else {
         switch (command) {
+            case 't':
+                prev_date_str_update = CURRENT_TIME;
+                rpi_date_str = data_buffer.substring(1);
+                break;
             case 'm':
                 if (data_buffer.length() < 3) {
                     println_error("Serial input less than required length");
@@ -370,7 +369,7 @@ void update_display()
     }
     tft_display_timer = CURRENT_TIME;
 
-
+    draw_menus();
 }
 
 
@@ -424,7 +423,6 @@ void setup()
     center_camera();
     tft.fillScreen(ST77XX_BLACK);
     init_menus();
-    draw_main_menu();
 }
 
 void loop() {
