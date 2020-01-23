@@ -516,14 +516,11 @@ void draw_safety_servo_diagrams()
 
 void draw_safety_menu()
 {
-    // int y_offset = TOP_BAR_H + 5;
-    // tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("safe: " + String(is_safe_to_move()) + "   "); y_offset += ROW_SIZE;
-    // tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("front: " + String(is_obstacle_in_front()) + "   "); y_offset += ROW_SIZE;
-    // tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("back: " + String(is_obstacle_in_back()) + "   "); y_offset += ROW_SIZE;
-    // tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("tof f: " + String(measure1.RangeMilliMeter) + "   ");  y_offset += ROW_SIZE;
-    // tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("back f: " + String(measure2.RangeMilliMeter) + "   "); y_offset += ROW_SIZE;
-    // tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr f: " + String(fsr_1_val) + "   "); y_offset += ROW_SIZE;
-    // tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr b: " + String(fsr_2_val) + "   "); // y_offset += ROW_SIZE;
+    int y_offset = TOP_BAR_H + 5;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("tof f: " + String(measure1.RangeMilliMeter) + "   ");  y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("back f: " + String(measure2.RangeMilliMeter) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr f: " + String(fsr_1_val) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr b: " + String(fsr_2_val) + "   "); // y_offset += ROW_SIZE;
 
     draw_tof_sensor_bars();
     draw_safety_servo_diagrams();
