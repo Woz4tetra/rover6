@@ -39,7 +39,7 @@ void setup_BNO055()
         is_bno_setup = true;
         println_info("BNO055 initialized.");
     }
-    bno.enterNormalMode();
+    // bno.enterNormalMode();
 }
 
 bool read_BNO055()
