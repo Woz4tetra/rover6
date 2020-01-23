@@ -60,9 +60,10 @@ class Adafruit_VL53L0X
 
     VL53L0X_Error                     Status      = VL53L0X_ERROR_NONE; ///< indicates whether or not the sensor has encountered an error
 
+
+  VL53L0X_Dev_t                       *pMyDevice  = &MyDevice;
  private:
   VL53L0X_Dev_t                       MyDevice;
-  VL53L0X_Dev_t                       *pMyDevice  = &MyDevice;
   VL53L0X_Version_t                   Version;
   VL53L0X_Version_t                   *pVersion   = &Version;
   VL53L0X_DeviceInfo_t                DeviceInfo;

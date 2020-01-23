@@ -25,6 +25,8 @@ int servo_max_positions[NUM_SERVOS];
 int servo_min_positions[NUM_SERVOS];
 int servo_default_positions[NUM_SERVOS];
 
+double servo_cmd_to_angle_m = 0.0;
+
 
 #define FRONT_TILTER_SERVO_NUM 0
 #define BACK_TILTER_SERVO_NUM 1
@@ -87,6 +89,8 @@ void setup_servos()
     servo_default_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_UP;
     servo_default_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_CENTER;
     servo_default_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_CENTER;
+
+    servo_cmd_to_angle_m = (270.0 - 360.0) / ((double)servo_min_positions[BACK_TILTER_SERVO_NUM] - (double)servo_max_positions[BACK_TILTER_SERVO_NUM]);
 }
 
 
@@ -112,6 +116,11 @@ void set_servos_active(bool active)
     else {  // set servos to low power
         servos.sleep();
     }
+}
+
+
+double tilter_servo_cmd_to_angle(int command) {
+    return servo_cmd_to_angle_m * ((double)command - (double)servo_min_positions[BACK_TILTER_SERVO_NUM]) + 360.0;
 }
 
 

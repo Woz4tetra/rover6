@@ -126,20 +126,28 @@ void report_VL53L0X()
     );
 }
 
+bool is_range_status_ok(uint8_t range_status) {
+    return range_status < 4;
+}
+
 bool does_front_tof_see_obstacle() {
-    if (measure1.RangeMilliMeter == 0 || measure1.RangeStatus != 0) {
-        return false;
+    if (!is_range_status_ok(measure1.RangeStatus)) {
+        return true;
     }
-    
-    return measure1.RangeMilliMeter < LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM || measure1.RangeMilliMeter > LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM;
+    return (
+        measure1.RangeMilliMeter < LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM ||
+        measure1.RangeMilliMeter > LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM
+    );
 }
 
 bool does_back_tof_see_obstacle() {
-    if (measure2.RangeMilliMeter == 0 || measure2.RangeStatus != 0) {
-        return false;
+    if (!is_range_status_ok(measure2.RangeStatus)) {
+        return true;
     }
-    
-    return measure2.RangeMilliMeter < LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM || measure2.RangeMilliMeter > LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM;
+    return (
+        measure2.RangeMilliMeter < LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM ||
+        measure2.RangeMilliMeter > LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM
+    );
 }
 
 bool read_VL53L0X()
