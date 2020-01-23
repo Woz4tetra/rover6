@@ -36,7 +36,7 @@ double servo_cmd_to_angle_m = 0.0;
 
 #define FRONT_TILTER_UP 90
 #define FRONT_TILTER_DOWN 180
-#define BACK_TILTER_UP 70
+#define BACK_TILTER_UP 90
 #define BACK_TILTER_DOWN 180
 
 #define CAMERA_PAN_RIGHT 90

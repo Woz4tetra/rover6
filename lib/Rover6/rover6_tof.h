@@ -37,12 +37,18 @@ int LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM = 0xffff;
 int LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 int LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 
-void read_front_VL53L0X() {
-    lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
+bool read_front_VL53L0X() {
+    // lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
+    uint8_t pMeasurementDataReady = 0;
+    VL53L0X_GetMeasurementDataReady(lox1.pMyDevice, &pMeasurementDataReady);
+    return pMeasurementDataReady > 0;
 }
 
-void read_back_VL53L0X() {
-    lox2.rangingTest(&measure2, false);
+bool read_back_VL53L0X() {
+    // lox2.rangingTest(&measure2, false);
+    uint8_t pMeasurementDataReady = 0;
+    VL53L0X_GetMeasurementDataReady(lox2.pMyDevice, &pMeasurementDataReady);
+    return pMeasurementDataReady > 0;
 }
 
 
@@ -152,15 +158,17 @@ bool does_back_tof_see_obstacle() {
 
 bool read_VL53L0X()
 {
-    if (is_moving()) {
-        lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
-    }
-    else {
-        lox_samplerate_delay_ms = LOX_SAMPLERATE_SLOW_DELAY_MS;
-    }
-    if (CURRENT_TIME - lox_report_timer < lox_samplerate_delay_ms) {
-        return false;
-    }
+    // if (is_moving()) {
+    //     lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
+    // }
+    // else {
+    //     lox_samplerate_delay_ms = LOX_SAMPLERATE_SLOW_DELAY_MS;
+    // }
+    // if (CURRENT_TIME - lox_report_timer < lox_samplerate_delay_ms) {
+    //     return false;
+    // }
+
+    bool new_measurement = false;
     lox_report_timer = CURRENT_TIME;
 
     safety_struct.is_front_tof_ok = is_front_ok_VL53L0X();
@@ -168,19 +176,19 @@ bool read_VL53L0X()
 
     if (is_moving()) {
         if (is_moving_forward()) {
-            read_front_VL53L0X();
+            if (read_front_VL53L0X()) new_measurement = true;
             safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
             safety_struct.is_back_tof_trig = false;
         }
         else {
-            read_back_VL53L0X();
+            if (read_back_VL53L0X()) new_measurement = true;
             safety_struct.is_front_tof_trig = false;
             safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
         }
     }
     else {
-        read_front_VL53L0X();
-        read_back_VL53L0X();
+        if (read_front_VL53L0X()) new_measurement = true;
+        if (read_back_VL53L0X()) new_measurement = true;
         safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
         safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
     }
@@ -188,7 +196,7 @@ bool read_VL53L0X()
     if (safety_struct.is_back_tof_trig || safety_struct.is_front_tof_trig) {
         stop_motors();
     }
-    return true;
+    return new_measurement;
 }
 
 
