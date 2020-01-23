@@ -26,10 +26,18 @@ void set_active(bool active)
     set_motors_active(active);
     set_servos_active(active);
     set_speed_pid(active);
+    set_lox_active(active);
     if (!active) {
         stop_motors();
-    }
-    
+    }   
+}
+
+void shutdown() {
+    println_info("Enter low power mode!");
+    set_active(false);
+    bno.enterSuspendMode();
+    set_display_brightness(10);
+    // enter_deep_sleep();
 }
 
 void reset()
@@ -144,8 +152,11 @@ void process_serial_packet(String packet)
         reset();
     }
     else if (command == '+') {
-        if (DATA_SERIAL.read() == '!') {  // you sure you want to reset?
+        if (packet.charAt(1) == '!') {  // you sure you want to reset?
             soft_restart();
+        }
+        else if (packet.charAt(1) == '-') {  // shutdown/low power mode
+            shutdown();
         }
     }
     else {

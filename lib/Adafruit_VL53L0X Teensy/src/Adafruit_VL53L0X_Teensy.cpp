@@ -146,7 +146,8 @@ boolean Adafruit_VL53L0X::begin(uint8_t i2c_addr, boolean debug, i2c_t3 *i2c) {
           Serial.println( F( "VL53L0X: SetDeviceMode" ) );
       }
 
-      Status = VL53L0X_SetDeviceMode( pMyDevice, VL53L0X_DEVICEMODE_SINGLE_RANGING );        // Setup in single ranging mode
+    //   Status = VL53L0X_SetDeviceMode( pMyDevice, VL53L0X_DEVICEMODE_SINGLE_RANGING );        // Setup in single ranging mode
+      Status = VL53L0X_SetDeviceMode( pMyDevice, VL53L0X_DEVICEMODE_CONTINUOUS_TIMED_RANGING );
   }
 
   // Enable/Disable Sigma and Signal check

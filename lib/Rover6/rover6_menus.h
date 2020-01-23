@@ -345,37 +345,37 @@ void draw_motors_menu()
 // Safety menu
 // 
 struct safety_diagram {
-    const int w = 5;
-    const int h = 10;
+    const int w = 10;
+    const int h = 15;
     const int corner_r = 2;
     int origin_x;
     int origin_y;
     
     int bar_h = 8;
     int error_bar_w = 8;
-    uint16_t max_display_val_mm = 1000;
+    uint16_t max_display_val_mm = 500;
     uint16_t front_bar_color;
     uint16_t back_bar_color;
     int bar_max_w;
     double mm_to_pixels;
 
-    int front_bar_w;
+    int front_bar_w = 0;
     int front_bar_origin_x;
     int front_bar_origin_y;
 
-    int back_bar_w;
+    int back_bar_w = 0;
     int back_bar_origin_x;
     int back_bar_origin_y;
 
     int servo_indicator_r = 20;
     int servo_ind_ball_r = 3;
-    double front_servo_angle;
+    double front_servo_angle = -1.0;
     int front_servo_origin_x;
     int front_servo_origin_y;
     int front_servo_x;
     int front_servo_y;
 
-    double back_servo_angle;
+    double back_servo_angle = -1.0;
     int back_servo_origin_x;
     int back_servo_origin_y;
     int back_servo_x;
@@ -383,102 +383,115 @@ struct safety_diagram {
 
 } sd_vals;
 
-void draw_rover_safety_diagram()
+void init_rover_safety_diagram()
 {
+    int origin_offset_h = 25;
     sd_vals.origin_x = SCREEN_MID_W;
-    sd_vals.origin_y = SCREEN_MID_H;
+    sd_vals.origin_y = SCREEN_MID_H + origin_offset_h;
     sd_vals.front_bar_origin_x = SCREEN_MID_W + sd_vals.w / 2;
-    sd_vals.front_bar_origin_y = SCREEN_MID_H - sd_vals.bar_h / 2;
+    sd_vals.front_bar_origin_y = SCREEN_MID_H - sd_vals.bar_h / 2 + origin_offset_h;
     sd_vals.back_bar_origin_x = SCREEN_MID_W - sd_vals.w / 2;
     sd_vals.back_bar_origin_y = sd_vals.front_bar_origin_y;
 
-    sd_vals.front_servo_origin_x = SCREEN_MID_W + 40;
-    sd_vals.front_servo_origin_y = SCREEN_MID_H - 50;
-    sd_vals.back_servo_origin_x = SCREEN_MID_W - 40;
+    sd_vals.front_servo_origin_x = SCREEN_MID_W + 20;
+    sd_vals.front_servo_origin_y = SCREEN_MID_H + 40;
+    sd_vals.back_servo_origin_x = SCREEN_MID_W - 20;
     sd_vals.back_servo_origin_y = sd_vals.front_servo_origin_y;
+
+    sd_vals.front_servo_angle = -1.0;
+    sd_vals.back_servo_angle = -1.0;
 
     sd_vals.bar_max_w = tft.width() - sd_vals.front_bar_origin_x;
     sd_vals.mm_to_pixels = (double)sd_vals.bar_max_w / sd_vals.max_display_val_mm;
 
-    tft.drawRoundRect(
-        SCREEN_MID_W - sd_vals.w / 2, sd_vals.origin_y - sd_vals.h / 2,
+    tft.fillRoundRect(
+        sd_vals.origin_x - sd_vals.w / 2, sd_vals.origin_y - sd_vals.h / 2,
         sd_vals.w, sd_vals.h, sd_vals.corner_r, ST7735_WHITE
     );
-
-    tft.drawFastHLine(sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y, sd_vals.servo_indicator_r, ST7735_WHITE);
-    tft.drawFastHLine(sd_vals.back_servo_origin_x, sd_vals.back_servo_origin_y, sd_vals.servo_indicator_r, ST7735_WHITE);
-    tft.drawFastVLine(sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y, sd_vals.servo_indicator_r, ST7735_WHITE);
-    tft.drawFastVLine(sd_vals.back_servo_origin_x, sd_vals.back_servo_origin_y, sd_vals.servo_indicator_r, ST7735_WHITE);
 }
 
 void draw_tof_sensor_bars()
 {
+    tft.fillRect(sd_vals.front_bar_origin_x, sd_vals.front_bar_origin_y,
+        sd_vals.front_bar_w, sd_vals.bar_h, ST7735_BLACK);
+    tft.fillRect(sd_vals.back_bar_origin_x, sd_vals.back_bar_origin_y,
+        sd_vals.back_bar_w, sd_vals.bar_h, ST7735_BLACK);
 
     if (is_front_ok_VL53L0X()) {
-        sd_vals.front_bar_color = ST7735_RED;
-        sd_vals.front_bar_w = sd_vals.error_bar_w;
-    }
-    else {
         sd_vals.front_bar_w = (int)(sd_vals.mm_to_pixels * measure1.RangeMilliMeter);
         if (is_obstacle_in_front()) {
-            sd_vals.front_bar_color = ST7735_RED;
+            sd_vals.front_bar_color = ST7735_YELLOW;
         }
         else {
             if (measure1.RangeMilliMeter < sd_vals.max_display_val_mm) {
                 sd_vals.front_bar_color = ST7735_GREEN;
             }
             else {
-                sd_vals.front_bar_color = ST7735_YELLOW;
+                sd_vals.front_bar_color = ST7735_BLUE;
             }
         }
+        
+    }
+    else {
+        sd_vals.front_bar_color = ST7735_RED;
+        sd_vals.front_bar_w = sd_vals.error_bar_w;
     }
 
     if (is_back_ok_VL53L0X()) {
-        sd_vals.back_bar_color = ST7735_RED;
-        sd_vals.back_bar_w = sd_vals.error_bar_w;
-    }
-    else {
-        sd_vals.back_bar_w = (int)(sd_vals.mm_to_pixels * measure2.RangeMilliMeter);
-        if (is_obstacle_in_front()) {
-            sd_vals.back_bar_color = ST7735_RED;
+        sd_vals.back_bar_w = -(int)(sd_vals.mm_to_pixels * measure2.RangeMilliMeter);
+        if (is_obstacle_in_back()) {
+            sd_vals.back_bar_color = ST7735_YELLOW;
         }
         else {
             if (measure2.RangeMilliMeter < sd_vals.max_display_val_mm) {
                 sd_vals.back_bar_color = ST7735_GREEN;
             }
             else {
-                sd_vals.back_bar_color = ST7735_YELLOW;
+                sd_vals.back_bar_color = ST7735_BLUE;
             }
         }
     }
+    else {
+        sd_vals.back_bar_color = ST7735_RED;
+        sd_vals.back_bar_w = sd_vals.error_bar_w;
+    }
 
     tft.fillRect(sd_vals.front_bar_origin_x, sd_vals.front_bar_origin_y,
-        sd_vals.front_bar_w, sd_vals.front_bar_origin_y + sd_vals.bar_h, ST7735_WHITE);
+        sd_vals.front_bar_w, sd_vals.bar_h, sd_vals.front_bar_color);
     tft.fillRect(sd_vals.back_bar_origin_x, sd_vals.back_bar_origin_y,
-        sd_vals.back_bar_w, sd_vals.back_bar_origin_y + sd_vals.bar_h, ST7735_WHITE);
-
+        sd_vals.back_bar_w, sd_vals.bar_h, sd_vals.back_bar_color);
 }
 
 void draw_safety_servo_diagrams()
 {
-    double new_front_servo_angle = tilter_servo_cmd_to_angle(servo_positions[FRONT_TILTER_SERVO_NUM]);
-    double new_back_servo_angle = tilter_servo_cmd_to_angle(servo_positions[BACK_TILTER_SERVO_NUM]);
+    double new_front_servo_angle = tilter_servo_cmd_to_angle(
+        servo_positions[FRONT_TILTER_SERVO_NUM]
+    ) * PI / 180.0;
+    double new_back_servo_angle = tilter_servo_cmd_to_angle(
+        servo_positions[BACK_TILTER_SERVO_NUM]
+    ) * PI / 180.0;
     
     // erase previous and redraw lines if the value changed
     if (new_front_servo_angle != sd_vals.front_servo_angle)
     {
-        tft.drawLine(
-            sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y,
-            sd_vals.front_servo_x, sd_vals.front_servo_y, ST7735_BLACK
-        );
-        tft.drawCircle(
-            sd_vals.back_servo_x, sd_vals.back_servo_y,
-            sd_vals.servo_ind_ball_r, ST7735_BLACK
-        );
+        if (sd_vals.front_servo_angle != -1.0)
+        {
+            tft.drawLine(
+                sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y,
+                sd_vals.front_servo_x, sd_vals.front_servo_y, ST7735_BLACK
+            );
+            tft.drawCircle(
+                sd_vals.front_servo_x, sd_vals.front_servo_y,
+                sd_vals.servo_ind_ball_r, ST7735_BLACK
+            );
+        }
 
         sd_vals.front_servo_angle = new_front_servo_angle;
         sd_vals.front_servo_x = cos(sd_vals.front_servo_angle) * sd_vals.servo_indicator_r + sd_vals.front_servo_origin_x;
         sd_vals.front_servo_y = sin(sd_vals.front_servo_angle) * sd_vals.servo_indicator_r + sd_vals.front_servo_origin_y;
+
+        tft.drawFastHLine(sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y, sd_vals.servo_indicator_r, ST7735_WHITE);
+        tft.drawFastVLine(sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y, sd_vals.servo_indicator_r, ST7735_WHITE);
         
         tft.drawLine(
             sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y,
@@ -491,17 +504,24 @@ void draw_safety_servo_diagrams()
     }
     if (new_back_servo_angle != sd_vals.back_servo_angle)
     {
-        tft.drawLine(
-            sd_vals.back_servo_origin_x, sd_vals.back_servo_origin_y,
-            sd_vals.back_servo_x, sd_vals.back_servo_y, ST7735_BLACK
-        );
-        tft.drawCircle(
-            sd_vals.back_servo_x, sd_vals.back_servo_y,
-            sd_vals.servo_ind_ball_r, ST7735_BLACK
-        );
+        if (sd_vals.back_servo_angle != -1.0)
+        {
+            tft.drawLine(
+                sd_vals.back_servo_origin_x, sd_vals.back_servo_origin_y,
+                sd_vals.back_servo_x, sd_vals.back_servo_y, ST7735_BLACK
+            );
+            tft.drawCircle(
+                sd_vals.back_servo_x, sd_vals.back_servo_y,
+                sd_vals.servo_ind_ball_r, ST7735_BLACK
+            );
+        }
+
         sd_vals.back_servo_angle = new_back_servo_angle;
-        sd_vals.back_servo_x = cos(sd_vals.back_servo_angle) * sd_vals.servo_indicator_r + sd_vals.front_servo_origin_x;
-        sd_vals.back_servo_y = sin(sd_vals.back_servo_angle) * sd_vals.servo_indicator_r + sd_vals.front_servo_origin_y;
+        sd_vals.back_servo_x = -cos(sd_vals.back_servo_angle) * sd_vals.servo_indicator_r + sd_vals.back_servo_origin_x;
+        sd_vals.back_servo_y = sin(sd_vals.back_servo_angle) * sd_vals.servo_indicator_r + sd_vals.back_servo_origin_y;
+
+        tft.drawFastHLine(sd_vals.back_servo_origin_x, sd_vals.back_servo_origin_y, -sd_vals.servo_indicator_r, ST7735_WHITE);
+        tft.drawFastVLine(sd_vals.back_servo_origin_x, sd_vals.back_servo_origin_y, sd_vals.servo_indicator_r, ST7735_WHITE);
 
         tft.drawLine(
             sd_vals.back_servo_origin_x, sd_vals.back_servo_origin_y,
@@ -519,8 +539,10 @@ void draw_safety_menu()
     int y_offset = TOP_BAR_H + 5;
     tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("tof f: " + String(measure1.RangeMilliMeter) + "   ");  y_offset += ROW_SIZE;
     tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("back f: " + String(measure2.RangeMilliMeter) + "   "); y_offset += ROW_SIZE;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr f: " + String(fsr_1_val) + "   "); y_offset += ROW_SIZE;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr b: " + String(fsr_2_val) + "   "); // y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr l: " + String(fsr_1_val) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr r: " + String(fsr_2_val) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("servo f: " + String(servo_positions[FRONT_TILTER_SERVO_NUM]) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("servo b: " + String(servo_positions[BACK_TILTER_SERVO_NUM]) + "   "); // y_offset += ROW_SIZE;
 
     draw_tof_sensor_bars();
     draw_safety_servo_diagrams();
@@ -580,7 +602,7 @@ void screen_change_event() {
     switch (DISPLAYED_MENU) {
         case MAIN_MENU: PREV_MAIN_MENU_SELECT_INDEX = -1; break;  // force a redraw of the menu list when switching
         case IMU_MENU: imu_draw_prev_angle += 1; break;  // force compass redraw
-        case SAFETY_MENU: draw_rover_safety_diagram(); break;  // draw the diagram once
+        case SAFETY_MENU: init_rover_safety_diagram(); break;  // draw the diagram once
         default: break;
         // add new menu entry callbacks (if needed)
     }

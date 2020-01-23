@@ -3,6 +3,7 @@
 #define ROVER6_GENERAL
 
 #include <Arduino.h>
+#include <Snooze.h>
 
 #include "rover6_serial.h"
 
@@ -21,6 +22,14 @@ void soft_restart()
     DATA_SERIAL.end();  // clears the serial monitor  if used
     SCB_AIRCR = 0x05FA0004;  // write value for restart
 }
+
+// low power mode
+SnoozeDigital digital; // digital wake up driver
+SnoozeBlock config(digital);
+void enter_deep_sleep() {
+    Snooze.deepSleep(config);
+}
+
 
 // Safety systems
 struct safety {

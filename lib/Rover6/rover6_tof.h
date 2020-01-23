@@ -26,6 +26,7 @@ VL53L0X_RangingMeasurementData_t measure1;
 VL53L0X_RangingMeasurementData_t measure2;
 
 char* status_string = new char[0xff];
+bool is_lox_active = true;
 
 uint32_t lox_report_timer = 0;
 #define LOX_SAMPLERATE_FAST_DELAY_MS 150
@@ -37,12 +38,28 @@ int LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM = 0xffff;
 int LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 int LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 
-void read_front_VL53L0X() {
+bool read_front_VL53L0X() {
     lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
+    return true;
+    // uint8_t NewDataReady = 0;
+    // VL53L0X_GetMeasurementDataReady(lox1.pMyDevice, &NewDataReady);
+    // if (NewDataReady) {
+    //     lox1.Status = VL53L0X_GetRangingMeasurementData(lox1.pMyDevice, &measure1);
+    //     VL53L0X_ClearInterruptMask(lox1.pMyDevice, 0);
+    // }
+    // return NewDataReady > 0;
 }
 
-void read_back_VL53L0X() {
+bool read_back_VL53L0X() {
     lox2.rangingTest(&measure2, false);
+    return true;
+    // uint8_t NewDataReady = 0;
+    // VL53L0X_GetMeasurementDataReady(lox2.pMyDevice, &NewDataReady);
+    // if (NewDataReady) {
+    //     lox2.Status = VL53L0X_GetRangingMeasurementData(lox2.pMyDevice, &measure2);
+    //     VL53L0X_ClearInterruptMask(lox2.pMyDevice, 0);
+    // }
+    // return NewDataReady > 0;
 }
 
 
@@ -63,6 +80,22 @@ bool is_back_ok_VL53L0X() {
         return false;
     }
     return true;
+}
+
+void set_lox_active(bool active) {
+    if (is_lox_active == active) {
+        return;
+    }
+    
+    is_lox_active = active;
+    // if (active) {
+    //     VL53L0X_StartMeasurement(lox1.pMyDevice);
+    //     VL53L0X_StartMeasurement(lox2.pMyDevice);
+    // }
+    // else {
+    //     VL53L0X_StopMeasurement(lox1.pMyDevice);
+    //     VL53L0X_StopMeasurement(lox2.pMyDevice);
+    // }
 }
 
 void setup_VL53L0X()
@@ -112,6 +145,8 @@ void setup_VL53L0X()
     if (!is_back_ok_VL53L0X()) {
         println_error("lox2 failed first read!!");
     }
+
+    set_lox_active(true);
 }
 
 void report_VL53L0X()
@@ -152,15 +187,17 @@ bool does_back_tof_see_obstacle() {
 
 bool read_VL53L0X()
 {
-    if (is_moving()) {
-        lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
-    }
-    else {
-        lox_samplerate_delay_ms = LOX_SAMPLERATE_SLOW_DELAY_MS;
-    }
-    if (CURRENT_TIME - lox_report_timer < lox_samplerate_delay_ms) {
-        return false;
-    }
+    // if (is_moving()) {
+    //     lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
+    // }
+    // else {
+    //     lox_samplerate_delay_ms = LOX_SAMPLERATE_SLOW_DELAY_MS;
+    // }
+    // if (CURRENT_TIME - lox_report_timer < lox_samplerate_delay_ms) {
+    //     return false;
+    // }
+
+    bool new_measurement = false;
     lox_report_timer = CURRENT_TIME;
 
     safety_struct.is_front_tof_ok = is_front_ok_VL53L0X();
@@ -168,19 +205,19 @@ bool read_VL53L0X()
 
     if (is_moving()) {
         if (is_moving_forward()) {
-            read_front_VL53L0X();
+            if (read_front_VL53L0X()) new_measurement = true;
             safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
             safety_struct.is_back_tof_trig = false;
         }
         else {
-            read_back_VL53L0X();
+            if (read_back_VL53L0X()) new_measurement = true;
             safety_struct.is_front_tof_trig = false;
             safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
         }
     }
     else {
-        read_front_VL53L0X();
-        read_back_VL53L0X();
+        if (read_front_VL53L0X()) new_measurement = true;
+        if (read_back_VL53L0X()) new_measurement = true;
         safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
         safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
     }
@@ -188,7 +225,7 @@ bool read_VL53L0X()
     if (safety_struct.is_back_tof_trig || safety_struct.is_front_tof_trig) {
         stop_motors();
     }
-    return true;
+    return new_measurement;
 }
 
 
