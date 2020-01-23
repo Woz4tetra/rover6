@@ -166,33 +166,6 @@ class RoverClient:
         self.write("ll%s%s" % (direction_key, int(lower)))
         self.write("lu%s%s" % (direction_key, int(upper)))
 
-
-    def angle_rad_to_tof_servo_command(self, angle_rad):
-        angle_rad = angle_rad + (math.pi * 2 if angle_rad <= 0.0 else 0)  # bound to 270...360 deg
-        angle_deg = math.degrees(angle_rad)
-        y0 = RoverConfig.tof_servo_lower_command
-        y1 = RoverConfig.tof_servo_upper_command
-        x0 = RoverConfig.tof_servo_lower_angle_deg
-        x1 = RoverConfig.tof_servo_upper_angle_deg
-
-        servo_command = (x1 - x0) / (y1 - y0) * (angle_deg - x0) + y0
-        return int(servo_command)
-
-    def calculate_tof_thresholds(self, obstacle_x, ledge_y, buffer_x, wall_offset):
-        gaze_x = obstacle_x + buffer_x + wall_offset  # X coordinate where the sensor is pointing at
-        threshold_x = obstacle_x + wall_offset  # X coordinate where threshold starts
-        offset_ledge_y = ledge_y + RoverConfig.tof_ground_dist_mm  # Y threshold relative to the axis of rotation
-        sensor_angle = math.atan2(-RoverConfig.tof_ground_dist_mm, gaze_x)
-        
-        # sensor lower threshold accounting for sensor's distance away from the axis of rotation
-        obstacle_threshold = threshold_x / math.cos(sensor_angle) - RoverConfig.tof_off_axis_mm
-
-        # sensor upper threshold accounting for sensor's distance away from the axis of rotation
-        ledge_threshold = abs(offset_ledge_y / math.sin(sensor_angle) - RoverConfig.tof_off_axis_mm)
-
-        servo_command = self.angle_rad_to_tof_servo_command(sensor_angle)
-        return obstacle_threshold, ledge_threshold, servo_command
-
     def set_safety_thresholds(self, obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm=100.0):
         # obstacle_threshold_x_mm: measured from the maximum point of the front or back of the robot
         # ledge_threshold_y_mm: measured from the ground plane where the robot sits flat on the ground
