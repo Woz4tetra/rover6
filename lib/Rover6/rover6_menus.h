@@ -34,74 +34,6 @@ void init_menus()
     SCREEN_MID_H = tft.height() / 2;
 }
 
-void draw_sensor_data()
-{
-    tft.setCursor(0, 0);
-
-    tft.print("bno: ");
-    tft.print(String(orientationData.orientation.x));
-    tft.print(",");
-    tft.print(String(orientationData.orientation.y));
-    tft.print(",");
-    tft.print(String(orientationData.orientation.z));
-    tft.println("        ");
-
-    tft.print("motor: ");
-    tft.print(motorA.getSpeed());
-    tft.print(",");
-    tft.print(motorB.getSpeed());
-    tft.print(",");
-    tft.print(safety_struct.are_motors_active);
-    tft.println("        ");
-
-    tft.print("servo: ");
-    tft.print(get_servo(FRONT_TILTER_SERVO_NUM));
-    tft.print(",");
-    tft.print(get_servo(BACK_TILTER_SERVO_NUM));
-    tft.print(",");
-    tft.print(get_servo(CAMERA_PAN_SERVO_NUM));
-    tft.print(",");
-    tft.print(get_servo(CAMERA_TILT_SERVO_NUM));
-    tft.print(",");
-    tft.print(safety_struct.are_motors_active);
-    tft.println("        ");
-
-    tft.print("enc: ");
-    tft.print(encA_pos);
-    tft.print(",");
-    tft.print(encB_pos);
-    tft.println("        ");
-
-    tft.print("lox: ");
-    tft.print(measure1.RangeMilliMeter);
-    tft.print(",");
-    tft.print(measure2.RangeMilliMeter);
-    tft.print(",");
-    tft.print(safety_struct.is_front_tof_ok);
-    tft.print(",");
-    tft.print(safety_struct.is_back_tof_ok);
-    tft.print(",");
-    tft.print(measure1.RangeStatus);
-    tft.print(",");
-    tft.print(measure2.RangeStatus);
-    tft.println("        ");
-
-    tft.print("fsr: ");
-    tft.print(fsr_1_val);
-    tft.print(",");
-    tft.print(fsr_2_val);
-    tft.println("        ");
-
-    tft.print("safety: ");
-    tft.print(is_safe_to_move());
-    tft.print(",");
-    tft.print(is_obstacle_in_front());
-    tft.print(",");
-    tft.print(is_obstacle_in_back());
-    tft.println("        ");
-}
-
-
 // 
 // Top bar
 // 
@@ -199,9 +131,9 @@ enum menu_names {
 };
 
 const menu_names MAIN_MENU_ENUM_MAPPING[] PROGMEM = {
+    SAFETY_MENU,
     IMU_MENU,
     MOTORS_MENU,
-    SAFETY_MENU,
     HOTSPOT_MENU,
     WIFI_MENU,
     CAMERA_MENU,
@@ -213,9 +145,9 @@ const menu_names MAIN_MENU_ENUM_MAPPING[] PROGMEM = {
 };
 
 const char* const MAIN_MENU_ENTRIES[] PROGMEM = {
+    "Safety Systems",
     "IMU",
     "Motors",
-    "Safety Systems",
     "Hotspot",
     "Show Wifi Settings",
     "Camera",
@@ -235,10 +167,10 @@ int PREV_MAIN_MENU_SELECT_INDEX = -1;
 void draw_main_menu()
 {
     if (MAIN_MENU_SELECT_INDEX < 0) {
-        MAIN_MENU_SELECT_INDEX = 0;
+        MAIN_MENU_SELECT_INDEX = MAIN_MENU_ENTRIES_LEN - 1;
     }
     if (MAIN_MENU_SELECT_INDEX >= MAIN_MENU_ENTRIES_LEN) {
-        MAIN_MENU_SELECT_INDEX = MAIN_MENU_ENTRIES_LEN - 1;
+        MAIN_MENU_SELECT_INDEX = 0;
     }
 
     if (PREV_MAIN_MENU_SELECT_INDEX == MAIN_MENU_SELECT_INDEX) {
@@ -268,7 +200,7 @@ void draw_main_menu()
         BORDER_OFFSET_W - 1,
         ROW_SIZE * MAIN_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1 + TOP_BAR_H,
         tft.width() - BORDER_OFFSET_W - 1,
-        ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_BLUE
+        ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_WHITE
     );
 
     PREV_MAIN_MENU_SELECT_INDEX = MAIN_MENU_SELECT_INDEX;
@@ -381,7 +313,31 @@ struct safety_diagram {
     int back_servo_x;
     int back_servo_y;
 
+    int front_lower_threshold_x;
+    int back_lower_threshold_x;
+    int front_upper_threshold_x;
+    int back_upper_threshold_x;
+    int threshold_y;
+    int threshold_len = 18;
+
 } sd_vals;
+
+int update_front_lower_threshold_x() {
+    return SCREEN_MID_W + sd_vals.w / 2 + (int)(sd_vals.mm_to_pixels * LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM);
+}
+
+int update_back_lower_threshold_x() {
+    return SCREEN_MID_W - sd_vals.w / 2 - (int)(sd_vals.mm_to_pixels * LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM);
+}
+
+int update_front_upper_threshold_x() {
+    return SCREEN_MID_W + sd_vals.w / 2 + (int)(sd_vals.mm_to_pixels * LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM);
+}
+
+int update_back_upper_threshold_x() {
+    return SCREEN_MID_W - sd_vals.w / 2 - (int)(sd_vals.mm_to_pixels * LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM);
+}
+
 
 void init_rover_safety_diagram()
 {
@@ -390,7 +346,7 @@ void init_rover_safety_diagram()
     sd_vals.origin_y = SCREEN_MID_H + origin_offset_h;
     sd_vals.front_bar_origin_x = SCREEN_MID_W + sd_vals.w / 2;
     sd_vals.front_bar_origin_y = SCREEN_MID_H - sd_vals.bar_h / 2 + origin_offset_h;
-    sd_vals.back_bar_origin_x = SCREEN_MID_W - sd_vals.w / 2;
+    sd_vals.back_bar_origin_x = SCREEN_MID_W - sd_vals.w / 2 - 1;
     sd_vals.back_bar_origin_y = sd_vals.front_bar_origin_y;
 
     sd_vals.front_servo_origin_x = SCREEN_MID_W + 20;
@@ -400,6 +356,12 @@ void init_rover_safety_diagram()
 
     sd_vals.front_servo_angle = -1.0;
     sd_vals.back_servo_angle = -1.0;
+
+    sd_vals.threshold_y = SCREEN_MID_H - sd_vals.threshold_len / 2 + origin_offset_h;
+    sd_vals.front_lower_threshold_x = update_front_lower_threshold_x();
+    sd_vals.back_lower_threshold_x = update_back_lower_threshold_x();
+    sd_vals.front_upper_threshold_x = update_front_upper_threshold_x();
+    sd_vals.back_upper_threshold_x = update_back_upper_threshold_x();
 
     sd_vals.bar_max_w = tft.width() - sd_vals.front_bar_origin_x;
     sd_vals.mm_to_pixels = (double)sd_vals.bar_max_w / sd_vals.max_display_val_mm;
@@ -412,6 +374,28 @@ void init_rover_safety_diagram()
 
 void draw_tof_sensor_bars()
 {
+    int new_threshold = update_front_lower_threshold_x();
+    if (sd_vals.front_lower_threshold_x != new_threshold) {
+        tft.drawFastVLine(sd_vals.front_lower_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_BLACK);
+        sd_vals.front_lower_threshold_x = new_threshold;
+    }
+    new_threshold = update_back_lower_threshold_x();
+    if (sd_vals.back_lower_threshold_x != new_threshold) {
+        tft.drawFastVLine(sd_vals.back_lower_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_BLACK);
+        sd_vals.back_lower_threshold_x = new_threshold;
+    }
+
+    new_threshold = update_front_upper_threshold_x();
+    if (sd_vals.front_upper_threshold_x != new_threshold) {
+        tft.drawFastVLine(sd_vals.front_upper_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_BLACK);
+        sd_vals.front_upper_threshold_x = new_threshold;
+    }
+    new_threshold = update_back_upper_threshold_x();
+    if (sd_vals.back_upper_threshold_x != new_threshold) {
+        tft.drawFastVLine(sd_vals.back_upper_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_BLACK);
+        sd_vals.back_upper_threshold_x = new_threshold;
+    }
+
     tft.fillRect(sd_vals.front_bar_origin_x, sd_vals.front_bar_origin_y,
         sd_vals.front_bar_w, sd_vals.bar_h, ST7735_BLACK);
     tft.fillRect(sd_vals.back_bar_origin_x, sd_vals.back_bar_origin_y,
@@ -453,13 +437,18 @@ void draw_tof_sensor_bars()
     }
     else {
         sd_vals.back_bar_color = ST7735_RED;
-        sd_vals.back_bar_w = sd_vals.error_bar_w;
+        sd_vals.back_bar_w = -sd_vals.error_bar_w;
     }
 
     tft.fillRect(sd_vals.front_bar_origin_x, sd_vals.front_bar_origin_y,
         sd_vals.front_bar_w, sd_vals.bar_h, sd_vals.front_bar_color);
     tft.fillRect(sd_vals.back_bar_origin_x, sd_vals.back_bar_origin_y,
         sd_vals.back_bar_w, sd_vals.bar_h, sd_vals.back_bar_color);
+
+    tft.drawFastVLine(sd_vals.front_lower_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_WHITE);
+    tft.drawFastVLine(sd_vals.back_lower_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_WHITE);
+    tft.drawFastVLine(sd_vals.front_upper_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_WHITE);
+    tft.drawFastVLine(sd_vals.back_upper_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_WHITE);
 }
 
 void draw_safety_servo_diagrams()
@@ -537,8 +526,8 @@ void draw_safety_servo_diagrams()
 void draw_safety_menu()
 {
     int y_offset = TOP_BAR_H + 5;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("tof f: " + String(measure1.RangeMilliMeter) + "   ");  y_offset += ROW_SIZE;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("back f: " + String(measure2.RangeMilliMeter) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("tof f: " + String(measure1.RangeMilliMeter) + ", " + String(LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM) + ", " + String(LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM) + "   ");  y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("tof b: " + String(measure2.RangeMilliMeter) + ", " + String(LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM) + ", " + String(LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM) + "   "); y_offset += ROW_SIZE;
     tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr l: " + String(fsr_1_val) + "   "); y_offset += ROW_SIZE;
     tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr r: " + String(fsr_2_val) + "   "); y_offset += ROW_SIZE;
     tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("servo f: " + String(servo_positions[FRONT_TILTER_SERVO_NUM]) + "   "); y_offset += ROW_SIZE;

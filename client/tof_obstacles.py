@@ -25,11 +25,13 @@ def calculate_tof_thresholds(obstacle_x, ledge_y, buffer_x, wall_offset):
     
     # sensor lower threshold accounting for sensor's distance away from the axis of rotation
     obstacle_threshold = threshold_x / math.cos(sensor_angle) - RoverConfig.tof_off_axis_mm
-
+    
     # sensor upper threshold accounting for sensor's distance away from the axis of rotation
-    ledge_threshold = abs(offset_ledge_y / math.sin(sensor_angle) - RoverConfig.tof_off_axis_mm)
+    ledge_threshold = abs(offset_ledge_y / math.sin(sensor_angle)) - RoverConfig.tof_off_axis_mm
 
     servo_command = angle_rad_to_tof_servo_command(sensor_angle)
+    assert obstacle_threshold >= 0.0, obstacle_threshold
+    assert ledge_threshold >= 0.0, ledge_threshold
     return obstacle_threshold, ledge_threshold, servo_command
 
 def get_stopping_thresholds(obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm=10.0):
@@ -51,4 +53,4 @@ def get_stopping_thresholds(obstacle_threshold_x_mm, ledge_threshold_y_mm, buffe
     )
 
 if __name__ == "__main__":
-    print(get_stopping_thresholds(10, 10, 1000))
+    print(get_stopping_thresholds(50, 5, 100))

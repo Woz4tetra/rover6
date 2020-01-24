@@ -32,14 +32,6 @@ void set_active(bool active)
     }   
 }
 
-void shutdown() {
-    println_info("Enter low power mode!");
-    set_active(false);
-    bno.enterSuspendMode();
-    set_display_brightness(10);
-    // enter_deep_sleep();
-}
-
 void reset()
 {
     stop_motors();
@@ -130,7 +122,7 @@ int lox_parse_int = 0;
 // method header defined in rover6_serial.h
 void process_serial_packet(String packet)
 {
-    println_info("current packet: '%s'", packet.c_str());
+    // println_info("current packet: '%s'", packet.c_str());
     char command = packet.charAt(0);
 
     if (command == '>') {
@@ -154,9 +146,6 @@ void process_serial_packet(String packet)
     else if (command == '+') {
         if (packet.charAt(1) == '!') {  // you sure you want to reset?
             soft_restart();
-        }
-        else if (packet.charAt(1) == '-') {  // shutdown/low power mode
-            shutdown();
         }
     }
     else {

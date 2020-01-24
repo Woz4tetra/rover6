@@ -14,20 +14,22 @@ class RoverClient:
         "enc": "lllff",
         "fsr": "ldd",
         "irr": "ldd",
-        "bno": "lfffffffff",
+        "bno": "lfffffffffd",
         "lox": "ldddddd",
         "servo": "ldddddddddddddddd",
         "safe": "ldddddddddddd"
     }
+
+    NUM_SERVOS = 16
 
     PACKET_NAMES = {
         "ina":  ["time", "current_mA", "power_mW", "voltage_V"],
         "enc":  ["time", "posA", "posB", "speedA", "speedB"],
         "fsr":  ["time", "left", "right"],
         "irr":  ["time", "type", "value"],
-        "bno":  ["time", "orientation_x", "orientation_y", "orientation_z", "gyro_x", "gyro_y", "gyro_z", "accel_x", "accel_y", "accel_z"],
+        "bno":  ["time", "orientation_x", "orientation_y", "orientation_z", "gyro_x", "gyro_y", "gyro_z", "accel_x", "accel_y", "accel_z", "temperature"],
         "lox":  ["time", "front_mm", "back_mm", "front_measure_status", "back_measure_status", "front_status", "back_status"],
-        "servo": ["time"] + [str(i) for i in range(16)],
+        "servo": ["time"] + [str(i) for i in range(NUM_SERVOS)],
         "safe": ["time", "is_left_bumper_trig", "is_right_bumper_trig", "is_front_tof_trig", "is_back_tof_trig", "is_front_tof_ok", "is_back_tof_ok", "are_servos_active", "are_motors_active", "voltage_ok", "is_active", "is_reporting_enabled", "is_speed_pid_enabled"],
     }
     
@@ -42,6 +44,13 @@ class RoverClient:
         self.should_stop = False
         self.thread = threading.Thread(target=self.update, args=(lambda: self.should_stop,))
 
+        self.recv_times = {}
+        self.read_update_rate_hz = 120.0
+
+        self.written_servo_positions = [None for i in range(self.NUM_SERVOS)]
+        self.servo_write_attempts = [0 for i in range(self.NUM_SERVOS)]
+        self.servo_write_max_attempts = 60
+
     def start(self):
         self.device.configure()
         self.device.check_protocol("?", "!")
@@ -52,6 +61,7 @@ class RoverClient:
     
     def stop(self):
         self.write("[")
+        self.write("<")
         self.should_stop = True
     
     def write(self, packet):
@@ -97,6 +107,7 @@ class RoverClient:
         return identifier, data
 
     def update(self, should_stop):
+        update_delay = 1 / self.read_update_rate_hz
         while True:
             if should_stop():
                 print("Exiting read thread")
@@ -126,13 +137,7 @@ class RoverClient:
                         receive_date = datetime.datetime.fromtimestamp(receive_time)
                         receive_str = datetime.datetime.strftime(receive_date, "%c")
                         print("%s\t%s\t%s" % (receive_str, data[0], data[1]))
-    
-    def on_receive(self, identifier):
-        if identifier == "ina":
-            print(self.get(identifier, "voltage_V"))
-        elif identifier == "servo":
-            print([self.get(identifier, str(index)) for index in range(4)])
-
+            time.sleep(update_delay)
 
     def get(self, identifier, name):
         return self.data_frame[identifier][1][self.name_index_mapping[identifier][name]]
@@ -157,8 +162,31 @@ class RoverClient:
 
     def set_servo(self, n, command):
         self.write("sp%02d%03d" % (int(n), int(command)))
+        self.written_servo_positions[n] = command
+        self.servo_write_attempts[n] += 1
         time.sleep(0.01)
         self.tell_servo()
+    
+    def on_receive(self, identifier):
+        if identifier in self.recv_times:
+            self.recv_times[identifier].append(time.time())
+            while len(self.recv_times[identifier]) > 0x10000:
+                self.recv_times[identifier].pop(0)
+        else:
+            self.recv_times[identifier] = [time.time()]
+        
+        if identifier == "ina":
+            print(self.get(identifier, "voltage_V"))
+        elif identifier == "servo":
+            print([self.get(identifier, str(index)) for index in range(4)])
+            for n in range(self.NUM_SERVOS):
+                if self.written_servo_positions[n] is not None and self.written_servo_positions[n] != self.get(identifier, str(n)):
+                    self.servo_write_attempts[n] += 1
+                    if self.servo_write_attempts[n] > self.servo_write_max_attempts:
+                        raise DevicePortWriteException("Exceeded number of attempts to write %s to servo %s" % (self.written_servo_positions[n], n))
+                    self.set_servo(n, self.written_servo_positions[n])
+
+
     
     def set_obstacle_thresholds(self, lower, upper, direction: int):
         # direction: 0 = front, 1 = Back

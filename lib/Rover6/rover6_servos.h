@@ -90,6 +90,10 @@ void setup_servos()
     servo_default_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_CENTER;
     servo_default_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_CENTER;
 
+    for (size_t i = 0; i < NUM_SERVOS; i++) {
+        servo_positions[i] = servo_default_positions[i];
+    }
+
     servo_cmd_to_angle_m = (270.0 - 360.0) / ((double)servo_min_positions[BACK_TILTER_SERVO_NUM] - (double)servo_max_positions[BACK_TILTER_SERVO_NUM]);
 }
 
@@ -97,6 +101,14 @@ void setup_servos()
 void set_servos_default()
 {
     println_info("set_servos_default");
+    for (size_t i = 0; i < NUM_SERVOS; i++) {
+        set_servo(i, servo_default_positions[i]);
+    }
+}
+
+void set_servos_current()
+{
+    println_info("set_servos_current");
     for (size_t i = 0; i < NUM_SERVOS; i++) {
         set_servo(i, servo_default_positions[i]);
     }
@@ -111,7 +123,7 @@ void set_servos_active(bool active)
     safety_struct.are_servos_active = active;
     if (active) {  // bring servos out of active mode
         servos.wakeup();
-        set_servos_default();
+        set_servos_current();
     }
     else {  // set servos to low power
         servos.sleep();

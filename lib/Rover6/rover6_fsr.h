@@ -18,7 +18,7 @@ uint16_t fsr_1_val;
 uint16_t fsr_2_val;
 uint32_t fsr_report_timer = 0;
 
-#define FSR_SAMPLERATE_DELAY_MS 250
+#define FSR_SAMPLERATE_DELAY_MS 20
 
 #define FSR_CONTACT_THRESHOLD 50
 #define FSR_NOISE_THRESHOLD 2
@@ -44,6 +44,7 @@ bool read_fsrs()
     if (CURRENT_TIME - fsr_report_timer < FSR_SAMPLERATE_DELAY_MS) {
         return false;
     }
+    fsr_report_timer = CURRENT_TIME;
     fsr_1_val = analogRead(FSR_PIN_1);
     fsr_2_val = analogRead(FSR_PIN_2);
 
