@@ -50,7 +50,7 @@ void setup_motors()
     motorA.begin();
     motorB.begin();
     println_info("Motors initialized.");
-    set_motors_active(true);
+    set_motors_active(false);
 }
 
 void reset_motor_timeouts()

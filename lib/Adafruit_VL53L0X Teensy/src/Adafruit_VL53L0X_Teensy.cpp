@@ -48,9 +48,6 @@
 */
 /**************************************************************************/
 boolean Adafruit_VL53L0X::begin(uint8_t i2c_addr, boolean debug, i2c_t3 *i2c) {
-  int32_t   status_int;
-  int32_t   init_done         = 0;
-
   uint32_t  refSpadCount;
   uint8_t   isApertureSpads;
   uint8_t   VhvSettings;
@@ -210,7 +207,6 @@ boolean Adafruit_VL53L0X::setAddress(uint8_t newAddr) {
 /**************************************************************************/
 VL53L0X_Error Adafruit_VL53L0X::getSingleRangingMeasurement( VL53L0X_RangingMeasurementData_t *RangingMeasurementData, boolean debug )
 {
-    VL53L0X_Error   Status = VL53L0X_ERROR_NONE;
     FixPoint1616_t  LimitCheckCurrent;
 
 
@@ -242,6 +238,38 @@ VL53L0X_Error Adafruit_VL53L0X::getSingleRangingMeasurement( VL53L0X_RangingMeas
     return Status;
 }
 
+
+VL53L0X_Error Adafruit_VL53L0X::startContinuousMeasurement()
+{
+	Status = VL53L0X_SetDeviceMode(pMyDevice, VL53L0X_DEVICEMODE_CONTINUOUS_RANGING);
+    if (Status == VL53L0X_ERROR_NONE) {
+        VL53L0X_StartMeasurement(pMyDevice);
+    }
+
+    return Status;
+}
+VL53L0X_Error Adafruit_VL53L0X::stopContinuousMeasurement()
+{
+    Status = VL53L0X_StopMeasurement(pMyDevice);
+    return Status;
+}
+VL53L0X_Error Adafruit_VL53L0X::getContinuousRangingMeasurement(VL53L0X_RangingMeasurementData_t* pRangingMeasurementData, uint8_t* newDataReady)
+{
+	Status = VL53L0X_SetDeviceMode(pMyDevice, VL53L0X_DEVICEMODE_CONTINUOUS_RANGING);
+	if (Status == VL53L0X_ERROR_NONE) {
+        Status = VL53L0X_GetMeasurementDataReady(pMyDevice, newDataReady);
+
+        if (Status == VL53L0X_ERROR_NONE && *newDataReady) {
+            Status = VL53L0X_GetRangingMeasurementData(pMyDevice, pRangingMeasurementData);
+
+            if (Status == VL53L0X_ERROR_NONE) {
+                Status = VL53L0X_ClearInterruptMask(pMyDevice, 0);
+            }
+        }
+    }
+
+    return Status;
+}
 
 
 /**************************************************************************/

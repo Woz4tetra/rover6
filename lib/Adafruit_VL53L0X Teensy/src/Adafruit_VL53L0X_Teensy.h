@@ -50,6 +50,8 @@ class Adafruit_VL53L0X
         @returns True if address was set successfully, False otherwise
     */
     /**************************************************************************/
+
+    // VL53L0X_DEVICEMODE_SINGLE_RANGING:
     VL53L0X_Error
       rangingTest(VL53L0X_RangingMeasurementData_t* pRangingMeasurementData,
 		  boolean debug = false)
@@ -57,6 +59,12 @@ class Adafruit_VL53L0X
 
     VL53L0X_Error getSingleRangingMeasurement( VL53L0X_RangingMeasurementData_t* pRangingMeasurementData, boolean debug = false );
     void          printRangeStatus( VL53L0X_RangingMeasurementData_t* pRangingMeasurementData );
+
+    // VL53L0X_DEVICEMODE_CONTINUOUS_RANGING:
+    VL53L0X_Error startContinuousMeasurement();
+    VL53L0X_Error stopContinuousMeasurement();
+    VL53L0X_Error getContinuousRangingMeasurement(VL53L0X_RangingMeasurementData_t* pRangingMeasurementData, uint8_t* newDataReady);
+
 
     VL53L0X_Error                     Status      = VL53L0X_ERROR_NONE; ///< indicates whether or not the sensor has encountered an error
 

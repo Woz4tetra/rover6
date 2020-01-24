@@ -29,11 +29,11 @@ def main():
     prev_open_attempt_time = time.time()
     try:
         rover.set_k(0.40, 0.0, 0.01)
-        # rover.set_safety_thresholds(60, 10, 1000)
-        rover.set_obstacle_thresholds(120, 0x10000, 0)
-        rover.set_servo(RoverConfig.front_tilter_servo_num, 70)
-        rover.set_obstacle_thresholds(120, 0x10000, 1)
-        rover.set_servo(RoverConfig.back_tilter_servo_num, 70)
+        rover.set_safety_thresholds(70, 10, 100)
+        # rover.set_obstacle_thresholds(120, 0x10000, 0)
+        # rover.set_servo(RoverConfig.front_tilter_servo_num, 70)
+        # rover.set_obstacle_thresholds(120, 0x10000, 1)
+        # rover.set_servo(RoverConfig.back_tilter_servo_num, 70)
 
 
         while True:

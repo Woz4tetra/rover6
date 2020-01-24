@@ -26,10 +26,12 @@ VL53L0X_RangingMeasurementData_t measure1;
 VL53L0X_RangingMeasurementData_t measure2;
 
 char* status_string = new char[0xff];
-bool is_lox_active = true;
+bool is_lox_active = false;
+uint8_t lox1_measurement_ready = 0;
+uint8_t lox2_measurement_ready = 0;
 
 uint32_t lox_report_timer = 0;
-#define LOX_SAMPLERATE_FAST_DELAY_MS 150
+#define LOX_SAMPLERATE_FAST_DELAY_MS 30
 #define LOX_SAMPLERATE_SLOW_DELAY_MS 1000
 unsigned int lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
 
@@ -38,48 +40,46 @@ int LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM = 0xffff;
 int LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 int LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 
+void print_lox1_error(VL53L0X_Error Status)
+{
+    if (Status == VL53L0X_ERROR_NONE) return;
+    VL53L0X_get_pal_error_string(Status, status_string);
+    println_error("lox1 Error: %d, %s", Status, status_string);
+}
+
+void print_lox2_error(VL53L0X_Error Status)
+{
+    if (Status == VL53L0X_ERROR_NONE) return;
+    VL53L0X_get_pal_error_string(Status, status_string);
+    println_error("lox2 Error: %d, %s", Status, status_string);
+}
+
 bool read_front_VL53L0X() {
-    lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
-    return true;
-    // uint8_t NewDataReady = 0;
-    // VL53L0X_GetMeasurementDataReady(lox1.pMyDevice, &NewDataReady);
-    // if (NewDataReady) {
-    //     lox1.Status = VL53L0X_GetRangingMeasurementData(lox1.pMyDevice, &measure1);
-    //     VL53L0X_ClearInterruptMask(lox1.pMyDevice, 0);
-    // }
-    // return NewDataReady > 0;
+    // lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
+    // return true;
+
+    lox1.getContinuousRangingMeasurement(&measure1, &lox1_measurement_ready);
+    return lox1_measurement_ready > 0;
 }
 
 bool read_back_VL53L0X() {
-    lox2.rangingTest(&measure2, false);
-    return true;
-    // uint8_t NewDataReady = 0;
-    // VL53L0X_GetMeasurementDataReady(lox2.pMyDevice, &NewDataReady);
-    // if (NewDataReady) {
-    //     lox2.Status = VL53L0X_GetRangingMeasurementData(lox2.pMyDevice, &measure2);
-    //     VL53L0X_ClearInterruptMask(lox2.pMyDevice, 0);
-    // }
-    // return NewDataReady > 0;
+    // lox2.rangingTest(&measure2, false);
+    // return true;
+    
+    lox2.getContinuousRangingMeasurement(&measure2, &lox2_measurement_ready);
+    return lox2_measurement_ready > 0;
 }
 
 
 bool is_front_ok_VL53L0X() {
-    if (lox1.Status != VL53L0X_ERROR_NONE) {
-        VL53L0X_get_pal_error_string(lox1.Status, status_string);
-        println_error("lox1 reported error %d: %s", lox1.Status, status_string);
-        return false;
-    }
-    return true;
+    print_lox1_error(lox1.Status);
+    return lox1.Status == VL53L0X_ERROR_NONE;
 }
 
 
 bool is_back_ok_VL53L0X() {
-    if (lox2.Status != VL53L0X_ERROR_NONE) {
-        VL53L0X_get_pal_error_string(lox1.Status, status_string);
-        println_error("lox1 reported error %d: %s", lox2.Status, status_string);
-        return false;
-    }
-    return true;
+    print_lox2_error(lox2.Status);
+    return lox2.Status == VL53L0X_ERROR_NONE;
 }
 
 void set_lox_active(bool active) {
@@ -88,14 +88,14 @@ void set_lox_active(bool active) {
     }
     
     is_lox_active = active;
-    // if (active) {
-    //     VL53L0X_StartMeasurement(lox1.pMyDevice);
-    //     VL53L0X_StartMeasurement(lox2.pMyDevice);
-    // }
-    // else {
-    //     VL53L0X_StopMeasurement(lox1.pMyDevice);
-    //     VL53L0X_StopMeasurement(lox2.pMyDevice);
-    // }
+    if (active) {
+        lox1.startContinuousMeasurement();
+        lox2.startContinuousMeasurement();
+    }
+    else {
+        lox1.stopContinuousMeasurement();
+        lox2.stopContinuousMeasurement();
+    }
 }
 
 void setup_VL53L0X()
@@ -137,16 +137,7 @@ void setup_VL53L0X()
     }
     println_info("VL53L0X's initialized.");
 
-    read_front_VL53L0X();
-    read_back_VL53L0X();
-    if (!is_front_ok_VL53L0X()) {
-        println_error("lox1 failed first read!!");
-    }
-    if (!is_back_ok_VL53L0X()) {
-        println_error("lox2 failed first read!!");
-    }
-
-    set_lox_active(true);
+    set_lox_active(false);
 }
 
 void report_VL53L0X()
@@ -187,15 +178,15 @@ bool does_back_tof_see_obstacle() {
 
 bool read_VL53L0X()
 {
-    // if (is_moving()) {
-    //     lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
-    // }
-    // else {
-    //     lox_samplerate_delay_ms = LOX_SAMPLERATE_SLOW_DELAY_MS;
-    // }
-    // if (CURRENT_TIME - lox_report_timer < lox_samplerate_delay_ms) {
-    //     return false;
-    // }
+    if (is_moving()) {
+        lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
+    }
+    else {
+        lox_samplerate_delay_ms = LOX_SAMPLERATE_SLOW_DELAY_MS;
+    }
+    if (CURRENT_TIME - lox_report_timer < lox_samplerate_delay_ms) {
+        return false;
+    }
 
     bool new_measurement = false;
     lox_report_timer = CURRENT_TIME;
@@ -205,21 +196,29 @@ bool read_VL53L0X()
 
     if (is_moving()) {
         if (is_moving_forward()) {
-            if (read_front_VL53L0X()) new_measurement = true;
-            safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
-            safety_struct.is_back_tof_trig = false;
+            if (read_front_VL53L0X()) {
+                new_measurement = true;
+                safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
+                safety_struct.is_back_tof_trig = false;
+            }
         }
         else {
-            if (read_back_VL53L0X()) new_measurement = true;
-            safety_struct.is_front_tof_trig = false;
-            safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
+            if (read_back_VL53L0X()) {
+                new_measurement = true;
+                safety_struct.is_front_tof_trig = false;
+                safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
+            }
         }
     }
     else {
-        if (read_front_VL53L0X()) new_measurement = true;
-        if (read_back_VL53L0X()) new_measurement = true;
-        safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
-        safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
+        if (read_front_VL53L0X()) {
+            new_measurement = true;
+            safety_struct.is_front_tof_trig = does_front_tof_see_obstacle();
+        }
+        if (read_back_VL53L0X()) {
+            new_measurement = true;
+            safety_struct.is_back_tof_trig = does_back_tof_see_obstacle();
+        }
     }
 
     if (safety_struct.is_back_tof_trig || safety_struct.is_front_tof_trig) {

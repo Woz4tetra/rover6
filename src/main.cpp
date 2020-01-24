@@ -323,7 +323,7 @@ void setup()
     setup_VL53L0X();   tft.print("VL53L0Xs ready!\n");
     setup_pid();
 
-    set_active(true);
+    set_active(false);
     // set_servos_default();
 
     set_front_tilter(FRONT_TILTER_UP);
