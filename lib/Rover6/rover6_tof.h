@@ -178,6 +178,9 @@ bool does_back_tof_see_obstacle() {
 
 bool read_VL53L0X()
 {
+    if (!is_lox_active) {
+        return false;
+    }
     if (is_moving()) {
         lox_samplerate_delay_ms = LOX_SAMPLERATE_FAST_DELAY_MS;
     }

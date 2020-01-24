@@ -19,13 +19,20 @@ class RoverConfig:
     back_ledge_y_mm = 100
     back_obstacle_x_mm = 100
 
+    front_tilter_servo_num = 0
+    back_tilter_servo_num = 1
+
     tof_servo_upper_command = 90
     tof_servo_lower_command = 180
     tof_servo_upper_angle_deg = 360.0
     tof_servo_lower_angle_deg = 275.0
 
-    front_tilter_servo_num = 0
-    back_tilter_servo_num = 1
+    pan_servo_num = 2
+    tilt_servo_num = 3
 
-    camera_pan_servo_num = 2
-    camera_tilt_servo_num = 3
+    pan_right_command = 90
+    pan_center_command = 43
+    pan_left_command = 0
+    tilt_up_command = 0
+    tilt_center_command = 105
+    tilt_down_command = 150

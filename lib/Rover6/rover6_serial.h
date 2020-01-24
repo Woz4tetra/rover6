@@ -25,7 +25,7 @@ void read_all_serial()
         current_packet = DATA_SERIAL.readStringUntil('\n');
         process_serial_packet(current_packet);
         counter++;
-        if (counter > 20) {
+        if (counter > 0x10000) {
             break;
         }
     }

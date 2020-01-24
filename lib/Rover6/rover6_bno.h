@@ -38,21 +38,6 @@ char* bno_status_string = new char[0xff];
 uint32_t bno_report_timer = 0;
 #define BNO_SAMPLERATE_DELAY_MS 100
 
-void set_bno_active(bool active)
-{
-    if (is_bno_active == active) {
-        return;
-    }
-    is_bno_active = active;
-
-    if (active) {
-        bno.enterNormalMode();
-    }
-    else {
-        bno.enterSuspendMode();
-    }
-}
-
 void get_system_status_string(uint8_t system_status, char* status)
 {
     switch (system_status) {
@@ -149,6 +134,23 @@ void get_bno_status()
 }
 
 
+void set_bno_active(bool active)
+{
+    if (is_bno_active == active) {
+        return;
+    }
+    is_bno_active = active;
+    // get_bno_status();
+
+    // if (active) {
+    //     bno.enterNormalMode();
+    // }
+    // else {
+    //     bno.enterSuspendMode();
+    // }
+}
+
+
 void setup_BNO055()
 {
     if (!bno.begin()) {
@@ -175,7 +177,7 @@ void setup_BNO055()
 
 bool read_BNO055()
 {
-    if (!is_bno_setup) {
+    if (!is_bno_setup || !is_bno_active) {
         return false;
     }
 
@@ -183,8 +185,6 @@ bool read_BNO055()
         return false;
     }
     bno_report_timer = CURRENT_TIME;
-
-    get_bno_status();
 
     bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
     bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);

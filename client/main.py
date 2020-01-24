@@ -15,8 +15,8 @@ def open_joystick():
         return None
 
 max_speed = 915.0
-max_joy_val = 0x7fff
-deadzone_joy_val = 0x3fff
+max_joy_val = 32767 # 0x7fff
+deadzone_joy_val = 8000
 def joy_to_speed(value):
     joy_val = max_joy_val - value
     if abs(joy_val) < deadzone_joy_val:
@@ -31,6 +31,32 @@ def joy_to_speed(value):
     return speed_cps
 
 
+def joy_to_pan_servo(value):
+    joy_val = max_joy_val - value
+    if abs(joy_val) < deadzone_joy_val:
+        return None
+    if joy_val >= 0:
+        command = (RoverConfig.pan_right_command - RoverConfig.pan_left_command) / (max_joy_val - deadzone_joy_val) * (joy_val - deadzone_joy_val) + RoverConfig.pan_center_command
+    else:
+        joy_val = abs(joy_val)
+        command = -(RoverConfig.pan_right_command - RoverConfig.pan_left_command) / (max_joy_val - deadzone_joy_val) * (joy_val - deadzone_joy_val) + RoverConfig.pan_center_command
+    
+    return int(command)
+
+
+def joy_to_tilt_servo(value):
+    joy_val = max_joy_val - value
+    if abs(joy_val) < deadzone_joy_val:
+        return None
+    if joy_val >= 0:
+        command = (RoverConfig.tilt_up_command - RoverConfig.tilt_down_command) / (max_joy_val - deadzone_joy_val) * (joy_val - deadzone_joy_val) + RoverConfig.tilt_center_command
+    else:
+        joy_val = abs(joy_val)
+        command = -(RoverConfig.tilt_up_command - RoverConfig.tilt_down_command) / (max_joy_val - deadzone_joy_val) * (joy_val - deadzone_joy_val) + RoverConfig.tilt_center_command
+    
+    return int(command)
+
+
 def main():    
     rover = RoverClient()
 
@@ -38,6 +64,8 @@ def main():
     rotate_speed = 0.0
     speed_A = 0.0
     speed_B = 0.0
+    pan_servo = None
+    tilt_servo = None
     device = None
 
     rover.start()
@@ -62,23 +90,28 @@ def main():
                 else:
                     time.sleep(1)
             else:
-                select.select([device.fd], [], [], 1/60)
+                select.select([device.fd], [], [], 0.01)
 
                 try:
                     for event in device.read():
                         codename = process_event(event)
                         if codename == "ABS_Y":
                             forward_speed = joy_to_speed(event.value)
-                        # elif codename == "ABS_RZ":
                         elif codename == "ABS_X":
                             rotate_speed = joy_to_speed(event.value)
+                        elif codename == "ABS_Z":
+                            pan_servo = joy_to_pan_servo(event.value)
+                        elif codename == "ABS_RZ":
+                            tilt_servo = joy_to_tilt_servo(event.value)
                     speed_A = forward_speed + rotate_speed
                     speed_B = forward_speed - rotate_speed
                 except BlockingIOError:
                     continue
-                    
+                
                 rover.set_speed(speed_A, speed_B)
-                time.sleep(1/60)
+                rover.set_servo(RoverConfig.pan_servo_num, pan_servo)
+                rover.set_servo(RoverConfig.tilt_servo_num, tilt_servo)
+                time.sleep(1/30)
 
     except BaseException:
         raise

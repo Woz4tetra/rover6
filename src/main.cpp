@@ -123,7 +123,7 @@ int lox_parse_int = 0;
 // method header defined in rover6_serial.h
 void process_serial_packet(String packet)
 {
-    // println_info("current packet: '%s'", packet.c_str());
+    println_info("current packet: '%s'", packet.c_str());
     char command = packet.charAt(0);
 
     if (command == '>') {
@@ -226,7 +226,7 @@ void process_serial_packet(String packet)
                             println_error("Serial input less than required length");
                             return;
                         }
-                        servo_num_parse_int = packet.substring(0).toInt();
+                        servo_num_parse_int = packet.substring(2).toInt();
                         set_servo(servo_num_parse_int);
                         break;
                 }

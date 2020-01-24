@@ -50,6 +50,7 @@ class RoverClient:
         self.written_servo_positions = [None for i in range(self.NUM_SERVOS)]
         self.servo_write_attempts = [0 for i in range(self.NUM_SERVOS)]
         self.servo_write_max_attempts = 60
+        self.write_lock = threading.Lock()
 
     def start(self):
         self.device.configure()
@@ -65,11 +66,12 @@ class RoverClient:
         self.should_stop = True
     
     def write(self, packet):
-        if len(packet) == 0:
-            return
-        print("writing: ", packet)
-        self.device.write(packet)
-        # time.sleep(0.001)
+        with self.write_lock:
+            if len(packet) == 0:
+                return
+            print("writing: ", packet)
+            self.device.write(packet)
+            time.sleep(0.001)
     
     def parse_packet(self, packet):
         fields = packet.split("\t")
@@ -160,12 +162,14 @@ class RoverClient:
     def tell_servo(self):
         self.write("st")
 
-    def set_servo(self, n, command):
-        self.write("sp%02d%03d" % (int(n), int(command)))
-        self.written_servo_positions[n] = command
-        self.servo_write_attempts[n] += 1
-        time.sleep(0.01)
-        self.tell_servo()
+    def set_servo(self, n, command=None):
+        if command is None:
+            self.write("sd%02d" % (int(n)))
+            self.written_servo_positions[n] = None
+        else:
+            self.write("sp%02d%03d" % (int(n), int(command)))
+            self.written_servo_positions[n] = command
+        # self.tell_servo()
     
     def on_receive(self, identifier):
         if identifier in self.recv_times:
@@ -179,12 +183,15 @@ class RoverClient:
             print(self.get(identifier, "voltage_V"))
         elif identifier == "servo":
             print([self.get(identifier, str(index)) for index in range(4)])
-            for n in range(self.NUM_SERVOS):
-                if self.written_servo_positions[n] is not None and self.written_servo_positions[n] != self.get(identifier, str(n)):
-                    self.servo_write_attempts[n] += 1
-                    if self.servo_write_attempts[n] > self.servo_write_max_attempts:
-                        raise DevicePortWriteException("Exceeded number of attempts to write %s to servo %s" % (self.written_servo_positions[n], n))
-                    self.set_servo(n, self.written_servo_positions[n])
+            # for n in range(self.NUM_SERVOS):
+            #     if self.written_servo_positions[n] is not None: 
+            #         if self.written_servo_positions[n] != self.get(identifier, str(n)):
+            #             self.servo_write_attempts[n] += 1
+            #             if self.servo_write_attempts[n] > self.servo_write_max_attempts:
+            #                 raise DevicePortWriteException("Exceeded number of attempts to write %s to servo %s" % (self.written_servo_positions[n], n))
+            #             self.set_servo(n, self.written_servo_positions[n])
+            #         else:
+            #             self.servo_write_attempts[n] = 0
 
 
     
