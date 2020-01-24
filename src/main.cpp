@@ -27,6 +27,7 @@ void set_active(bool active)
     set_servos_active(active);
     set_speed_pid(active);
     set_lox_active(active);
+    set_bno_active(active);
     if (!active) {
         stop_motors();
     }   

@@ -25,7 +25,7 @@ Adafruit_VL53L0X lox2;  // back
 VL53L0X_RangingMeasurementData_t measure1;
 VL53L0X_RangingMeasurementData_t measure2;
 
-char* status_string = new char[0xff];
+char* tof_status_string = new char[0xff];
 bool is_lox_active = false;
 uint8_t lox1_measurement_ready = 0;
 uint8_t lox2_measurement_ready = 0;
@@ -43,15 +43,15 @@ int LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 void print_lox1_error(VL53L0X_Error Status)
 {
     if (Status == VL53L0X_ERROR_NONE) return;
-    VL53L0X_get_pal_error_string(Status, status_string);
-    println_error("lox1 Error: %d, %s", Status, status_string);
+    VL53L0X_get_pal_error_string(Status, tof_status_string);
+    println_error("lox1 Error: %d, %s", Status, tof_status_string);
 }
 
 void print_lox2_error(VL53L0X_Error Status)
 {
     if (Status == VL53L0X_ERROR_NONE) return;
-    VL53L0X_get_pal_error_string(Status, status_string);
-    println_error("lox2 Error: %d, %s", Status, status_string);
+    VL53L0X_get_pal_error_string(Status, tof_status_string);
+    println_error("lox2 Error: %d, %s", Status, tof_status_string);
 }
 
 bool read_front_VL53L0X() {
