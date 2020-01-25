@@ -58,7 +58,7 @@ void report_fsrs()
     if (!rover_state.is_reporting_enabled) {
         return;
     }
-    print_data("fsr", "ldd", CURRENT_TIME, fsr_1_val, fsr_2_val);
+    print_data(4, "ldd", CURRENT_TIME, fsr_1_val, fsr_2_val);
 }
 
 #endif  // ROVER6_FSR

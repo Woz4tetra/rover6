@@ -169,7 +169,7 @@ int get_servo(uint8_t n) {
 }
 
 void report_servo_pos() {
-    print_data("servo", "ldddddddddddddddd", CURRENT_TIME,
+    print_data(8, "ldddddddddddddddd", CURRENT_TIME,
         servo_positions[0], servo_positions[1], servo_positions[2], servo_positions[3],
         servo_positions[4], servo_positions[5], servo_positions[6], servo_positions[7],
         servo_positions[8], servo_positions[9], servo_positions[10], servo_positions[11],

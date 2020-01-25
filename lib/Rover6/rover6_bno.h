@@ -201,7 +201,7 @@ void report_BNO055()
     }
 
     print_data(
-        "bno", "lfffffffffd",
+        2, "lfffffffffd",
         CURRENT_TIME,
         orientationData.orientation.x,
         orientationData.orientation.y,

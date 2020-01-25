@@ -121,142 +121,102 @@ int servo_num_parse_int = 0;
 int servo_pos_parse_int = 0;
 int lox_parse_int = 0;
 // method header defined in rover6_serial.h
-void process_serial_packet(String packet)
+void process_serial_subfield(uint32_t packet_num, char packet_category, char subfield_type, subfield* field, uint16_t field_index)
 {
-    println_info("current packet: '%s'", packet.c_str());
-    char command = packet.charAt(0);
+    switch (packet_category)
+    {
+        case 1:  // toggle active command
+            if (subfield_type != 'c' || field_index != 0) {
+                return;
+            }
 
-    if (command == '>') {
-        set_active(true);
-    }
-    else if (command == '<') {
-        set_active(false);
-    }
-    else if (command == '?') {
-        DATA_SERIAL.print("!\n");
-    }
-    else if (command == ']') {
-        rover_state.is_reporting_enabled = true;
-    }
-    else if (command == '[') {
-        rover_state.is_reporting_enabled = false;
-    }
-    else if (command == 'r') {
-        reset();
-    }
-    else if (command == '+') {
-        if (packet.charAt(1) == '!') {  // you sure you want to reset?
-            soft_restart();
-        }
-    }
-    else {
-        switch (command) {
-            case 't':
-                prev_date_str_update = CURRENT_TIME;
-                rpi_date_str = packet.substring(1);
-                break;
-            case 'm':
-                if (packet.length() < 3) {
-                    println_error("Serial input less than required length");
-                    return;
-                }
-                
-                // segment_int = packet.substring(2).toInt();
-                setpoint_parse_float = packet.substring(2).toFloat();
-                switch (packet.charAt(1)) {
-                    case 'a': update_setpointA(setpoint_parse_float); break;  // set_motors(segment_int, motorA.getSpeed()); break;
-                    case 'b': update_setpointB(setpoint_parse_float); break;  // set_motors(motorB.getSpeed(), segment_int); break;
-                    // case 'p': set_speed_pid(packet.charAt(2) == '1' ? true : false); break;
-                }
-                break;
-            case 'k':
-                if (packet.length() < 4) {
-                    println_error("Serial input less than required length");
-                    return;
-                }
-                pid_k_parse_float = packet.substring(3).toFloat();
-                if (packet.charAt(1) == 'a') {
-                    switch (packet.charAt(2)) {
-                        case 'p':
-                            set_KAs(pid_k_parse_float, Ki_A, Kd_A);
-                            break;
-                        case 'i':
-                            set_KAs(Kp_A, pid_k_parse_float, Kd_A);
-                            break;
-                        case 'd':
-                            set_KAs(Kp_A, Ki_A, pid_k_parse_float);
-                            break;
-                    }
-                }
-                else if (packet.charAt(1) == 'b') {
-                    switch (packet.charAt(2)) {
-                        case 'p':
-                            set_KBs(pid_k_parse_float, Ki_B, Kd_B);
-                            break;
-                        case 'i':
-                            set_KBs(Kp_B, pid_k_parse_float, Kd_B);
-                            break;
-                        case 'd':
-                            set_KBs(Kp_B, Ki_B, pid_k_parse_float);
-                            break;
-                    }
-                }
-                break;
-
-            case 's':
-                if (packet.length() < 2) {
-                    println_error("Serial input less than required length");
-                    return;
-                }
-                switch (packet.charAt(1))
-                {
-                    case 't': report_servo_pos(); break;
-                    case 'p': 
-                        if (packet.length() < 5) {
-                            println_error("Serial input less than required length");
-                            return;
-                        }
-                        servo_num_parse_int = packet.substring(2, 4).toInt();
-                        servo_pos_parse_int = packet.substring(4).toInt();
-                        println_info("Setting servo %d: %d", servo_num_parse_int, servo_pos_parse_int);
-                        set_servo(servo_num_parse_int, servo_pos_parse_int);
-                        break;
-                    case 'd':
-                        if (packet.length() < 4) {
-                            println_error("Serial input less than required length");
-                            return;
-                        }
-                        servo_num_parse_int = packet.substring(2).toInt();
-                        set_servo(servo_num_parse_int);
-                        break;
-                }
-                break;
-
-            case 'l':
-                if (packet.length() < 4) {
-                    println_error("Serial input less than required length");
-                    return;
-                }
-                lox_parse_int = packet.substring(3).toInt();
-                switch (packet.charAt(1))
-                {
-                    case 'u': 
-                        switch (packet.charAt(2)) {
-                            case 'f': LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM = lox_parse_int; break;
-                            case 'b': LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM = lox_parse_int; break;
-                        }
-                        break;
-
-                    case 'l':
-                        switch (packet.charAt(2)) {
-                            case 'f': LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM = lox_parse_int; break;
-                            case 'b': LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = lox_parse_int; break;
-                        }
-                        break;
-                    default: break;
-                }
-            default: break;
-        }
+            if (field->c == 1) {
+                set_active(true);
+            }
+            else if (field->c == 2) {
+                 set_active(false);
+            }
+            else if (field->c == 3) {
+                soft_restart();  // soft reset the microcontroller
+            }
+            break;
+        case 2:  // get ready message
+            if (subfield_type != 's' || field_index != 0) {
+                return;
+            }
+            if (strcmp(field->s, "rover6") == 0) {
+                // TODO: return rover name: hana
+            }
+            break;
+        case 3:  // toggle reporting
+            if (subfield_type != 'c' || field_index != 0) {
+                return;
+            }
+            if (field->c == 1) {
+                rover_state.is_reporting_enabled = true;
+            }
+            else if (field->c == 2) {
+                rover_state.is_reporting_enabled = false;
+            }
+            else if (field->c == 3) {
+                reset();  // reset reporting sensors
+            }
+            break;
+        case 4:  // update time string
+            if (subfield_type != 's' || field_index != 0) {
+                return;
+            }
+            
+            prev_date_str_update = CURRENT_TIME;
+            rpi_date_str = String(field->s);
+            break;
+        case 5:  // set motor pid setpoints
+            if (subfield_type != 'f') {
+                return;
+            }
+            if (field_index == 0) {
+                update_setpointA(field->f);
+            }
+            else if (field_index == 1) {
+                update_setpointB(field->f);
+            }
+        case 6:  //set motor pid constants
+            if (subfield_type != 'f') {
+                return;
+            }
+            switch (field_index)
+            {
+                case 0: set_Kp_A(field->f); break;
+                case 1: set_Ki_A(field->f); break;
+                case 2: set_Kd_A(field->f); break;
+                case 3: set_Kp_B(field->f); break;
+                case 4: set_Ki_B(field->f); break;
+                case 5: set_Kd_B(field->f); break;
+            }
+            break;
+        case 7:  // set servo position
+            if (subfield_type != 'i') {
+                return;
+            }
+            set_servo(field->i >> 8, field->i & 0xff);
+            break;
+        case 8:  // set servo default position
+            if (subfield_type != 'i') {
+                return;
+            }
+            set_servo(field->i & 0xff);
+            break;
+        case 9:  // set tof safety thresholds
+            if (subfield_type != 'i') {
+                return;
+            }
+            switch (field_index)
+            {
+                case 0: LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM = field->i; break;
+                case 1: LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM = field->i; break;
+                case 2: LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM = field->i; break;
+                case 3: LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = field->i; break;
+            }
     }
 }
 
@@ -299,10 +259,10 @@ void report_data()
 void setup()
 {
     init_structs();
+    initialize_display();  tft.print("Waiting for USB serial...\n");
 
-    setup_serial();
-    setup_i2c();
-    initialize_display();
+    setup_serial();  tft.print("Serial ready!\n");
+    setup_i2c();  tft.print("I2C ready!\n");
     reset_encoders();  tft.print("Encoders ready!\n");
     setup_fsrs();  tft.print("FSRs ready!\n");
     setup_IR();   tft.print("IR ready!\n");

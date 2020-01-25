@@ -62,7 +62,7 @@ void report_INA219()
     if (!rover_state.is_reporting_enabled) {
         return;
     }
-    print_data("ina", "lfff", CURRENT_TIME, ina219_current_mA, ina219_power_mW, ina219_loadvoltage);
+    print_data(6, "lfff", CURRENT_TIME, ina219_current_mA, ina219_power_mW, ina219_loadvoltage);
 }
 
 #endif  // ROVER6_INA
