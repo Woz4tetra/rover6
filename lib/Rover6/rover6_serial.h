@@ -29,15 +29,18 @@ void process_serial_packet(String category, String packet);
 
 bool get_segment(String packet, String* segment, unsigned int* index)
 {
-    int separator = packet.indexOf('\t');
+    if (*index >= packet.length()) {
+        return false;
+    }
+    int separator = packet.indexOf('\t', *index);
     if (separator < 0) {
         *segment = packet.substring(*index);
         *index = packet.length();
-        return false;
+        return true;
     }
     else {
         *segment = packet.substring(*index, separator);
-        *index += separator + 1;
+        *index = separator + 1;
         return true;
     }
 }
@@ -46,16 +49,15 @@ bool get_segment(String packet, String* segment, unsigned int* index)
 bool read_one_packet()
 {
     char c1 = DATA_SERIAL.read();
-    while (!DATA_SERIAL.available());
     if (c1 != PACKET_START_0) {
+        println_error("1: %c != %c", c1, PACKET_START_0);
         return false;
     }
     char c2 = DATA_SERIAL.read();
     if (c2 != PACKET_START_1) {
+        println_error("2: %c != %c", c2, PACKET_START_1);
         return false;
     }
-
-    uint16_t calc_checksum = 0;
 
     current_packet = DATA_SERIAL.readStringUntil('\n');
 
@@ -70,22 +72,22 @@ bool read_one_packet()
 
     current_packet_index = 0;
 
+    uint8_t calc_checksum = 0;
     // compute checksum using all characters except the checksum itself
     for (size_t index = 0; index < current_packet.length() - 2; index++) {
-        calc_checksum += (uint16_t)current_packet.charAt(index);
+        calc_checksum += (uint8_t)current_packet.charAt(index);
     }
 
-    String checksum_str = current_packet.substring(current_packet.length() - 2);
-    uint16_t recv_checksum = checksum_str.charAt(0) << 8 | checksum_str.charAt(1);
+    uint8_t recv_checksum = strtol(current_packet.substring(current_packet.length() - 2).c_str(), NULL, 16);
 
-    // checksum failed, but we read one packet
     if (calc_checksum != recv_checksum) {
+        // checksum failed
         print_data("txrx", "dd", read_packet_num, 0);
         read_packet_num++;
         return true;
     }
-    // failed to find packet num segment, but we read one packet
-    if (get_segment(current_packet, &current_segment, &current_packet_index)) {
+    if (!get_segment(current_packet, &current_segment, &current_packet_index)) {
+        // failed to find packet num segment, but we read one packet
         print_data("txrx", "dd", read_packet_num, 0);
         read_packet_num++;
         return true;
@@ -98,16 +100,15 @@ bool read_one_packet()
     }
     
     // find category segment
-    if (get_segment(current_packet, &current_segment, &current_packet_index)) {
+    if (!get_segment(current_packet, &current_segment, &current_packet_index)) {
         print_data("txrx", "dd", read_packet_num, 0);
         read_packet_num++;
         return true;
     }
     String category = current_segment;
 
-    // remove packet number and checksum
-    current_packet = current_packet.substring(current_packet_index, current_packet.length() - 2);
-    current_packet_index = 0;
+    // remove checksum
+    current_packet = current_packet.substring(0, current_packet.length() - 2);
     process_serial_packet(category, current_packet);
 
     print_data("txrx", "dd", read_packet_num, 1);
@@ -121,12 +122,20 @@ void read_all_serial()
     if (!DATA_SERIAL.available()) {
         return;
     }
+    // if (DATA_SERIAL.available() < 2) {
+    //     return;
+    // }
+    // read_one_packet();
     size_t counter = 0;
     while (DATA_SERIAL.available()) {
-        read_one_packet();
-        counter++;
-        if (counter > 0x10000) {
-            break;
+        if (DATA_SERIAL.available() < 2) {
+            continue;
+        }
+        if (read_one_packet()) {
+            counter++;
+            if (counter > 0x1000) {
+                break;
+            }
         }
     }
 }
@@ -156,24 +165,32 @@ void print_data(String name, const char *formats, ...)
             double f = va_arg(args, double);
             data += String(f);
         }
+        else {
+            println_error("Invalid format %c", *formats);
+        }
         ++formats;
     }
     va_end(args);
+    // println_info("data: %s", data.c_str());
 
-    uint16_t calc_checksum = 0;
+    uint8_t calc_checksum = 0;
     unsigned int length = data.length();
-    for (size_t index = 0; index < length; index++) {
-        calc_checksum += (uint16_t)current_packet.charAt(index);
+    for (size_t index = 2; index < length; index++) {
+        calc_checksum += (uint16_t)data.charAt(index);
     }
 
-    data += (calc_checksum >> 8) & 0xff;
-    data += calc_checksum & 0xff;
-
-    data += PACKET_STOP;
+    if (calc_checksum < 0x10) {
+        data += "0";
+    }
+    data += String(calc_checksum, HEX);
+    data += String(PACKET_STOP);
   
     // checksum might be inserting null characters. Force the buffer to extend
     // to include packet stop and checksum
-    DATA_SERIAL.write(data.c_str(), length + 3);
+    // DATA_SERIAL.write(data.c_str(), length + 3);
+    DATA_SERIAL.print(data);
+    // println_info("printing data %s", data.c_str());
+    write_packet_num++;
 }
 
 
@@ -225,8 +242,8 @@ void println_error(const char* message, ...)
 
 void setup_serial()
 {
-    // DATA_SERIAL.begin(115200);
-    DATA_SERIAL.begin(500000);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
+    DATA_SERIAL.begin(115200);
+    // DATA_SERIAL.begin(500000);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
     println_info("Rover #6");
     println_info("Serial buses initialized.");
 }

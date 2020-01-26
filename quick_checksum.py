@@ -1,17 +1,16 @@
-#packet = b'\x124\x00\x0e\x00\x00\x00\x01\x02srover6\x00\xda'
-packet = b'\x124\x00\x0e\x00\x00\x00\x01\x02srover6\x02\xda'
+#packet = b'0\tready\t1465622\thana'
+packet = b'14629\tready\t175395\thanac'
 
 def get_checksum(b: bytes):
     checksum = 0
     for val in b:
         checksum += val
-    checksum &= 0xffff
+    checksum &= 0xff
     return checksum
 
 def check(packet):
-    assert packet[0:2] == b'\x12\x34'
-    calc_checksum = get_checksum(packet[4:-2])
-    recv_checksum = int.from_bytes(packet[-2:], "big")
+    calc_checksum = get_checksum(packet[:-2])
+    recv_checksum = int(packet[-2:], 16)
     assert calc_checksum == recv_checksum, "%s != %s" % (calc_checksum, recv_checksum)
 
 check(packet)

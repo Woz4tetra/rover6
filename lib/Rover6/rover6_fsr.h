@@ -18,7 +18,7 @@ uint16_t fsr_1_val;
 uint16_t fsr_2_val;
 uint32_t fsr_report_timer = 0;
 
-#define FSR_SAMPLERATE_DELAY_MS 20
+#define FSR_SAMPLERATE_DELAY_MS 33  // ~30 Hz
 
 #define FSR_CONTACT_THRESHOLD 50
 #define FSR_NOISE_THRESHOLD 2

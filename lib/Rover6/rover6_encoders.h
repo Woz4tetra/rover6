@@ -20,7 +20,7 @@
 Encoder motorA_enc(MOTORA_ENCA, MOTORA_ENCB);
 Encoder motorB_enc(MOTORB_ENCB, MOTORB_ENCA);
 
-#define ENCODER_SAMPLERATE_DELAY_MS 17  // ~60 Hz
+#define ENCODER_SAMPLERATE_DELAY_MS 33  // ~30 Hz
 
 long encA_pos, encB_pos = 0;
 double enc_speedA, enc_speedB = 0.0;  // cm/s

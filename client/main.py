@@ -5,6 +5,9 @@ import numpy as np
 from lib.rover.rover_client import RoverClient
 from lib.joystick import Joystick
 from lib.config import ConfigManager
+from lib.logger_manager import LoggerManager
+
+logger = LoggerManager.get_logger()
 
 rover_config = ConfigManager.get_rover_config()
 
@@ -86,14 +89,14 @@ def main():
                     pan_servo = joy_to_pan_servo(event.value)
                 elif codename == "ABS_RZ":
                     tilt_servo = joy_to_tilt_servo(event.value)
-                speed_A = forward_speed + rotate_speed
-                speed_B = forward_speed - rotate_speed
+            speed_A = forward_speed + rotate_speed
+            speed_B = forward_speed - rotate_speed
                 
-                rover.set_speed(speed_A, speed_B)
-                rover.set_servo(rover_config.pan_servo_num, pan_servo)
-                rover.set_servo(rover_config.tilt_servo_num, tilt_servo)
-                
-                time.sleep(1/30)
+            rover.set_speed(speed_A, speed_B)
+            rover.set_servo(rover_config.pan_servo_num, pan_servo)
+            rover.set_servo(rover_config.tilt_servo_num, tilt_servo)
+            
+            time.sleep(1/15)
 
     except BaseException as e:
         logger.error(str(e), exc_info=True)
@@ -101,7 +104,8 @@ def main():
         rover.stop()
         print(rover.data_frame)
         for identifier, times in rover.recv_times.items():
-            print("%s:\t%sHz" % (identifier, np.mean(1 / np.diff(times))))
+            print("%s:\t%0.4fHz" % (identifier, 1 / np.mean(np.diff(times))))
+            # print("%s:\t%s" % (identifier, np.diff(times).tolist()))
 
 
 if __name__ == "__main__":

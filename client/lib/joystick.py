@@ -31,6 +31,8 @@ class Joystick:
                     yield codename, event
             except BlockingIOError:
                 pass
+            except OSError:
+                pass
         else:
             if time.time() - self.prev_open_attempt_time > 1.0:
                 self.device = self.open_joystick()
