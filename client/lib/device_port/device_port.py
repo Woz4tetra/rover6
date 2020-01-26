@@ -22,7 +22,12 @@ class DevicePort:
 
     def configure(self):
         logger.debug("Attempting to open address '%s'" % device_port_config.address)
-        self.device = serial.Serial(device_port_config.address, device_port_config.baud_rate)
+        self.device = serial.Serial(
+            device_port_config.address,
+            device_port_config.baud_rate,
+            timeout=device_port_config.timeout,
+            write_timeout=device_port_config.write_timeout
+        )
 
         # wait for the device to send data
         check_time = time.time()
@@ -37,13 +42,12 @@ class DevicePort:
                 return
         logger.info("%s is ready" % device_port_config.address)
 
-    def write(self, packet):
-        data = bytearray(str(packet))
+    def write(self, packet: bytes):
         if not self.device:
             raise DevicePortWriteException("Device '%s' was never opened for writing" % device_port_config.address)
         if not self.is_open():
             raise DevicePortWriteException("Device '%s' is not open for writing" % device_port_config.address)
-        self.device.write(data)
+        self.device.write(packet)
 
     def in_waiting(self):
         """
@@ -71,5 +75,5 @@ class DevicePort:
             logger.info("Closing device '{}'".format(device_port_config.address))
             self.device.close()
 
-    def __del__(self):
-        self.stop()
+    # def __del__(self):
+    #     self.stop()

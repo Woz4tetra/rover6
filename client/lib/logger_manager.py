@@ -29,7 +29,7 @@ class LoggerManager:
     @classmethod
     def get_logger(cls):
         if cls.logger is not None:
-            return
+            return cls.logger
 
         cls.logger = logging.getLogger(log_config.name)
         cls.logger.setLevel(log_config.level)

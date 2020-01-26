@@ -17,4 +17,6 @@ class Config:
         self.load()
 
     def load(self):
-        self.__dict__.update(yaml.load(self.config_path))
+        with open(self.config_path) as file:
+            config = yaml.load(file.read())
+        self.__dict__.update(config)

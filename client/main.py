@@ -95,8 +95,8 @@ def main():
                 
                 time.sleep(1/30)
 
-    except BaseException:
-        raise
+    except BaseException as e:
+        logger.error(str(e), exc_info=True)
     finally:
         rover.stop()
         print(rover.data_frame)

@@ -137,7 +137,7 @@ void process_serial_subfield(uint32_t packet_num, char packet_category, char sub
                 set_active(true);
             }
             else if (field->c == 2) {
-                 set_active(false);
+                set_active(false);
             }
             else if (field->c == 3) {
                 soft_restart();  // soft reset the microcontroller

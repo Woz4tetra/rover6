@@ -15,10 +15,27 @@ const char PACKET_START_1 = 0x34;
 bool is_reporting_enabled = false;
 char* PACKET_BUFFER = new char[0xffff];
 char* WRITE_BUFFER = new char[0xffff];
-char* SUBFIELD_BUFFER = new char[0xffff];
-char* PACKET_NUM_BUFFER = new char[5];
-uint32_t READ_PACKET_NUM = 0;
+char* SUBFIELD_BUFFER = new char[0xff];
+int32_t READ_PACKET_NUM = 0;
 uint32_t WRITE_PACKET_NUM = 0;
+
+#ifdef __arm__
+// should use uinstd.h to define sbrk but Due causes a conflict
+extern "C" char* sbrk(int incr);
+#else  // __ARM__
+extern char *__brkval;
+#endif  // __arm__
+
+int freeMemory() {
+  char top;
+#ifdef __arm__
+  return &top - reinterpret_cast<char*>(sbrk(0));
+#elif defined(CORE_TEENSY) || (ARDUINO > 103 && ARDUINO != 151)
+  return &top - __brkval;
+#else  // __arm__
+  return __brkval ? &top - __brkval : &top - __malloc_heap_start;
+#endif  // __arm__
+}
 
 void print_info(const char* message, ...);
 void println_info(const char* message, ...);
@@ -43,14 +60,10 @@ union
     uint8_t c[4];
 } float_conv;
 float parse_float(char* data) {
-    if (strlen(data) != 4) {
-        println_error("Incorrect length for float parsing: %s", data);
-        return 0.0;
-    }
-    float_conv.c[0] = data[0];
-    float_conv.c[1] = data[1];
-    float_conv.c[2] = data[2];
-    float_conv.c[3] = data[3];
+    float_conv.c[3] = data[0];
+    float_conv.c[2] = data[1];
+    float_conv.c[1] = data[2];
+    float_conv.c[0] = data[3];
 
     return float_conv.f;
 }
@@ -64,20 +77,17 @@ void float_to_str(char* buffer, float f) {
 union
 {
     int32_t i;
-    char c[4];
+    uint8_t c[4];
 } int_conv;
 int32_t parse_int(char* data) {
-    if (strlen(data) != 4) {
-        println_error("Incorrect length for int parsing: %s", data);
-        return 0;
-    }
-    int_conv.c[0] = data[0];
-    int_conv.c[1] = data[1];
-    int_conv.c[2] = data[2];
-    int_conv.c[3] = data[3];
+    int_conv.c[3] = data[0];
+    int_conv.c[2] = data[1];
+    int_conv.c[1] = data[2];
+    int_conv.c[0] = data[3];
 
     return int_conv.i;
 }
+
 void int_to_str(char* buffer, int i) {
     int_conv.i = i;
     for (size_t index = 0; index < 4; index++) {
@@ -91,12 +101,8 @@ union
     uint8_t c[8];
 } long_conv;
 int64_t parse_long(char* data) {
-    if (strlen(data) != 8) {
-        println_error("Incorrect length for int parsing: %s", data);
-        return 0;
-    }
     for (byte i = 0; i < 8; i++) {
-        long_conv.c[i] = data[i];
+        long_conv.c[7 - i] = data[i];
     }
     return long_conv.l;
 }
@@ -179,28 +185,36 @@ void read_all_serial()
     if (!DATA_SERIAL.available()) {
         return;
     }
-    char length_c1;
-    char length_c2;
+    char length_c1 = '\0';
+    char length_c2 = '\0';
     uint16_t msg_length = 0;
     uint16_t msg_length_no_checksum = 0;
 
-    char packet_category;
-    char subfield_type;
-    uint8_t subfield_len;
+    char packet_category = '\0';
+    char subfield_type = '\0';
+    uint8_t subfield_len = 0;
 
-    char recv_checksum_c1;
-    char recv_checksum_c2;
+    char recv_checksum_c1 = '\0';
+    char recv_checksum_c2 = '\0';
     uint16_t calc_checksum = 0;
     uint16_t recv_checksum = 0;
 
-    size_t index = 0;
+    uint16_t index = 0;
     uint16_t field_index = 0;
 
     while (DATA_SERIAL.available())
     {
-        if (DATA_SERIAL.read() != PACKET_START) {
+
+        char c = DATA_SERIAL.read();
+        if (c != PACKET_START_0) {
             continue;
         }
+        while (!DATA_SERIAL.available());
+        c = DATA_SERIAL.read();
+        if (c != PACKET_START_1) {
+            continue;
+        }
+        while (DATA_SERIAL.available() < 2);
         length_c1 = DATA_SERIAL.read();
         length_c2 = DATA_SERIAL.read();
         msg_length = (length_c1 << 8) | length_c2;
@@ -210,7 +224,8 @@ void read_all_serial()
             return;
         }
 
-        Serial.readBytes(PACKET_BUFFER, msg_length);
+        while (DATA_SERIAL.available() < msg_length + 1);
+        DATA_SERIAL.readBytes(PACKET_BUFFER, msg_length + 1);
         msg_length_no_checksum = msg_length - 2;
         for (size_t check_index = 0; check_index < msg_length_no_checksum; check_index++) {
             calc_checksum += PACKET_BUFFER[check_index];
@@ -225,33 +240,46 @@ void read_all_serial()
             return;
         }
 
-        index = 0;
+        println_info("free memory: %d", freeMemory());
+        DATA_SERIAL.write(PACKET_BUFFER, msg_length + 1);
 
-        strncpy(PACKET_NUM_BUFFER, PACKET_BUFFER + index, 4);
-        READ_PACKET_NUM = parse_int(PACKET_NUM_BUFFER);
+        int32_t read_packet_num = parse_int(PACKET_BUFFER);
+        if (READ_PACKET_NUM != read_packet_num) {
+            println_error("Received packet number out of sync with local count: %d != %d", READ_PACKET_NUM, read_packet_num);
+            READ_PACKET_NUM = read_packet_num;
+        }
+        println_info("Packet nums: local=%d, recv=%d", READ_PACKET_NUM, read_packet_num);
+        
+        index = 4;  // start index just after packet number
+        // packet_category = PACKET_BUFFER[index];
+        // println_info("Packet category: %c", packet_category);
 
-        packet_category = PACKET_BUFFER[index];
         msg_length -= 2;  // don't parse the checksum, we did that already
-        while (index < msg_length) {  
-            subfield_type = PACKET_BUFFER[++index];
+        while (index < msg_length) {
+            index++;
+            subfield_type = PACKET_BUFFER[index];
             switch (subfield_type) {
                 case 'f':
                 case 'd':
                 case 'i': subfield_len = 4; break;
                 case 'l': subfield_len = 8; break;
                 case 'c': subfield_len = 1; break;
-                case 's':
-                    FIELD_VAL->s_len = (uint8_t)PACKET_BUFFER[++index];
-                    subfield_len = FIELD_VAL->s_len;
-                    break;
+                case 's': subfield_len = 0; break;
+                case 0: 
+                    report_read_success(false);
+                    println_error("Null character encountered where subfield type expected at index %d", index);
+                    return;
                 default:
                     report_read_success(false);
-                    println_error("Invalid subfield type: %s", subfield_type);
+                    println_error("Invalid subfield type: %c at index %d", subfield_type, index);
                     return;
             }
             index++;
-            strncpy(SUBFIELD_BUFFER, PACKET_BUFFER + index, subfield_len);
-            SUBFIELD_BUFFER[subfield_len] = '\0';
+            if (subfield_type != 's') {
+                for (size_t sub_index = index; sub_index < index + subfield_len; index++) {
+                    SUBFIELD_BUFFER[index] = PACKET_BUFFER[sub_index];
+                }
+            }
 
             switch (subfield_type) {
                 case 'f': FIELD_VAL->f = parse_float(SUBFIELD_BUFFER); break;
@@ -260,12 +288,16 @@ void read_all_serial()
                 case 'l': FIELD_VAL->l = parse_long(SUBFIELD_BUFFER); break;
                 case 'c': FIELD_VAL->c = SUBFIELD_BUFFER[0]; break;
                 case 's':
-                    strncpy(FIELD_VAL->s, PACKET_BUFFER + index, (uint8_t)FIELD_VAL->s_len);
-                    FIELD_VAL->s[FIELD_VAL->s_len] = '\0';
+                    strcpy(FIELD_VAL->s, PACKET_BUFFER + index);
+                    subfield_len = strlen(FIELD_VAL->s);
                     break;
+                case 0: 
+                    report_read_success(false);
+                    println_error("Null character encountered where subfield type expected at index %d", index);
+                    return;
                 default:
                     report_read_success(false);
-                    println_error("Invalid subfield type: %s", subfield_type);
+                    println_error("Invalid subfield type: %c @ index %d", subfield_type, index);
                     return;
             }
             index += subfield_len;
@@ -273,6 +305,7 @@ void read_all_serial()
             field_index++;
         }
         report_read_success(true);
+        READ_PACKET_NUM++;
     }
 }
 

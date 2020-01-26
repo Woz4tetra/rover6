@@ -17,7 +17,7 @@ def get_checksum(b: bytes):
     checksum = 0
     for val in b:
         checksum += val
-    checksum &= 0xff
+    checksum &= 0xffff
     return checksum
 
 
@@ -156,6 +156,7 @@ class RoverClient:
 
     def stop(self):
         self.should_stop = True
+        self.device.stop()
 
     def create_packet(self, category: int, *args):
         message = b""
@@ -172,9 +173,9 @@ class RoverClient:
                 subfield = struct.pack('f', arg)
             elif type(arg) == str:
                 if len(arg) == 1:
-                    subfield_type = 'c'
+                    subfield_type = b'c'
                 else:
-                    subfield_type = 's'
+                    subfield_type = b's'
                 subfield = arg.encode()
             else:
                 logger.error("Invalid argument supplied: {}. Must be int, float, or str".format(arg))
@@ -189,7 +190,9 @@ class RoverClient:
         checksum_bytes = checksum.to_bytes(2, "big")
         msg_length = (len(message) + 2).to_bytes(2, "big")
 
-        packet = self.packet_start + msg_length + message + checksum_bytes
+        packet = self.packet_start + msg_length + message + checksum_bytes + b'\n'
+
+        logger.info("Writing: " + str(packet))
 
         self.write_packet_num += 1
 
@@ -207,6 +210,7 @@ class RoverClient:
         # assuming self.device.in_waiting() returned > 0
 
         print_buffer = b""
+        self.prev_packet_time = time.time()
         while True:
             c = self.device.read(1)
             if c == self.packet_start[0]:
@@ -217,7 +221,7 @@ class RoverClient:
             if time.time() - self.prev_packet_time > device_port_config.timeout:
                 raise DevicePortReadException("Timed out waiting for the packet start bytes.")
             if c == self.packet_stop:
-                logger.info("Device message: " + print_buffer.decode())
+                logger.info("Device message: " + str(print_buffer))
                 print_buffer = b""
             else:
                 print_buffer += c
@@ -266,7 +270,7 @@ class RoverClient:
 
         while True:
             if should_stop():
-                print("Exiting read thread")
+                logger.info("Exiting read thread")
                 return
 
             if time.time() - self.prev_time_command_update > 0.5:
@@ -304,10 +308,15 @@ class RoverClient:
                 self.write("get_ready", "rover6")
                 prev_write_time = time.time()
 
-            if time.time() - start_time > 5.0:
+            if time.time() - start_time > 25.0:
                 raise DevicePortWriteException("Timed out! Failed to receive ready signal from device.")
-
-            identifier = self.parse_packet()
+            
+            if self.device.in_waiting() > 0:
+                try:
+                    identifier = self.parse_packet()
+                except DevicePortReadException:
+                    logger.info("Waiting for ready signal timed out. Trying again.")
+            time.sleep(0.05)
 
         logger.info("Device signalled ready. Rover name: {}".format(self.get(identifier, "name")))
 
@@ -423,5 +432,5 @@ class RoverClient:
             tof_thresholds.front_upper,
         )
 
-    def __del__(self):
-        self.stop()
+    # def __del__(self):
+    #     self.stop()
