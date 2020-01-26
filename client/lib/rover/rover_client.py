@@ -22,41 +22,33 @@ def get_checksum(b: bytes):
 
 
 class PacketBuffer:
+    WRITE_CODES = {}
+
     def __init__(self, packet: bytes):
         self.packet = packet
+        self.packet_str = packet.decode()
         self.index = 0
         self.recv_checksum = 0
         self.calc_checksum = 0
 
         self.type_mapping = {
-            'd': self.read_int,
-            'i': self.read_int,
-            'l': self.read_long,
-            'f': self.read_float,
+            'd': int,
+            'u': int,
+            'f': float,
+            's': str,
         }
 
-    def read(self, n) -> bytes:
-        segment = self.packet[self.index: self.index + n]
-        self.index += n
-        return segment
+        self.packet_num = int(self.next())
+        self.identifier = int(self.next())
+        self.code = self.WRITE_CODES[self.identifier]
 
-    def read_int(self) -> int:
-        return int.from_bytes(self.read(4), "big")
+    def next(self) -> bytes:
+        index = self.packet_str.find("\t")
+        if index < 0:
+            raise StopIteration
 
-    def read_float(self) -> float:
-        return struct.unpack('f', self.read(4))[0]
-
-    def read_long(self) -> int:
-        return int.from_bytes(self.read(8), "big")
-
-    def read_until(self, c) -> bytes:
-        found_index = self.packet.find(c)
-        if found_index == -1:
-            segment = self.packet[self.index:]
-            self.index = len(self.packet)
-        else:
-            segment = self.packet[self.index:found_index]
-            self.index = found_index
+        segment = self.packet[self.index: index]
+        self.index = index
         return segment
 
     def checksum(self) -> bool:
@@ -65,29 +57,26 @@ class PacketBuffer:
         return self.recv_checksum == self.calc_checksum
 
     def iter(self):
-        subfield_index = 0
+        segment_index = 0
         while self.index < len(self.packet) - 2:  # ignore checksum bytes
-            subfield_type = self.read(1)
-            if subfield_type == 'c':
-                yield subfield_index, self.read(1)
-            elif subfield_type == 's':
-                yield subfield_index, self.read_until(b'\x00')
-            else:
-                yield subfield_index, self.type_mapping[subfield_type]()
-            subfield_index += 1
+            segment = self.next()
+            segment_type = self.code[segment_index]
+            yield segment_index, self.type_mapping[segment_type](segment)
+            segment_index += 1
 
 
 class RoverClient:
     PACKET_CODES = {
-        "serial": 1,
-        "bno"   : 2,
-        "enc"   : 3,
-        "fsr"   : 4,
-        "safety": 5,
-        "ina"   : 6,
-        "ir"    : 7,
-        "servo" : 8,
-        "tof"   : 9,
+        "txrx" : "dd",
+        "bno"  : "ufffffffffd",
+        "enc"  : "uddff",
+        "fsr"  : "udd",
+        "safe" : "udddddddddddd",
+        "ina"  : "ufff",
+        "ir"   : "udd",
+        "servo": "udddddddddddddddd",
+        "tof"  : "udddddd",
+        "ready": "us",
     }
 
     NUM_SERVOS = 16
@@ -105,19 +94,40 @@ class RoverClient:
         "safety": ["time", "is_left_bumper_trig", "is_right_bumper_trig", "is_front_tof_trig", "is_back_tof_trig",
                    "is_front_tof_ok", "is_back_tof_ok", "are_servos_active", "are_motors_active", "voltage_ok",
                    "is_active", "is_reporting_enabled", "is_speed_pid_enabled"],
-        "serial": ["time", "name"],
+        "txrx"  : ["packet_num", "success"],
+        "ready" : ["time", "name"]
+    }
+
+    WRITE_COMMANDS = {
+        "toggle_active"        : "<>",
+        "get_ready"            : "?",
+        "toggle_reporting"     : "[]",
+        "update_time_str"      : "t",
+        "set_motors"           : "m",
+        "set_pid_ks"           : "ks",
+        "set_servo"            : "s",
+        "set_servo_default"    : "sd",
+        "set_safety_thresholds": "safe"
     }
 
     WRITE_CODES = {
-        "toggle_active"        : 1,
-        "get_ready"            : 2,
-        "toggle_reporting"     : 3,
-        "update_time_str"      : 4,
-        "set_motors"           : 5,
-        "set_pid_ks"           : 6,
-        "set_servo"            : 7,
-        "set_servo_default"    : 8,
-        "set_safety_thresholds": 9
+        "toggle_active"        : "d",
+        "get_ready"            : "d",
+        "toggle_reporting"     : "d",
+        "update_time_str"      : "s",
+        "set_motors"           : "ff",
+        "set_pid_ks"           : "ffffff",
+        "set_servo"            : "dd",
+        "set_servo_default"    : "d",
+        "set_safety_thresholds": "dddd"
+    }
+    PacketBuffer.WRITE_CODES = WRITE_CODES
+
+    CODE_TO_TYPE = {
+        'd': int,
+        'l': int,
+        'f': float,
+        's': str,
     }
 
     def __init__(self):
@@ -128,8 +138,6 @@ class RoverClient:
         for identifier, names in self.PACKET_NAMES.items():
             self.name_index_mapping[identifier] = {name: index for index, name in enumerate(names)}
 
-        self.packet_code_index_mapping = {index: identifier for identifier, index in self.PACKET_CODES.items()}
-
         self.prev_time_command_update = time.time()
         self.should_stop = False
         self.thread = threading.Thread(target=self.read_task, args=(lambda: self.should_stop,))
@@ -138,9 +146,6 @@ class RoverClient:
         self.read_update_rate_hz = 120.0
         self.prev_packet_time = 0.0
 
-        self.written_servo_positions = [None for i in range(self.NUM_SERVOS)]
-        self.servo_write_attempts = [0 for i in range(self.NUM_SERVOS)]
-        self.servo_write_max_attempts = 60
         self.write_lock = threading.Lock()
 
         self.packet_start = b"\x12\x34"
@@ -158,52 +163,26 @@ class RoverClient:
         self.should_stop = True
         self.device.stop()
 
-    def create_packet(self, category: int, *args):
-        message = b""
-        for arg in args:
-            if type(arg) == int:
-                if arg > 0xffffffff:  # 32 bit int
-                    subfield_type = b'l'
-                    subfield = arg.to_bytes(8, "big")
-                else:
-                    subfield_type = b'i'
-                    subfield = arg.to_bytes(4, "big")
-            elif type(arg) == float:
-                subfield_type = b'f'
-                subfield = struct.pack('f', arg)
-            elif type(arg) == str:
-                if len(arg) == 1:
-                    subfield_type = b'c'
-                else:
-                    subfield_type = b's'
-                subfield = arg.encode()
-            else:
-                logger.error("Invalid argument supplied: {}. Must be int, float, or str".format(arg))
-                return None
-            message += subfield_type + subfield
-
-        category_bytes = category.to_bytes(1, "big")
-        write_packet_num_bytes = self.write_packet_num.to_bytes(4, "big")
-        message = write_packet_num_bytes + category_bytes + message
-
-        checksum = get_checksum(message)
-        checksum_bytes = checksum.to_bytes(2, "big")
-        msg_length = (len(message) + 2).to_bytes(2, "big")
-
-        packet = self.packet_start + msg_length + message + checksum_bytes + b'\n'
-
-        logger.info("Writing: " + str(packet))
-
-        self.write_packet_num += 1
-
-        return packet
-
-    def write(self, category: str, *args):
-        if category not in self.WRITE_CODES:
-            logger.error("{} not an available write code.".format(category))
+    def write(self, write_command_name: str, *args):
+        if write_command_name not in self.WRITE_COMMANDS:
+            logger.error("{} not an available write command.".format(write_command_name))
             return
+        command = self.WRITE_COMMANDS[write_command_name].encode()
+        assert (len(args) == len(self.WRITE_CODES[write_command_name]),
+                "%s != %s" % (len(args), len(self.WRITE_CODES[write_command_name])))
+
+        packet = self.packet_start
+        packet += str(self.write_packet_num).encode()
+        packet += b"\t" + command
+        for index, code in enumerate(self.WRITE_CODES[write_command_name]):
+            assert self.CODE_TO_TYPE == type(args[index]), "%s != %s" % (args[index], self.CODE_TO_TYPE)
+            packet += b"\t" + str(args[index]).encode()
+
+        checksum = get_checksum(packet)
+        packet += checksum.to_bytes(2, "big")
+        packet += self.packet_stop
+
         with self.write_lock:
-            packet = self.create_packet(self.WRITE_CODES[category], *args)
             self.device.write(packet)
 
     def parse_packet(self):
@@ -226,43 +205,39 @@ class RoverClient:
             else:
                 print_buffer += c
 
-        msg_length_bytes = self.device.read(2)
-        logger.debug("msg_length_bytes = {}".format(msg_length_bytes))
-        msg_length = int.from_bytes(msg_length_bytes, byteorder="big")
-        logger.debug("msg_length = {}".format(msg_length))
-        packet = self.device.read(msg_length + 1)  # include newline
-        if packet[-1] != self.packet_stop:
-            raise DevicePortReadException("Packet {} does not end with terminating character!".format(packet))
+        packet_buffer = b""
+        self.prev_packet_time = time.time()
+        while True:
+            c = self.device.read(1)
+            packet_buffer += c
+            if c == self.packet_stop:
+                break
+            if time.time() - self.prev_packet_time > device_port_config.timeout:
+                raise DevicePortReadException("Timed out waiting for the packet stop byte.")
 
-        packet = packet[:-1]
-        buffer = PacketBuffer(packet)
+        buffer = PacketBuffer(packet_buffer)
 
         if not buffer.checksum():
             logger.error(
                 "Checksum failed for packet {}. Calculated {} != received {}".format(
-                    packet, buffer.calc_checksum, buffer.recv_checksum)
+                    packet_buffer, buffer.calc_checksum, buffer.recv_checksum)
             )
 
-        read_packet_num = buffer.read_int()
-        logger.debug("read_packet_num = {}".format(read_packet_num))
-        if self.read_packet_num != read_packet_num:
+        logger.debug("read_packet_num = {}".format(buffer.packet_num))
+        if self.read_packet_num != buffer.packet_num:
             logger.warn("Received packet num {} is out of sync with local packet num {}".format(
-                read_packet_num, self.read_packet_num
+                buffer.packet_num, self.read_packet_num
             ))
-            self.read_packet_num = read_packet_num
+            self.read_packet_num = buffer.packet_num
+
+        if buffer.identifier not in self.data_frame:
+            self.data_frame[buffer.identifier] = {"num": self.read_packet_num}
+        for segment_index, segment in buffer.iter():
+            subfield_name = self.PACKET_NAMES[buffer.identifier][segment_index]
+            self.data_frame[buffer.identifier][subfield_name] = segment
+
         self.read_packet_num += 1
-
-        category = int.from_bytes(buffer.read(1), "big")
-        logger.debug("category = {}".format(category))
-
-        identifier = self.packet_code_index_mapping[category]
-        for subfield_index, subfield in buffer.iter():
-            if identifier not in self.data_frame:
-                self.data_frame[identifier] = {"num": read_packet_num}
-            subfield_name = self.PACKET_NAMES[identifier][subfield_index]
-            self.data_frame[identifier][subfield_name] = subfield
-
-        return identifier
+        return buffer.identifier
 
     def read_task(self, should_stop):
         update_delay = 1 / self.read_update_rate_hz
@@ -280,14 +255,15 @@ class RoverClient:
             in_waiting = self.device.in_waiting()
             if in_waiting:
                 try:
+                    recv_time = time.time()
                     identifier = self.parse_packet()
 
                     if identifier in self.recv_times:
-                        self.recv_times[identifier].append(time.time())
+                        self.recv_times[identifier].append(recv_time)
                         while len(self.recv_times[identifier]) > 0x10000:
                             self.recv_times[identifier].pop(0)
                     else:
-                        self.recv_times[identifier] = [time.time()]
+                        self.recv_times[identifier] = [recv_time]
 
                     self.on_receive(identifier)
                 except BaseException as e:
@@ -303,14 +279,14 @@ class RoverClient:
         identifier = None
         start_time = time.time()
         prev_write_time = time.time()
-        while identifier != "serial":
+        while identifier != "ready":
             if time.time() - prev_write_time > 1.0:
                 self.write("get_ready", "rover6")
                 prev_write_time = time.time()
 
             if time.time() - start_time > 25.0:
                 raise DevicePortWriteException("Timed out! Failed to receive ready signal from device.")
-            
+
             if self.device.in_waiting() > 0:
                 try:
                     identifier = self.parse_packet()
@@ -322,21 +298,21 @@ class RoverClient:
 
     def set_active(self, state: bool):
         if state:
-            self.write("toggle_active", chr(1))
+            self.write("toggle_active", 0)
         else:
-            self.write("toggle_active", chr(2))
+            self.write("toggle_active", 1)
 
     def soft_restart(self):
-        self.write("toggle_active", chr(3))
+        self.write("toggle_active", 2)
 
     def set_reporting(self, state: bool):
         if state:
-            self.write("toggle_reporting", chr(1))
+            self.write("toggle_reporting", 0)
         else:
-            self.write("toggle_reporting", chr(2))
+            self.write("toggle_reporting", 1)
 
     def reset_sensors(self):
-        self.write("toggle_reporting", chr(3))
+        self.write("toggle_reporting", 2)
 
     def write_time_str(self):
         self.write("update_time_str", datetime.datetime.now().strftime("%I:%M:%S%p"))
@@ -358,29 +334,11 @@ class RoverClient:
             float(kd)
         )
 
-    def format_servo_command(self, n: int, command: int = None):
-        if command is None:
-            return int(n) & 0xff
-        else:
-            return (int(n) & 0xff) << 8 | (int(command) & 0xff)
-
     def set_servo(self, n: int, command: int = None):
-        self.write("set_servo_defaults" if command is None else "set_servo", self.format_servo_command(n, command))
-        self.written_servo_positions[n] = command
-
-    def set_servos(self, commands: dict):
-        args = []
-        for n, command in commands.items():
-            if command is None:
-                raise ValueError("Can't set servo to default position with this command.")
-            args.append(self.format_servo_command(n, command))
-        self.write("set_servo", *args)
-
-    def set_servo_defaults(self, *servo_nums):
-        args = []
-        for n in servo_nums:
-            args.append(self.format_servo_command(n))
-        self.write("set_servo_defaults", *args)
+        if command is None:
+            self.write("set_servo_default", int(n))
+        else:
+            self.write("set_servo", int(n), int(command))
 
     def on_receive(self, identifier):
         if identifier == "ina":
@@ -412,11 +370,6 @@ class RoverClient:
         tof_thresholds = tof_obstacles.get_stopping_thresholds(
             obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm
         )
-        servo_commands = {
-            rover_config.back_tilter_servo_num : tof_thresholds.back_servo,
-            rover_config.front_tilter_servo_num: tof_thresholds.front_servo
-        }
-
         logger.info("Setting front safety thresholds: lower = {}, upper = {}, servo = {}".format(
             tof_thresholds.front_lower, tof_thresholds.front_upper, tof_thresholds.front_servo
         ))
@@ -424,7 +377,8 @@ class RoverClient:
             tof_thresholds.back_lower, tof_thresholds.back_upper, tof_thresholds.back_servo
         ))
 
-        self.set_servos(servo_commands)
+        self.set_servo(rover_config.back_tilter_servo_num, tof_thresholds.back_servo)
+        self.set_servo(rover_config.front_tilter_servo_num, tof_thresholds.front_servo)
         self.set_obstacle_thresholds(
             tof_thresholds.back_lower,
             tof_thresholds.back_upper,

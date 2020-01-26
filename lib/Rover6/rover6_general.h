@@ -1,7 +1,4 @@
 
-// uint32_t current_time = 0;
-#define CURRENT_TIME millis()
-
 #ifndef ROVER6_GENERAL
 #define ROVER6_GENERAL
 
@@ -9,6 +6,10 @@
 #include <Snooze.h>
 
 #include "rover6_serial.h"
+
+// uint32_t current_time = 0;
+#define CURRENT_TIME millis()
+
 
 /*
  * Soft restart
@@ -18,8 +19,7 @@
 
 void soft_restart()
 {
-    MSG_SERIAL.end();
-    DATA_SERIAL.end();
+    DATA_SERIAL.end();  // clears the serial monitor  if used
     SCB_AIRCR = 0x05FA0004;  // write value for restart
 }
 
@@ -79,7 +79,7 @@ bool is_obstacle_in_back() {
 }
 
 void report_structs() {
-    print_data(5, "ldddddddddddd", CURRENT_TIME,
+    print_data("safe", "ldddddddddddd", CURRENT_TIME,
         safety_struct.is_left_bumper_trig,
         safety_struct.is_right_bumper_trig,
         safety_struct.is_front_tof_trig,

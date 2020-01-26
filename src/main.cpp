@@ -76,10 +76,7 @@ void callback_ir()
             println_info("IR: >");
             right_menu_event();
             break;  // >
-        case 0x30cf:
-            println_info("IR: 0 10+");
-            rover_state.is_reporting_enabled = !rover_state.is_reporting_enabled;
-            break;  // 0 10+
+        case 0x30cf: println_info("IR: 0 10+"); break;  // 0 10+
         case 0xb04f:
             println_info("IR: v");
             down_menu_event();
@@ -117,109 +114,135 @@ void callback_ir()
     ir_value = 0;
 }
 
-
-float setpoint_parse_float = 0.0;
-float pid_k_parse_float = 0.0;
-int servo_num_parse_int = 0;
-int servo_pos_parse_int = 0;
-int lox_parse_int = 0;
 // method header defined in rover6_serial.h
-void process_serial_subfield(uint32_t packet_num, char packet_category, char subfield_type, subfield* field, uint16_t field_index)
+void process_serial_packet(String category, String packet)
 {
-    switch (packet_category)
-    {
-        case 1:  // toggle active command
-            if (subfield_type != 'c' || field_index != 0) {
-                return;
-            }
+    println_info("current packet: '%s'", packet.c_str());
+    if (get_segment(packet, &current_segment, &current_packet_index)) {
 
-            if (field->c == 1) {
-                set_active(true);
+        // toggle_active
+        if (current_segment.equals("<>")) {
+            if (get_segment(packet, &current_segment, &current_packet_index)) {
+                switch (current_segment.toInt())
+                {
+                    case 0: set_active(false); break;
+                    case 1: set_active(true); break;
+                    case 2: soft_restart(); break;
+                    default:
+                        break;
+                }
             }
-            else if (field->c == 2) {
-                set_active(false);
+            else {
+                println_error("Not enough segments supplied for toggle_active: %s", packet.c_str());
             }
-            else if (field->c == 3) {
-                soft_restart();  // soft reset the microcontroller
+        }
+
+        // get_ready
+        else if (current_segment.equals("?")) {
+            if (get_segment(packet, &current_segment, &current_packet_index)) {
+                if (current_segment.equals("rover6")) {
+                    print_data("ready", "ls", CURRENT_TIME, "hana");
+                }
             }
-            break;
-        case 2:  // get ready message
-            if (subfield_type != 's' || field_index != 0) {
+            else {
+                println_error("Not enough segments supplied for get_ready: %s", packet.c_str());
+            }
+        }
+
+        // toggle_reporting
+        else if (current_segment.equals("[]")) {
+            if (get_segment(packet, &current_segment, &current_packet_index)) {
+                switch (current_segment.toInt())
+                {
+                    case 0: rover_state.is_reporting_enabled = false; break;
+                    case 1: rover_state.is_reporting_enabled = true; break;
+                    case 2: reset(); break;
+                    default:
+                        break;
+                }
+            }
+            else {
+                println_error("Not enough segments supplied for toggle_reporting: %s", packet.c_str());
+            }
+        }
+
+        // update_time_str
+        else if (current_segment.equals("t")) {
+            if (get_segment(packet, &current_segment, &current_packet_index)) {
+                prev_date_str_update = CURRENT_TIME;
+                rpi_date_str = current_segment;
+            }
+            else {
+                println_error("Not enough segments supplied for update_time_str: %s", packet.c_str());
+            }
+        }
+
+        // set_motors
+        else if (current_segment.equals("m")) {
+            if (!get_segment(packet, &current_segment, &current_packet_index)) {
+                println_error("Not enough segments supplied for motor command A: %s", packet.c_str());
                 return;
             }
-            if (strcmp(field->s, "rover6") == 0) {
-                print_data(1, "ls", CURRENT_TIME, "hana");
-            }
-            break;
-        case 3:  // toggle reporting
-            if (subfield_type != 'c' || field_index != 0) {
+            float setpointA = current_segment.toFloat();
+            if (!get_segment(packet, &current_segment, &current_packet_index)) {
+                println_error("Not enough segments supplied for motor command B: %s", packet.c_str());
                 return;
             }
-            if (field->c == 1) {
-                rover_state.is_reporting_enabled = true;
+            float setpointB = current_segment.toFloat();
+            update_setpointA(setpointA);
+            update_setpointB(setpointB);
+        }
+
+        // set_pid_ks
+        else if (current_segment.equals("ks")) {
+            for (size_t index = 0; index < NUM_PID_KS; index++) {
+                if (!get_segment(packet, &current_segment, &current_packet_index)) {
+                    println_error("Not enough segments supplied for set_pid_ks: %s", packet.c_str());
+                    return;
+                }
+                pid_Ks[index] = current_segment.toFloat();
             }
-            else if (field->c == 2) {
-                rover_state.is_reporting_enabled = false;
-            }
-            else if (field->c == 3) {
-                reset();  // reset reporting sensors
-            }
-            break;
-        case 4:  // update time string
-            if (subfield_type != 's' || field_index != 0) {
+            set_Ks();  // sets pid constants based on pid_Ks array
+        }
+
+        // set_servo
+        else if (current_segment.equals("s")) {
+            if (!get_segment(packet, &current_segment, &current_packet_index)) {
+                println_error("Not enough segments supplied for set_servo n: %s", packet.c_str());
                 return;
             }
-            
-            prev_date_str_update = CURRENT_TIME;
-            rpi_date_str = String(field->s);
-            break;
-        case 5:  // set motor pid setpoints
-            if (subfield_type != 'f') {
+            int n = current_segment.toInt();
+            if (!get_segment(packet, &current_segment, &current_packet_index)) {
+                println_error("Not enough segments supplied for set_servo command: %s", packet.c_str());
                 return;
             }
-            if (field_index == 0) {
-                update_setpointA(field->f);
-            }
-            else if (field_index == 1) {
-                update_setpointB(field->f);
-            }
-        case 6:  //set motor pid constants
-            if (subfield_type != 'f') {
+            int command = current_segment.toInt();
+            set_servo(n, command);
+            report_servo_pos();
+        }
+
+        // set_servo_default
+        else if (current_segment.equals("sd")) {
+            if (!get_segment(packet, &current_segment, &current_packet_index)) {
+                println_error("Not enough segments supplied for set_servo_default: %s", packet.c_str());
                 return;
             }
-            switch (field_index)
-            {
-                case 0: set_Kp_A(field->f); break;
-                case 1: set_Ki_A(field->f); break;
-                case 2: set_Kd_A(field->f); break;
-                case 3: set_Kp_B(field->f); break;
-                case 4: set_Ki_B(field->f); break;
-                case 5: set_Kd_B(field->f); break;
+            int n = current_segment.toInt();
+            set_servo(n);
+            report_servo_pos();
+        }
+
+        // set_safety_thresholds
+        else if (current_segment.equals("safe")) {
+            for (size_t index = 0; index < 4; index++) {
+                if (!get_segment(packet, &current_segment, &current_packet_index)) {
+                    println_error("Not enough segments supplied for set_safety_thresholds: %s", packet.c_str());
+                    return;
+                }
+                LOX_THRESHOLDS[index] = current_segment.toInt();
             }
-            break;
-        case 7:  // set servo position
-            if (subfield_type != 'i') {
-                return;
-            }
-            set_servo(field->i >> 8, field->i & 0xff);
-            break;
-        case 8:  // set servo default position
-            if (subfield_type != 'i') {
-                return;
-            }
-            set_servo(field->i & 0xff);
-            break;
-        case 9:  // set tof safety thresholds
-            if (subfield_type != 'i') {
-                return;
-            }
-            switch (field_index)
-            {
-                case 0: LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM = field->i; break;
-                case 1: LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM = field->i; break;
-                case 2: LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM = field->i; break;
-                case 3: LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = field->i; break;
-            }
+            set_lox_thresholds();  // sets thresholds based on LOX_THRESHOLDS array
+        }
     }
 }
 
@@ -262,8 +285,8 @@ void report_data()
 void setup()
 {
     init_structs();
-    initialize_display();  tft.print("Waiting for USB serial...\n");
 
+    initialize_display();
     setup_serial();  tft.print("Serial ready!\n");
     setup_i2c();  tft.print("I2C ready!\n");
     reset_encoders();  tft.print("Encoders ready!\n");
@@ -286,13 +309,11 @@ void setup()
     init_menus();
 }
 
-void loop() {
-    // current_time = millis();
-
+void loop()
+{
     read_all_serial();
     report_data();
     update_display();
     update_speed_pid();
     check_motor_timeout();
-    // println_info("safety: %d, %d, %d, %d, %d", safety_struct.voltage_ok, safety_struct.are_servos_active, safety_struct.are_motors_active, safety_struct.is_front_tof_ok, safety_struct.is_back_tof_ok);
 }

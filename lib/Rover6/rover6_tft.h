@@ -51,7 +51,7 @@ void initialize_display()
     tft.setTextSize(1);
     tft.setRotation(1); // horizontal display
 
-    // println_info("TFT display initialized.");
+    println_info("TFT display initialized.");
     tft.print("Hello!\n");
 }
 

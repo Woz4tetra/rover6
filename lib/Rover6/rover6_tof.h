@@ -40,6 +40,16 @@ int LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM = 0xffff;
 int LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 int LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = 100;
 
+int* LOX_THRESHOLDS = new int[4];
+
+void set_lox_thresholds()
+{
+    LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM = LOX_THRESHOLDS[0];
+    LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM = LOX_THRESHOLDS[1];
+    LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM = LOX_THRESHOLDS[2];
+    LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM = LOX_THRESHOLDS[3];
+}
+
 void print_lox1_error(VL53L0X_Error Status)
 {
     if (Status == VL53L0X_ERROR_NONE) return;
@@ -138,6 +148,11 @@ void setup_VL53L0X()
     println_info("VL53L0X's initialized.");
 
     set_lox_active(false);
+
+    LOX_THRESHOLDS[0] = LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM;
+    LOX_THRESHOLDS[1] = LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM;
+    LOX_THRESHOLDS[2] = LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM;
+    LOX_THRESHOLDS[3] = LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM;
 }
 
 void report_VL53L0X()
@@ -145,7 +160,7 @@ void report_VL53L0X()
     if (!rover_state.is_reporting_enabled) {
         return;
     }
-    print_data(9, "ldddddd", CURRENT_TIME,
+    print_data("lox", "udddddd", CURRENT_TIME,
         measure1.RangeMilliMeter, measure2.RangeMilliMeter,
         measure1.RangeStatus, measure2.RangeStatus,
         lox1.Status, lox2.Status  // lookup table in vl53l0x_def.h line 133

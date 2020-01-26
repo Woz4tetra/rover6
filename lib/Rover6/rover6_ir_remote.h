@@ -47,7 +47,7 @@ void report_IR()
     if (!rover_state.is_reporting_enabled) {
         return;
     }
-    print_data(7, "ldd", CURRENT_TIME, ir_type, ir_value);
+    print_data("ir", "udd", CURRENT_TIME, ir_type, ir_value);
 }
 
 #endif  // ROVER6_IR_REMOTE

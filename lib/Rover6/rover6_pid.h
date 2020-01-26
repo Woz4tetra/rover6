@@ -18,6 +18,8 @@ double speed_setpointA, speed_setpointB = 0.0;  // cm/s
 double pid_commandA, pid_commandB = 0.0;  // -255...255
 double Kp_A = 0.1, Ki_A = 0.0, Kd_A = 0.0;
 double Kp_B = 0.1, Ki_B = 0.0, Kd_B = 0.0;
+#define NUM_PID_KS 6
+double* pid_Ks = new double[NUM_PID_KS];
 uint32_t prev_setpointA_time = 0;
 uint32_t prev_setpointB_time = 0;
 #define PID_COMMAND_TIMEOUT_MS 1000
@@ -30,47 +32,32 @@ double ff_setpoint_A, ff_setpoint_B = 0.0;  // always zero
 PID motorA_pid(&ff_speed_A, &pid_commandA, &ff_setpoint_A, Kp_A, Ki_A, Kd_A, DIRECT);
 PID motorB_pid(&ff_speed_B, &pid_commandB, &ff_setpoint_B, Kp_B, Ki_B, Kd_B, DIRECT);
 
-void set_Kp_A(double Kp)
+void set_Ks()
 {
-    Kp_A = Kp;
+    Kp_A = pid_Ks[0];
+    Ki_A = pid_Ks[1];
+    Kd_A = pid_Ks[2];
+    Kp_B = pid_Ks[3];
+    Ki_B = pid_Ks[4];
+    Kd_B = pid_Ks[5];
     motorA_pid.SetTunings(Kp_A, Ki_A, Kd_A);
-}
-
-void set_Ki_A(double Ki)
-{
-    Ki_A = Ki;
-    motorA_pid.SetTunings(Kp_A, Ki_A, Kd_A);
-}
-
-void set_Kd_A(double Kd)
-{
-    Kd_A = Kd;
-    motorA_pid.SetTunings(Kp_A, Ki_A, Kd_A);
-}
-
-
-void set_Kp_B(double Kp)
-{
-    Kp_B = Kp;
-    motorA_pid.SetTunings(Kp_B, Ki_B, Kd_B);
-}
-
-void set_Ki_B(double Ki)
-{
-    Ki_B = Ki;
-    motorA_pid.SetTunings(Kp_B, Ki_B, Kd_B);
-}
-
-void set_Kd_B(double Kd)
-{
-    Kd_B = Kd;
-    motorA_pid.SetTunings(Kp_B, Ki_B, Kd_B);
+    motorB_pid.SetTunings(Kp_B, Ki_B, Kd_B);
 }
 
 void setup_pid()
 {
     motorA_pid.SetMode(AUTOMATIC);
     motorB_pid.SetMode(AUTOMATIC);
+
+    for (size_t index = 0; index < NUM_PID_KS; index++){
+        pid_Ks[index] = 0.0;
+    }
+    pid_Ks[0] = Kp_A;
+    pid_Ks[1] = Ki_A;
+    pid_Ks[2] = Kd_A;
+    pid_Ks[3] = Kp_B;
+    pid_Ks[4] = Ki_B;
+    pid_Ks[5] = Kd_B;
 }
 
 void update_setpointA(double new_setpoint)
@@ -79,7 +66,7 @@ void update_setpointA(double new_setpoint)
     ff_command_A = speed_setpointA * cps_to_cmd;
     prev_setpointA_time = CURRENT_TIME;
     // print_info("speed_setpointA: ");
-    // MSG_SERIAL.println(speed_setpointA);
+    // DATA_SERIAL.println(speed_setpointA);
 }
 
 void update_setpointB(double new_setpoint)
@@ -88,7 +75,7 @@ void update_setpointB(double new_setpoint)
     ff_command_B = speed_setpointB * cps_to_cmd;
     prev_setpointB_time = CURRENT_TIME;
     // print_info("speed_setpointB: ");
-    // MSG_SERIAL.println(speed_setpointB);
+    // DATA_SERIAL.println(speed_setpointB);
 }
 
 void update_speed_pid()
@@ -105,9 +92,9 @@ void update_speed_pid()
     ff_speed_B = enc_speedB - speed_setpointB;
 
     // print_info("ff_speed_A: ");
-    // MSG_SERIAL.println(ff_speed_A);
+    // DATA_SERIAL.println(ff_speed_A);
     // print_info("ff_speed_B: ");
-    // MSG_SERIAL.println(ff_speed_B);
+    // DATA_SERIAL.println(ff_speed_B);
 
     if (speed_setpointA != 0.0) {
         if (CURRENT_TIME - prev_setpointA_time > PID_COMMAND_TIMEOUT_MS) {
