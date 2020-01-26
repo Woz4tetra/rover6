@@ -76,7 +76,10 @@ void callback_ir()
             println_info("IR: >");
             right_menu_event();
             break;  // >
-        case 0x30cf: println_info("IR: 0 10+"); break;  // 0 10+
+        case 0x30cf:
+            println_info("IR: 0 10+");
+            rover_state.is_reporting_enabled = !rover_state.is_reporting_enabled;
+            break;  // 0 10+
         case 0xb04f:
             println_info("IR: v");
             down_menu_event();
