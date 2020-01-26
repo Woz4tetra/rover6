@@ -148,7 +148,7 @@ void process_serial_subfield(uint32_t packet_num, char packet_category, char sub
                 return;
             }
             if (strcmp(field->s, "rover6") == 0) {
-                // TODO: return rover name: hana
+                print_data(1, "ls", CURRENT_TIME, "hana");
             }
             break;
         case 3:  // toggle reporting
