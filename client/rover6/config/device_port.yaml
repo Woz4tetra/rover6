@@ -1,4 +1,0 @@
-baud_rate: 500000
-address: /dev/serial0
-timeout: null
-write_timeout: null

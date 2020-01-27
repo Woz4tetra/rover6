@@ -5,6 +5,11 @@ from .config import Config
 
 class RoverConfig(Config):
     def __init__(self):
+        self.full_voltage = 8.5
+        self.ok_voltage = 7
+        self.low_voltage = 6.3
+        self.critical_voltage = 5.5
+
         self.wheel_radius_cm = 32.5
         self.cm_per_tick = 2.0 * math.pi * self.wheel_radius_cm / 1920.0
         self.max_linear_speed_cps = 915.0
@@ -28,6 +33,8 @@ class RoverConfig(Config):
         self.tof_servo_upper_angle_deg = 360.0
         self.tof_servo_lower_angle_deg = 275.0
 
+        self.num_servos = 16
+
         self.pan_servo_num = 2
         self.tilt_servo_num = 3
 
@@ -45,4 +52,18 @@ class RoverConfig(Config):
         self.ledge_threshold_y_mm = 35.0
         self.buffer_x_mm = 20.0
 
+        self.packet_codes = {}
+        self.packet_names = {}
+        self.write_commands = {}
+        self.write_codes = {}
+
         super(RoverConfig, self).__init__("rover.yaml")
+
+        for identifier, names in self.packet_names.items():
+            new_names = []
+            for name in names:
+                if name == "$NUM_SERVOS":
+                    new_names.extend([str(x) for x in range(self.num_servos)])
+                else:
+                    new_names.append(name)
+            self.packet_names[identifier] = new_names

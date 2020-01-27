@@ -1,0 +1,10 @@
+[Unit]
+# Rover6 systemd service file
+Description=Rover6 device client
+
+[Install]
+WantedBy=default.target
+
+[Service]
+ExecStart=~/.config/rover6/bin/rover6.sh
+Restart=on-failure
