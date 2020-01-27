@@ -12,6 +12,7 @@ def get_checksum(b: bytes):
     return checksum
 
 
+
 class Packet:
     PACKET_CODES = rover_config.packet_codes
     WRITE_COMMANDS = rover_config.write_commands
@@ -49,7 +50,7 @@ class Packet:
             'd': int,
             'u': int,
             'f': float,
-            's': str,
+            's': bytes.decode,
         }
 
     @classmethod
@@ -112,3 +113,6 @@ class Packet:
 
     def __str__(self):
         return str(self.packet)
+    
+    def __bool__(self):
+        return bool(self.packet)

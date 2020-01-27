@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-BASE_DIR=$(realpath "$(dirname $0))")
+echo "Running firmware install script"
+
+BASE_DIR=$(realpath "$(dirname $0)")
 if [ "${BASE_INSTALL_DIR}" = "" ]; then
   BASE_INSTALL_DIR=~/.local/rover6
 fi
@@ -16,7 +18,10 @@ cp ${BASE_DIR}/upload-rover ${BASE_INSTALL_DIR}/bin
 ln -s ${BASE_INSTALL_DIR}/bin/monitor-rover ~/.local/bin
 ln -s ${BASE_INSTALL_DIR}/bin/upload-rover ~/.local/bin
 
+echo "Installing platformio"
 pip install platformio
 platformio -v
 
+echo "Uploading firmware to teensy device"
 upload-rover
+echo "firmware installation complete"

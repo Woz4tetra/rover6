@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-BASE_DIR=$(realpath "$(dirname $0))")
+echo "Running rover6 install scripts"
+
+BASE_DIR=$(realpath "$(dirname $0)")
 BASE_INSTALL_DIR=~/.local/rover6
 
 mkdir -p ${BASE_INSTALL_DIR}

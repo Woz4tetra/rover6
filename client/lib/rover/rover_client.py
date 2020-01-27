@@ -55,21 +55,32 @@ class RoverClient:
         self.written_packets = {}
 
     def start(self):
+        logger.info("Starting rover client")
         self.device.configure()
+        logger.info("Device configured")
         self.check_ready()
+        logger.info("Device ready")
         self.set_active(True)
+        logger.info("Active is True")
         self.set_reporting(True)
+        logger.info("Reporting is True")
         self.set_reporting(True)
+        logger.info("Starting read thread")
         self.thread.start()
         time.sleep(0.05)
 
     def stop(self):
+        logger.info("Stopping rover client")
         self.should_stop = True
+        logger.info("Set read thread stop flag")
         self.set_active(False)
+        logger.info("Active is False")
         self.set_reporting(False)
+        logger.info("Reporting is False")
         # self.soft_restart()
         with self.read_lock:
             self.device.stop()
+        logger.info("Device connection closed")
 
     def write(self, write_command_name: str, *args):
         packet = Packet.from_args(write_command_name, *args)
@@ -219,14 +230,16 @@ class RoverClient:
             if self.device.in_waiting() > 0:
                 try:
                     with self.read_lock:
-                        identifier = self.parse_packet()
+                        packet = self.parse_packet()
+                        identifier = packet.identifier
                 except DevicePortReadException:
                     logger.info("Waiting for ready signal timed out. Trying again.")
-                if identifier:
-                    print(self.data_frame[identifier])
+                
+                if packet:
+                    logger.info(identifier, self.data_frame[packet.identifier])
             time.sleep(0.05)
 
-        self.name = self.get(identifier, "name").decode()
+        self.name = self.get(identifier, "name")
         logger.info("Device signalled ready. Rover name: {}".format(self.name))
 
     def set_active(self, state: bool):

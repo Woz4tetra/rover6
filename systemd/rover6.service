@@ -6,5 +6,6 @@ Description=Rover6 device client
 WantedBy=default.target
 
 [Service]
-ExecStart=~/.config/rover6/bin/rover6.sh
+ExecStart=/home/pi/.local/rover6/bin/rover6.sh
 Restart=on-failure
+KillSignal=SIGINT

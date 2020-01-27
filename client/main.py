@@ -68,6 +68,8 @@ def shutdown(rover):
 
 
 def main():
+    logger.info("Starting rover\n\n")
+
     rover = RoverClient()
     joystick = Joystick("/dev/input/event0")
 
@@ -117,9 +119,14 @@ def main():
         rover.stop()
         print(rover.data_frame)
         for identifier, times in rover.recv_times.items():
-            print("%s:\t%0.4fHz" % (identifier, 1 / np.mean(np.diff(times))))
+            logger.info("%s:\t%0.4fHz" % (identifier, 1 / np.mean(np.diff(times))))
             # print("%s:\t%s" % (identifier, np.diff(times).tolist()))
+        logger.info("Closing rover\n\n")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BaseException as e:
+        logger.error(str(e), exc_info=True)
+
