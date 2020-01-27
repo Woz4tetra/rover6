@@ -39,6 +39,7 @@ class RoverClient:
         self.prev_time_command_update = time.time()
         self.should_stop = False
         self.thread = threading.Thread(target=self.read_task, args=(lambda: self.should_stop,))
+        self.thread_exception = None
 
         self.recv_times = {}
         self.read_update_rate_hz = 360.0
@@ -48,7 +49,6 @@ class RoverClient:
         self.read_lock = threading.Lock()
 
         self.read_packet_num = 0
-        self.write_packet_num = 0
 
         self.servo_pos = [None for _ in range(self.NUM_SERVOS)]
 
@@ -82,13 +82,25 @@ class RoverClient:
             self.device.stop()
         logger.info("Device connection closed")
 
+    def remove_timedout_written_packets(self):
+        current_time = time.time()
+        packet_nums_to_remove = []
+        for packet_num, written_packet in self.written_packets.items():
+            if current_time - written_packet.timestamp > 10.0:
+                packet_nums_to_remove.append(packet_num)
+        if len(packet_nums_to_remove):
+            logger.debug("Purging written packets: %s" % str(packet_nums_to_remove))
+        for packet_num in packet_nums_to_remove:
+            self.written_packets.pop(packet_num)
+
     def write(self, write_command_name: str, *args):
         packet = Packet.from_args(write_command_name, *args)
         logger.debug("Writing: %s" % str(packet))
         with self.write_lock:
             self.device.write(packet.packet)
-        self.written_packets[self.write_packet_num] = packet
-
+        self.written_packets[packet.packet_num] = packet
+        self.remove_timedout_written_packets()
+        
     def wait_for_packet_start(self):
         print_buffer = b""
         self.prev_packet_time = time.time()
@@ -159,12 +171,13 @@ class RoverClient:
         success = bool(self.get("txrx", "success"))
         if not success:
             if packet_num in self.written_packets:
-                logger.info("Device failed to receive packet num %s. Re-transmitting.", packet_num)
                 sent_packet = self.written_packets[packet_num]
+                logger.info("Device failed to receive packet num %s, identifier = %s. Re-transmitting." % (packet_num, sent_packet.identifier))
                 new_packet = Packet.from_packet(sent_packet)
-                self.device.write(new_packet)
+                self.device.write(new_packet.packet)
             else:
-                logger.error("Device failed to receive packet num %s, but we never sent it!", packet_num)
+                logger.error("Device failed to receive packet num %s, but we never sent it!" % packet_num)
+                logger.info("Written packets: %s" % str(self.written_packets))
 
     def on_recv_time(self, identifier):
         recv_time = self.get(identifier, "time")
@@ -179,34 +192,41 @@ class RoverClient:
             else:
                 self.recv_times[identifier] = [recv_time]
 
+    def read_task_running(self):
+        return self.thread_exception is None
+
     def read_task(self, should_stop):
         update_delay = 1 / self.read_update_rate_hz
         self.prev_packet_time = time.time()
 
-        while True:
-            time.sleep(update_delay)
-            if should_stop():
-                logger.info("Exiting read thread")
-                return
+        try:
+            while True:
+                time.sleep(update_delay)
+                if should_stop():
+                    logger.info("Exiting read thread")
+                    return
 
-            if time.time() - self.prev_time_command_update > 0.5:
-                self.write_time_str()
-                self.prev_time_command_update = time.time()
+                if time.time() - self.prev_time_command_update > 0.5:
+                    self.write_time_str()
+                    self.prev_time_command_update = time.time()
 
-            if self.device.in_waiting() == 0:
-                continue
-            try:
-                with self.read_lock:
-                    packet = self.parse_packet()
-            except BaseException as e:
-                logger.error("An error occurred while waiting for a packet!", exc_info=True)
-                continue
+                if self.device.in_waiting() == 0:
+                    continue
+                try:
+                    with self.read_lock:
+                        packet = self.parse_packet()
+                except BaseException as e:
+                    logger.error("An error occurred while waiting for a packet!", exc_info=True)
+                    continue
 
-            identifier = packet.identifier
-            if identifier == "txrx":
-                self.on_device_packet_status()
-            self.on_recv_time(identifier)
-            self.on_receive(identifier)
+                identifier = packet.identifier
+                if identifier == "txrx":
+                    self.on_device_packet_status()
+                self.on_recv_time(identifier)
+                self.on_receive(identifier)
+        except BaseException as e:
+            logger.error("An exception occurred in the read thread", exc_info=True)
+            self.thread_exception = e
 
     def get(self, identifier, name):
         if identifier in self.data_frame:

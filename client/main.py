@@ -62,6 +62,7 @@ def joy_to_tilt_servo(value):
 
 
 def shutdown(rover):
+    logger.warn("Shutdown function called. Shutting down everything.")
     rover.stop()
     call("sudo shutdown -h now", shell=True)
     sys.exit()
@@ -111,6 +112,9 @@ def main():
             rover.set_servo(rover_config.tilt_servo_num, tilt_servo)
 
             time.sleep(1 / 15)
+            if not rover.read_task_running():
+                logger.error("Error detected in read task. Raising exception")
+                raise rover.thread_exception
     except LowBatteryException:
         shutdown(rover)
     except BaseException as e:

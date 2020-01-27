@@ -99,7 +99,7 @@ class Packet:
 
     @classmethod
     def from_packet(cls, packet: "Packet"):
-        return cls.from_args(packet.identifier, packet.args)
+        return cls.from_args(packet.identifier, *packet.args)
 
     def checksum(self) -> bool:
         self.recv_checksum = int(self.packet[-2:], 16)
