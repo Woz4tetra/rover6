@@ -110,6 +110,8 @@ def main():
             rover.set_speed(speed_A, speed_B)
             rover.set_servo(rover_config.pan_servo_num, pan_servo)
             rover.set_servo(rover_config.tilt_servo_num, tilt_servo)
+            # rover.set_servo(rover_config.back_tilter_servo_num, pan_servo)
+            # rover.set_servo(rover_config.front_tilter_servo_num, tilt_servo)
 
             time.sleep(1 / 15)
             if not rover.read_task_running():

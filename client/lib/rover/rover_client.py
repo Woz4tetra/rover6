@@ -67,7 +67,7 @@ class RoverClient:
         self.set_reporting(True)
         logger.info("Starting read thread")
         self.thread.start()
-        time.sleep(0.05)
+        time.sleep(3.0)
 
     def stop(self):
         logger.info("Stopping rover client")

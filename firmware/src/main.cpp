@@ -35,8 +35,10 @@ void set_active(bool active)
 
 void reset()
 {
-    stop_motors();
-    delay(200);
+    if (is_moving()) {
+        stop_motors();
+        delay(200);
+    }
     reset_encoders();
 }
 

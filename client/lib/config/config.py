@@ -18,5 +18,5 @@ class Config:
 
     def load(self):
         with open(self.config_path) as file:
-            config = yaml.load(file.read())
+            config = yaml.safe_load(file.read())
         self.__dict__.update(config)
