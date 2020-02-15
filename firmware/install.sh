@@ -18,9 +18,18 @@ cp ${BASE_DIR}/upload-rover ${BASE_INSTALL_DIR}/bin
 ln -s ${BASE_INSTALL_DIR}/bin/monitor-rover ~/.local/bin
 ln -s ${BASE_INSTALL_DIR}/bin/upload-rover ~/.local/bin
 
+if [ ! -f /etc/udev/rules.d/49-teensy.rules ] then
+  echo "Attempting to install platformio teensy rules"
+  wget https://www.pjrc.com/teensy/49-teensy.rules -o /tmp/49-teensy.rules
+  sudo mv /tmp/49-teensy.rules /etc/udev/rules.d/49-teensy.rules
+fi
+
+echo "Adding user '$USER' to the dialout group (USB permissions)"
+sudo usermod -a -G dialout $USER
+
 echo "Installing platformio"
 pip install platformio
-platformio -v
+platformio --version
 
 echo "Uploading firmware to teensy device"
 upload-rover

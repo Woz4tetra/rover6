@@ -133,6 +133,24 @@ void get_bno_status()
     }
 }
 
+void hardware_reset_bno()
+{
+    digitalWrite(BNO055_RST_PIN, LOW);
+    delay(100);
+    digitalWrite(BNO055_RST_PIN, HIGH);
+    delay(800);
+    if (!bno.begin()) {
+        println_error("No BNO055 detected!! Check your wiring or I2C address");
+        return;
+    }
+    bno.setExtCrystalUse(true);
+
+    bno.getSystemStatus(&bno_system_status, &bno_self_test_result, &bno_system_error);
+    bno_print_system_status();
+    bno_print_self_test();
+    bno_print_system_error();
+}
+
 
 void set_bno_active(bool active)
 {
@@ -140,11 +158,11 @@ void set_bno_active(bool active)
         return;
     }
     is_bno_active = active;
-    // get_bno_status();
 
-    // if (active) {
-    //     bno.enterNormalMode();
-    // }
+    if (active) {
+        // bno.enterNormalMode();
+        hardware_reset_bno();
+    }
     // else {
     //     bno.enterSuspendMode();
     // }
@@ -157,6 +175,8 @@ void setup_BNO055()
         println_error("No BNO055 detected!! Check your wiring or I2C address");
         return;
     }
+    pinMode(BNO055_RST_PIN, OUTPUT);
+    digitalWrite(BNO055_RST_PIN, HIGH);
 
     delay(1000);
     is_bno_setup = true;
