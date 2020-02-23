@@ -55,6 +55,9 @@ roslaunch_add_file_check(launch)
 add_message_files(
   FILES
   Rover6Encoder.msg
+  Rover6FSR.msg
+  Rover6Safety.msg
+  Rover6TOF.msg
 )
 
 ## Generate services in the 'srv' folder

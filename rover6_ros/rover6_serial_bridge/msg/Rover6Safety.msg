@@ -1,0 +1,13 @@
+Header header
+bool is_left_bumper_trig
+bool is_right_bumper_trig
+bool is_front_tof_trig
+bool is_back_tof_trig
+bool is_front_tof_ok
+bool is_back_tof_ok
+bool are_servos_active
+bool are_motors_active
+bool voltage_ok
+bool is_active
+bool is_reporting_enabled
+bool is_speed_pid_enabled
