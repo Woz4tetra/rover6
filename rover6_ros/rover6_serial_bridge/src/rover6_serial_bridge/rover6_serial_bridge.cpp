@@ -10,11 +10,27 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     nh.param<double>("wheel_radius_cm", _wheelRadiusCm, 32.5);
     nh.param<double>("ticks_per_rotation", _ticksPerRotation, 38400.0);
     nh.param<double>("max_rpm", _maxRPM, 915.0);
+    nh.param<int>("num_servos", _numServos, 16);
     _cmPerTick = 2.0 * M_PI * _wheelRadiusCm / _ticksPerRotation;
     _cpsToCmd = 255.0 / _maxRPM;
 
     imu_msg.header.frame_id = _imuFrameID;
     enc_msg.header.frame_id = _encFrameID;
+    fsr_msg.header.frame_id = "fsr";
+    safety_msg.header.frame_id = "safety";
+
+    ina_msg.header.frame_id = "battery";
+    ina_msg.power_supply_technology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_NIMH;
+
+    servo_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
+    servo_msg.layout.dim[0].size = _numServos;
+    servo_msg.layout.dim[0].stride = 1;
+    servo_msg.layout.dim[0].label = "servos";
+    for (size_t i = 0; i < _numServos; i++) {
+        servo_msg.data.push_back(0);
+    }
+
+    tof_msg.header.frame_id = "tof";
 
     _serialBuffer = "";
     _serialBufferIndex = 0;
@@ -28,12 +44,17 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     readyState->rover_name = "";
     readyState->is_ready = false;
     readyState->time_ms = 0;
-     
+
     deviceStartTime = ros::Time::now();
     offsetTimeMs = 0;
 
     imu_pub = nh.advertise<sensor_msgs::Imu>("/bno055", 100);
     enc_pub = nh.advertise<rover6_serial_bridge::Rover6Encoder>("/encoders", 100);
+    fsr_pub = nh.advertise<rover6_serial_bridge::Rover6FSR>("/fsrs", 100);
+    safety_pub = nh.advertise<rover6_serial_bridge::Rover6Safety>("/safety", 100);
+    ina_pub = nh.advertise<sensor_msgs::BatteryState>("/battery", 10);
+    servo_pub = nh.advertise<std_msgs::Int16MultiArray>("/servos", 10);
+    tof_pub = nh.advertise<rover6_serial_bridge::Rover6TOF>("/tof", 10);
 
     ROS_INFO("Rover 6 serial bridge init done");
 }
@@ -78,7 +99,7 @@ void Rover6SerialBridge::checkReady()
     ros::Time write_time = ros::Time::now();
     ros::Duration general_timeout = ros::Duration(5.0);
     ros::Duration write_timeout = ros::Duration(1.0);
-    
+
     writeSerial("?", "s", "rover6");
 
     while (!readyState->is_ready)
@@ -233,22 +254,22 @@ void Rover6SerialBridge::processSerialPacket(string category)
         parseEncoder();
     }
     else if (category.compare("fsr") == 0) {
-
+        parseFSR();
     }
     else if (category.compare("safe") == 0) {
-
+        parseSafety();
     }
     else if (category.compare("ina") == 0) {
-
+        parseINA();
     }
     else if (category.compare("ir") == 0) {
-
+        parseIR();
     }
     else if (category.compare("servo") == 0) {
-
+        parseServo();
     }
     else if (category.compare("lox") == 0) {
-
+        parseTOF();
     }
     else if (category.compare("ready") == 0) {
         if (!getNextSegment()) {  ROS_ERROR_STREAM("Failed to parse first segment in 'ready': " << _serialBuffer);  return;  }
@@ -309,8 +330,8 @@ void Rover6SerialBridge::writeSerial(string name, const char *formats, ...)
 
     sstream << PACKET_STOP;
 
-    packet = sstream.str();    
-  
+    packet = sstream.str();
+
     // checksum might be inserting null characters. Force the buffer to extend
     // to include packet stop and checksum
 
@@ -353,7 +374,7 @@ void Rover6SerialBridge::stop()
 int Rover6SerialBridge::run()
 {
     setup();
-    
+
     ros::Rate clock_rate(120);  // run loop at 120 Hz
 
     int exit_code = 0;
@@ -445,7 +466,7 @@ void Rover6SerialBridge::setSafetyThresholds(double obstacle_threshold_x_mm, dou
 void Rover6SerialBridge::parseImu()
 {
     double roll, pitch, yaw;
-    CHECK_SEGMENT(0); imu_msg.header.stamp = getDeviceTime((uint32_t)stoi(_currentBufferSegment));
+    CHECK_SEGMENT(0); imu_msg.header.stamp = getDeviceTime((uint32_t)stol(_currentBufferSegment));
     CHECK_SEGMENT(1); yaw = stof(_currentBufferSegment);
     CHECK_SEGMENT(2); pitch = stof(_currentBufferSegment);
     CHECK_SEGMENT(3); roll = stof(_currentBufferSegment);
@@ -483,11 +504,78 @@ double Rover6SerialBridge::convertTicksToCm(long ticks) {
 
 void Rover6SerialBridge::parseEncoder()
 {
-    CHECK_SEGMENT(0); enc_msg.header.stamp = getDeviceTime((uint32_t)stoi(_currentBufferSegment));
-    CHECK_SEGMENT(1); enc_msg.right_cm = convertTicksToCm(stol(_currentBufferSegment));
-    CHECK_SEGMENT(2); enc_msg.left_cm = convertTicksToCm(stol(_currentBufferSegment));
-    CHECK_SEGMENT(3); enc_msg.right_speed_cps = convertTicksToCm(stof(_currentBufferSegment));
-    CHECK_SEGMENT(4); enc_msg.left_speed_cps = convertTicksToCm(stof(_currentBufferSegment));
+    CHECK_SEGMENT(0); enc_msg.header.stamp = getDeviceTime((uint32_t)stol(_currentBufferSegment));
+    CHECK_SEGMENT(1); enc_msg.left_cm = convertTicksToCm(stol(_currentBufferSegment));
+    CHECK_SEGMENT(2); enc_msg.right_cm = convertTicksToCm(stol(_currentBufferSegment));
+    CHECK_SEGMENT(3); enc_msg.left_speed_cps = stof(_currentBufferSegment);
+    CHECK_SEGMENT(4); enc_msg.right_speed_cps = stof(_currentBufferSegment);
 
     enc_pub.publish(enc_msg);
+}
+
+void Rover6SerialBridge::parseFSR()
+{
+  CHECK_SEGMENT(0); fsr_msg.header.stamp = getDeviceTime((uint32_t)stol(_currentBufferSegment));
+  CHECK_SEGMENT(1); fsr_msg.left = (uint16_t)stoi(_currentBufferSegment);
+  CHECK_SEGMENT(2); fsr_msg.right = (uint16_t)stoi(_currentBufferSegment);
+
+  fsr_pub.publish(fsr_msg);
+}
+
+void Rover6SerialBridge::parseSafety()
+{
+    CHECK_SEGMENT(0); safety_msg.header.stamp = getDeviceTime((uint32_t)stol(_currentBufferSegment));
+    CHECK_SEGMENT(1); safety_msg.is_left_bumper_trig = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(2); safety_msg.is_right_bumper_trig = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(3); safety_msg.is_front_tof_trig = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(4); safety_msg.is_back_tof_trig = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(5); safety_msg.is_front_tof_ok = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(6); safety_msg.is_back_tof_ok = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(7); safety_msg.are_servos_active = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(8); safety_msg.are_motors_active = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(9); safety_msg.voltage_ok = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(10); safety_msg.is_active = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(11); safety_msg.is_reporting_enabled = (bool)stoi(_currentBufferSegment);
+    CHECK_SEGMENT(12); safety_msg.is_speed_pid_enabled = (bool)stoi(_currentBufferSegment);
+
+    safety_pub.publish(safety_msg);
+}
+
+void Rover6SerialBridge::parseINA()
+{
+    CHECK_SEGMENT(0); ina_msg.header.stamp = getDeviceTime((uint32_t)stol(_currentBufferSegment));
+    CHECK_SEGMENT(1); ina_msg.current = stof(_currentBufferSegment);
+    CHECK_SEGMENT(2); // ina_msg doesn't have a slot for power
+    CHECK_SEGMENT(3); ina_msg.voltage = stof(_currentBufferSegment);
+
+    ina_pub.pubish(ina_msg);
+}
+
+void Rover6SerialBridge::parseIR()
+{
+    // CHECK_SEGMENT(0);  // time ms
+    // CHECK_SEGMENT(1);  // remote type
+    // CHECK_SEGMENT(2);  // received value
+}
+
+void Rover6SerialBridge::parseServo()
+{
+    servo_msg.data.clear();
+    CHECK_SEGMENT(0); // time ms
+    for (size_t i = 0; i < _numServos; i++) {
+        CHECK_SEGMENT(i + 1); servo_msg.data[i] = stoi(_currentBufferSegment);
+    }
+}
+
+void Rover6SerialBridge::parseTOF()
+{
+    CHECK_SEGMENT(0); tof_msg.header.stamp = getDeviceTime((uint32_t)stol(_currentBufferSegment));
+    CHECK_SEGMENT(1); tof_msg.front_mm = stoi(_currentBufferSegment);
+    CHECK_SEGMENT(2); tof_msg.back_mm = stoi(_currentBufferSegment);
+    CHECK_SEGMENT(3); tof_msg.front_measure_status = stoi(_currentBufferSegment);
+    CHECK_SEGMENT(4); tof_msg.back_measure_status = stoi(_currentBufferSegment);
+    CHECK_SEGMENT(5); tof_msg.front_status = stoi(_currentBufferSegment);
+    CHECK_SEGMENT(6); tof_msg.back_status = stoi(_currentBufferSegment);
+
+    tof_pub.publish(tof_msg);
 }

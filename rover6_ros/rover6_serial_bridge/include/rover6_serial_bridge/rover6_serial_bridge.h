@@ -9,14 +9,18 @@
 #include "std_msgs/Int64.h"
 #include "std_msgs/Int16MultiArray.h"
 #include "sensor_msgs/Imu.h"
+#include "sensor_msgs/BatteryState.h"
 #include "serial/serial.h"
 
 #include "rover6_serial_bridge/Rover6Encoder.h"
+#include "rover6_serial_bridge/Rover6FSR.h"
+#include "rover6_serial_bridge/Rover6Safety.h"
+#include "rover6_serial_bridge/Rover6TOF.h"
 
 
 using namespace std;
 
-#define CHECK_SEGMENT(n)  if (!getNextSegment()) {  ROS_ERROR_STREAM("Failed to parse segment #" << n << " in 'txrx': " << _serialBuffer);  return;  }
+#define CHECK_SEGMENT(n)  if (!getNextSegment()) {  ROS_ERROR_STREAM("Failed to parse segment #" << n << ". Buffer: " << _serialBuffer);  return;  }
 
 char PACKET_START_0 = '\x12';
 char PACKET_START_1 = '\x34';
@@ -57,6 +61,22 @@ private:
     ros::Publisher enc_pub;
     rover6_serial_bridge::Rover6Encoder enc_msg;
 
+    ros::Publisher fsr_pub;
+    rover6_serial_bridge::Rover6FSR fsr_msg;
+
+    ros::Publisher safety_pub;
+    rover6_serial_bridge::Rover6Safety safety_msg;
+
+    ros::Publisher ina_pub;
+    sensor_msgs::BatteryState ina_msg;
+
+    unsigned int _numServos;
+    ros::Publisher servo_pub;
+    std_msgs::Int16MultiArray servo_msg;
+
+    ros::Publisher tof_pub;
+    rover6_serial_bridge::Rover6TOF tof_msg;
+
     StructReadyState* readyState;
 
     void configure();
@@ -91,6 +111,13 @@ private:
 
     void parseEncoder();
     double convertTicksToCm(long ticks);
+
+    void parseFSR();
+    void parseSafety();
+    void parseINA();
+    void parseIR();
+    void parseServo();
+    void parseTOF();
 public:
     Rover6SerialBridge(ros::NodeHandle* nodehandle);
     int run();
