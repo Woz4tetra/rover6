@@ -4,7 +4,7 @@
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "rover6_serial_bridge");
-    ros::NodeHandle nh("~");
+    ros::NodeHandle nh("/");
 
     Rover6SerialBridge broadcaster(&nh);
     int err = broadcaster.run();

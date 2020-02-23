@@ -10,7 +10,10 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     nh.param<double>("wheel_radius_cm", _wheelRadiusCm, 32.5);
     nh.param<double>("ticks_per_rotation", _ticksPerRotation, 38400.0);
     nh.param<double>("max_rpm", _maxRPM, 915.0);
-    nh.param<int>("num_servos", _numServos, 16);
+    int num_servos = 0;
+    nh.param<int>("num_servos", num_servos, 16);
+    _numServos = (unsigned int)num_servos;
+
     _cmPerTick = 2.0 * M_PI * _wheelRadiusCm / _ticksPerRotation;
     _cpsToCmd = 255.0 / _maxRPM;
 
@@ -48,13 +51,13 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     deviceStartTime = ros::Time::now();
     offsetTimeMs = 0;
 
-    imu_pub = nh.advertise<sensor_msgs::Imu>("/bno055", 100);
-    enc_pub = nh.advertise<rover6_serial_bridge::Rover6Encoder>("/encoders", 100);
-    fsr_pub = nh.advertise<rover6_serial_bridge::Rover6FSR>("/fsrs", 100);
-    safety_pub = nh.advertise<rover6_serial_bridge::Rover6Safety>("/safety", 100);
-    ina_pub = nh.advertise<sensor_msgs::BatteryState>("/battery", 10);
-    servo_pub = nh.advertise<std_msgs::Int16MultiArray>("/servos", 10);
-    tof_pub = nh.advertise<rover6_serial_bridge::Rover6TOF>("/tof", 10);
+    imu_pub = nh.advertise<sensor_msgs::Imu>("bno055", 100);
+    enc_pub = nh.advertise<rover6_serial_bridge::Rover6Encoder>("encoders", 100);
+    fsr_pub = nh.advertise<rover6_serial_bridge::Rover6FSR>("fsrs", 100);
+    safety_pub = nh.advertise<rover6_serial_bridge::Rover6Safety>("safety", 100);
+    ina_pub = nh.advertise<sensor_msgs::BatteryState>("battery", 10);
+    servo_pub = nh.advertise<std_msgs::Int16MultiArray>("servos", 10);
+    tof_pub = nh.advertise<rover6_serial_bridge::Rover6TOF>("tof", 10);
 
     ROS_INFO("Rover 6 serial bridge init done");
 }
@@ -548,7 +551,7 @@ void Rover6SerialBridge::parseINA()
     CHECK_SEGMENT(2); // ina_msg doesn't have a slot for power
     CHECK_SEGMENT(3); ina_msg.voltage = stof(_currentBufferSegment);
 
-    ina_pub.pubish(ina_msg);
+    ina_pub.publish(ina_msg);
 }
 
 void Rover6SerialBridge::parseIR()
