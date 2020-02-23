@@ -16,8 +16,8 @@
 
 double speed_setpointA, speed_setpointB = 0.0;  // cm/s
 double pid_commandA, pid_commandB = 0.0;  // -255...255
-double Kp_A = 0.1, Ki_A = 0.0, Kd_A = 0.0;
-double Kp_B = 0.1, Ki_B = 0.0, Kd_B = 0.0;
+double Kp_A = 0.01, Ki_A = 0.0, Kd_A = 0.0;
+double Kp_B = 0.01, Ki_B = 0.0, Kd_B = 0.0;
 #define NUM_PID_KS 6
 double* pid_Ks = new double[NUM_PID_KS];
 uint32_t prev_setpointA_time = 0;

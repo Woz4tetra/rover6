@@ -8,7 +8,7 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     nh.param<string>("imu_frame_id", _imuFrameID, "bno055_imu");
     nh.param<string>("enc_frame_id", _encFrameID, "encoders");
     nh.param<double>("wheel_radius_cm", _wheelRadiusCm, 32.5);
-    nh.param<double>("ticks_per_rotation", _ticksPerRotation, 1920.0);
+    nh.param<double>("ticks_per_rotation", _ticksPerRotation, 38400.0);
     nh.param<double>("max_rpm", _maxRPM, 915.0);
     _cmPerTick = 2.0 * M_PI * _wheelRadiusCm / _ticksPerRotation;
     _cpsToCmd = 255.0 / _maxRPM;
@@ -339,7 +339,7 @@ void Rover6SerialBridge::loop()
         readSerial();
     }
 
-    ROS_INFO_THROTTLE(60, "%d packets received", _readPacketNum);
+    ROS_INFO_THROTTLE(15, "%llu packets received", _readPacketNum);
 }
 
 void Rover6SerialBridge::stop()
@@ -484,10 +484,10 @@ double Rover6SerialBridge::convertTicksToCm(long ticks) {
 void Rover6SerialBridge::parseEncoder()
 {
     CHECK_SEGMENT(0); enc_msg.header.stamp = getDeviceTime((uint32_t)stoi(_currentBufferSegment));
-    CHECK_SEGMENT(1); enc_msg.left_cm = convertTicksToCm(stol(_currentBufferSegment));
-    CHECK_SEGMENT(2); enc_msg.right_cm = convertTicksToCm(stol(_currentBufferSegment));
-    CHECK_SEGMENT(3); enc_msg.left_speed_cps = stof(_currentBufferSegment);
-    CHECK_SEGMENT(4); enc_msg.right_speed_cps = stof(_currentBufferSegment);
+    CHECK_SEGMENT(1); enc_msg.right_cm = convertTicksToCm(stol(_currentBufferSegment));
+    CHECK_SEGMENT(2); enc_msg.left_cm = convertTicksToCm(stol(_currentBufferSegment));
+    CHECK_SEGMENT(3); enc_msg.right_speed_cps = convertTicksToCm(stof(_currentBufferSegment));
+    CHECK_SEGMENT(4); enc_msg.left_speed_cps = convertTicksToCm(stof(_currentBufferSegment));
 
     enc_pub.publish(enc_msg);
 }

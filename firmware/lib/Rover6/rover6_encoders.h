@@ -29,8 +29,8 @@ uint32_t prev_enc_time = 0;
 // cm per rotation = 2pi * wheel radius (cm); arc = angle * radius
 // ticks per rotation = 1920
 // cm per tick = cm per rotation / ticks per rotation
-double wheel_radius_cm = 32.5;
-double cm_per_tick = 2.0 * PI * wheel_radius_cm / 1920.0; //  * ticks / rotation
+// double wheel_radius_cm = 32.5;
+// double cm_per_tick = 2.0 * PI * wheel_radius_cm / 1920.0; //  * ticks / rotation
 
 // 160 rpm @ 6V
 // 135 rpm @ 5V
@@ -57,8 +57,8 @@ bool read_encoders()
     long new_encA_pos = motorA_enc.read();
     long new_encB_pos = motorB_enc.read();
 
-    enc_speedA = (new_encA_pos - encA_pos) * cm_per_tick / (CURRENT_TIME - prev_enc_time) * 1000.0;
-    enc_speedB = (new_encB_pos - encB_pos) * cm_per_tick / (CURRENT_TIME - prev_enc_time) * 1000.0;
+    enc_speedA = (double)(new_encA_pos - encA_pos) / (CURRENT_TIME - prev_enc_time) * 1000.0;
+    enc_speedB = (double)(new_encB_pos - encB_pos) / (CURRENT_TIME - prev_enc_time) * 1000.0;
 
     encA_pos = new_encA_pos;
     encB_pos = new_encB_pos;
