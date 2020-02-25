@@ -1,2 +1,6 @@
 #!/usr/bin/env bash
-roslaunch rover6_ros_config rover6.launch
+source /opt/ros/melodic/setup.bash
+source /home/pi/ros_ws/devel/setup.bash
+source ${HOME}/.local/rover6/bin/rover6_ros_set_master
+
+/opt/ros/melodic/bin/roslaunch rover6_config rover6.launch

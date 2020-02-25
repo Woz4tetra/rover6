@@ -86,7 +86,7 @@ class Rover6Chassis:
 
         # Publishers
         self.odom_pub = rospy.Publisher("odom", Odometry, queue_size=5)
-        self.motors_pub = rospy.Publisher("motors_pub_name", Rover6Motor, queue_size=20)
+        self.motors_pub = rospy.Publisher(self.motors_pub_name, Rover6Motor, queue_size=20)
 
         # Services
         self.pid_service_name = "rover6_pid"
@@ -95,19 +95,31 @@ class Rover6Chassis:
         self.safety_service_name = "rover6_safety"
         self.set_safety_thresholds = None
 
+        rospy.loginfo("Waiting for service %s" % self.safety_service_name)
+        rospy.wait_for_service(self.pid_service_name)
+        self.set_pid = rospy.ServiceProxy(self.pid_service_name, Rover6PidSrv)
+        rospy.loginfo("%s service is ready" % self.pid_service_name)
+
+        rospy.loginfo("Waiting for service %s" % self.safety_service_name)
+        rospy.wait_for_service(self.safety_service_name)
+        self.set_safety_thresholds = rospy.ServiceProxy(self.safety_service_name, Rover6SafetySrv)
+        rospy.loginfo("%s service is ready" % self.safety_service_name)
+
+
         # dynamic reconfigure
         dyn_cfg = Server(Rover6ChassisConfig, lambda config, level: Rover6Chassis.dynamic_callback(self, config, level))
 
     def dynamic_callback(self, config, level):
         if self.set_pid is None:
-            rospy.warning("%s service not ready yet!" % self.pid_service_name)
+            rospy.logwarn("%s service not ready yet!" % self.pid_service_name)
         else:
             self.call_pid_service(config)
 
         if self.set_pid is None:
-            rospy.warning("%s service not ready yet!" % self.safety_service_name)
+            rospy.logwarn("%s service not ready yet!" % self.safety_service_name)
         else:
             self.call_safety_service(config)
+        return config
 
     def call_pid_service(self, config):
         try:
@@ -120,18 +132,18 @@ class Rover6Chassis:
                 config["kd_B"]
             )
         except rospy.ServiceException, e:
-            rospy.warning("%s service call failed: %s" % (self.pid_service_name, e))
+            rospy.logwarn("%s service call failed: %s" % (self.pid_service_name, e))
 
     def call_safety_service(self, config):
         try:
-            args = get_stopping_thresholds(
+            args = self.get_stopping_thresholds(
                 config["obstacle_threshold_x_mm"],
                 config["ledge_threshold_y_mm"],
                 config["buffer_x_mm"],
             )
             self.set_safety_thresholds(*args)
         except rospy.ServiceException, e:
-            rospy.warning("%s service call failed: %s" % (self.safety_service_name, e))
+            rospy.logwarn("%s service call failed: %s" % (self.safety_service_name, e))
 
     def angle_rad_to_tof_servo_command(self, angle_rad):
         angle_rad = angle_rad + (math.pi * 2 if angle_rad <= 0.0 else 0)  # bound to 270...360 deg
@@ -145,7 +157,7 @@ class Rover6Chassis:
         return int(servo_command)
 
 
-    def calculate_tof_thresholds(obstacle_x, ledge_y, buffer_x, wall_offset):
+    def calculate_tof_thresholds(self, obstacle_x, ledge_y, buffer_x, wall_offset):
         gaze_x = obstacle_x + buffer_x + wall_offset  # X coordinate where the sensor is pointing at
         threshold_x = obstacle_x + wall_offset  # X coordinate where threshold starts
         offset_ledge_y = ledge_y + self.tof_ground_dist_mm  # Y threshold relative to the axis of rotation
@@ -157,23 +169,23 @@ class Rover6Chassis:
         # sensor upper threshold accounting for sensor's distance away from the axis of rotation
         ledge_threshold = abs(offset_ledge_y / math.sin(sensor_angle)) - self.tof_off_axis_mm
 
-        servo_command = angle_rad_to_tof_servo_command(sensor_angle)
+        servo_command = self.angle_rad_to_tof_servo_command(sensor_angle)
         assert obstacle_threshold >= 0.0, obstacle_threshold
         assert ledge_threshold >= 0.0, ledge_threshold
         return obstacle_threshold, ledge_threshold, servo_command
 
 
-    def get_stopping_thresholds(obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm=10.0):
+    def get_stopping_thresholds(self, obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm=10.0):
         # obstacle_threshold_x_mm: measured from the maximum point of the front or back of the robot
         # ledge_threshold_y_mm: measured from the ground plane where the robot sits flat on the ground
         # buffer_x_mm: x buffer distance to account for robot stopping time and update rate delay
 
         front_obstacle_threshold, front_ledge_threshold, front_servo_command = \
-            calculate_tof_thresholds(obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm,
+            self.calculate_tof_thresholds(obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm,
                                      self.tof_front_wall_dist_mm)
 
         back_obstacle_threshold, back_ledge_threshold, back_servo_command = \
-            calculate_tof_thresholds(obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm,
+            self.calculate_tof_thresholds(obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm,
                                      self.tof_back_wall_dist_mm)
 
         return (
@@ -201,12 +213,6 @@ class Rover6Chassis:
         self.enc_msg = enc_msg
 
     def run(self):
-        rospy.wait_for_service(self.pid_service_name)
-        self.set_pid = rospy.ServiceProxy(self.pid_service_name, Rover6PidSrv)
-
-        rospy.wait_for_service(self.safety_service_name)
-        self.set_safety_thresholds = rospy.ServiceProxy(self.safety_service_name, Rover6SafetySrv)
-
         clock_rate = rospy.Rate(30)
 
         while not rospy.is_shutdown():

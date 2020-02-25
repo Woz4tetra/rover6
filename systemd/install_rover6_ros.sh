@@ -20,7 +20,8 @@ mkdir -p ${BIN_INSTALL_DIR}
 cp ${BASE_SCRIPT_DIR}/${SCRIPT_NAME} ${BIN_INSTALL_DIR}
 cp ${BASE_SCRIPT_DIR}/rover6_ros_restart ${BIN_INSTALL_DIR}
 cp ${BASE_SCRIPT_DIR}/rover6_ros_stop ${BIN_INSTALL_DIR}
-cp ${BASE_SCRIPT_DIR}/rover6_ros_tail ${BIN_INSTALL_DIR}
+cp ${BASE_SCRIPT_DIR}/rover6_ros_status ${BIN_INSTALL_DIR}
+cp ${BASE_SCRIPT_DIR}/rover6_ros_set_master ${BIN_INSTALL_DIR}
 
 
 echo "Copying service files"

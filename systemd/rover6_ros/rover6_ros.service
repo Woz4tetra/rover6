@@ -7,5 +7,5 @@ WantedBy=default.target
 
 [Service]
 ExecStart=/home/pi/.local/rover6/bin/rover6_ros
-Restart=on-failure
+# Restart=on-failure
 KillSignal=SIGINT

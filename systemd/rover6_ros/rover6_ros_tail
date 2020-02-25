@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-tail -F -n 300 /home/pi/.local

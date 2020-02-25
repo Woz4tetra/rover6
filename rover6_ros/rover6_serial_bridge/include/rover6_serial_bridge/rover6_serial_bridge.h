@@ -17,6 +17,7 @@
 #include "rover6_serial_bridge/Rover6Safety.h"
 #include "rover6_serial_bridge/Rover6TOF.h"
 #include "rover6_serial_bridge/Rover6PidSrv.h"
+#include "rover6_serial_bridge/Rover6SafetySrv.h"
 
 
 using namespace std;
@@ -78,6 +79,9 @@ private:
     ros::Publisher tof_pub;
     rover6_serial_bridge::Rover6TOF tof_msg;
 
+    ros::ServiceServer pid_service;
+    ros::ServiceServer safety_service;
+
     StructReadyState* readyState;
 
     int _frontTilterServoNum;
@@ -100,6 +104,9 @@ private:
     void loop();
     void stop();
 
+    bool set_pid(rover6_serial_bridge::Rover6PidSrv::Request  &req, rover6_serial_bridge::Rover6PidSrv::Response &res);
+    bool set_safety_thresholds(rover6_serial_bridge::Rover6SafetySrv::Request  &req, rover6_serial_bridge::Rover6SafetySrv::Response &res);
+
     void setActive(bool state);
     void softRestart();
     void setReporting(bool state);
@@ -110,7 +117,6 @@ private:
     void writeServo(int n);
     void writeServo(int n, int command);
     void writeObstacleThresholds(int back_lower, int back_upper, int front_lower, int front_upper);
-    void setSafetyThresholds(double obstacle_threshold_x_mm, double ledge_threshold_y_mm, double buffer_x_mm);
 
     void parseImu();
     void eulerToQuat(double roll, double pitch, double yaw);

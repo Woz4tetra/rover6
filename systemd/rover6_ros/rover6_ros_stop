@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-systemctl --user restart rover6_ros_stop.service
+systemctl --user stop rover6_ros.service

@@ -57,8 +57,8 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     servo_pub = nh.advertise<std_msgs::Int16MultiArray>("servos", 10);
     tof_pub = nh.advertise<rover6_serial_bridge::Rover6TOF>("tof", 10);
 
-    ros::ServiceServer pid_service = n.advertiseService("rover6_pid", Rover6SerialBridge::set_pid);
-    ros::ServiceServer safety_service = n.advertiseService("rover6_safety", Rover6SerialBridge::set_safety_thresholds);
+    pid_service = nh.advertiseService("rover6_pid", &Rover6SerialBridge::set_pid, this);
+    safety_service = nh.advertiseService("rover6_safety", &Rover6SerialBridge::set_safety_thresholds, this);
 
     ROS_INFO("Rover 6 serial bridge init done");
 }
@@ -409,6 +409,7 @@ bool Rover6SerialBridge::set_pid(rover6_serial_bridge::Rover6PidSrv::Request  &r
     ROS_INFO("Setting pid: kp_A=%d, ki_A=%d, kd_A=%d, kp_B=%d, ki_B=%d, kd_B=%d",
         req.kp_A, req.ki_A, req.kd_A, req.kp_B, req.ki_B, req.kd_B
     );
+    res.resp = true;
     return true;
 }
 
@@ -416,19 +417,20 @@ bool Rover6SerialBridge::set_safety_thresholds(rover6_serial_bridge::Rover6Safet
          rover6_serial_bridge::Rover6SafetySrv::Response &res)
 {
     writeObstacleThresholds(
-        req.front_obstacle_threshold, req.front_ledge_threshold,
-        req.back_obstacle_threshold, req.back_ledge_threshold
+        req.back_obstacle_threshold, req.back_ledge_threshold,
+        req.front_obstacle_threshold, req.front_ledge_threshold
     );
 
     writeServo(_frontTilterServoNum, req.front_servo_command);
     writeServo(_backTilterServoNum, req.back_servo_command);
 
     ROS_INFO("Setting safety: back_lower=%d, back_upper=%d, front_lower=%d, front_upper=%d",
-        req.back_lower, req.back_upper, req.front_lower, req.front_upper
+        req.back_obstacle_threshold, req.back_ledge_threshold, req.front_obstacle_threshold, req.front_ledge_threshold
     );
-    ROS_INFO("Setting servos: front_servo_command=%d, front_servo_command=%d",
+    ROS_INFO("Setting servos: front_servo_command=%d, back_servo_command=%d",
         req.front_servo_command, req.back_servo_command
     );
+    res.resp = true;
     return true;
 }
 
@@ -476,7 +478,7 @@ void Rover6SerialBridge::writeSpeed(float speedA, float speedB) {
 }
 
 void Rover6SerialBridge::writeK(float kp_A, float ki_A, float kd_A, float kp_B, float ki_B, float kd_B) {
-    writeSerial("ks", "fffff", kp_A, ki_A, kd_A, kp_B, ki_B, kd_B);
+    writeSerial("ks", "ffffff", kp_A, ki_A, kd_A, kp_B, ki_B, kd_B);
 }
 
 void Rover6SerialBridge::writeServo(int n){
@@ -488,14 +490,8 @@ void Rover6SerialBridge::writeServo(int n, int command){
 }
 
 void Rover6SerialBridge::writeObstacleThresholds(int back_lower, int back_upper, int front_lower, int front_upper) {
-    writeSerial("safe", "dddd", back_lower, back_upper, front_lower, front_upper);
+    writeSerial("safe", "dddd", front_upper, back_upper, front_lower, back_lower);
 }
-
-void Rover6SerialBridge::setSafetyThresholds(double obstacle_threshold_x_mm, double ledge_threshold_y_mm, double buffer_x_mm)
-{
-
-}
-
 
 void Rover6SerialBridge::parseImu()
 {
