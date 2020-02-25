@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!-- Encoder and motor product info - https://www.servocity.com/116-rpm-premium-planetary-gear-motor-w-encoder -->
+    <arg name="led_control_left_start_command"   default="-" />
+    <arg name="led_control_right_start_command"   default="-" />
+    <arg name="cmd_vel_topic" default="cmd_vel"/>
+
+    <group ns="earth_rover" >
+
+        <node name="earth_rover_chassis" pkg="earth_rover_chassis" type="earth_rover_chassis_node.py" output="screen" required="true">
+            <remap from="cmd_vel" to="$(arg cmd_vel_topic)" />
+
+            <param name="kp" value="0.25" />
+            <param name="ki" value="0.0" />
+            <param name="kd" value="0.0" />
+            <param name="speed_smooth_k" value="0.5" />
+            <param name="output_deadzone" value="0.05" />
+
+            <param name="wheel_radius_meters" value="0.0715645" />
+            <param name="wheel_distance_meters" value="0.42" />
+            <!-- <param name="wheel_distance_meters" value="0.391266" /> -->
+            <param name="ticks_per_rotation" value="1245.768" />
+
+            <!-- Max translational speed: 0.73m/s -->
+            <!-- Max rotational speed: 7.5rad/s (7.46295359167) -->
+
+            <!-- Average max motor speed: 0.73m/s (0.729119839)-->
+            <param name="left_max_speed_meters_per_s" value="0.7115280036277266" />
+            <param name="right_max_speed_meters_per_s" value="0.7548169170047755" />
+
+            <param name="left_min_speed_meters_per_s" value="-0.7149021671255203" />
+            <param name="right_min_speed_meters_per_s" value="-0.7352322682415865" />
+
+            <param name="enable_pid" value="true" />
+
+            <!-- Sensor 1: Front right. 3.0cm -->
+            <!-- Sensor 2: Front left. 3.0cm -->
+            <!-- Sensor 3: Back right side. 2.5cm -->
+            <!-- Sensor 4: Back left side. 2.5cm -->
+            <!-- Sensor 5: Back right behind. 6.0cm -->
+            <!-- Sensor 6: Back left behind. 6.0cm -->
+            <param name="easing_offset_cm" value="15.0" />
+            <param name="min_tracking_lin_vel" value="0.8" />
+            <param name="min_tracking_ang_vel" value="0.17" />
+
+            <rosparam param="stopping_distances_cm">
+                [
+                    10.0,
+                    10.0,
+                    9.0,
+                    9.0,
+                    15.0,
+                    15.0,
+                ]
+            </rosparam>
+
+            <rosparam param="front_sensors"> [0, 1] </rosparam>
+            <rosparam param="right_sensors"> [2] </rosparam>
+            <rosparam param="left_sensors"> [3] </rosparam>
+            <rosparam param="back_sensors"> [4, 5] </rosparam>
+        </node>
+
+        <group ns="right" >
+            <node pkg="pololu_simple_motor_controller" type="pololu_simple_motor_controller.py" name="right_motor" output="screen" required="true">
+                <param name="serial_port" type="string" value="/dev/serial/by-id/usb-Pololu_Corporation_Pololu_Simple_High-Power_Motor_Controller_18v15_49FF-7206-7277-5052-4327-1167-if00"/>
+            </node>
+
+            <node name="right_encoder" pkg="earth_rover_microcontroller_bridge" type="earth_rover_microcontroller_bridge_node" required="true" output="screen">
+                <param name="serial_port" type="string" value="/dev/serial/by-id/usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_018D432A-if00-port0"/>
+                <param name="serial_baud" type="int" value="115200"/>
+                <param name="led_control_service_name" type="str" value="led_control_right"/>
+                <param name="led_control_start_command" type="str" value="$(arg led_control_left_start_command)"/>
+            </node>
+        </group>
+
+
+        <group ns="left" >
+            <node pkg="pololu_simple_motor_controller" type="pololu_simple_motor_controller.py" name="left_motor" output="screen" required="true">
+                <param name="serial_port" type="string" value="/dev/serial/by-id/usb-Pololu_Corporation_Pololu_Simple_High-Power_Motor_Controller_18v15_49FF-6E06-7277-5052-4315-1167-if00"/>
+                <param name="reverse_motor" type="bool" value="true"/>
+            </node>
+
+            <node name="left_encoder" pkg="earth_rover_microcontroller_bridge" type="earth_rover_microcontroller_bridge_node" required="true" output="screen">
+                <param name="serial_port" type="string" value="/dev/serial/by-id/usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_018D31F7-if00-port0"/>
+                <param name="serial_baud" type="int" value="115200"/>
+                <param name="led_control_service_name" type="str" value="led_control_left"/>
+                <param name="led_control_start_command" type="str" value="$(arg led_control_right_start_command)"/>
+            </node>
+        </group>
+    </group>
+</launch>

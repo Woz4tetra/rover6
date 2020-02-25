@@ -16,6 +16,7 @@
 #include "rover6_serial_bridge/Rover6FSR.h"
 #include "rover6_serial_bridge/Rover6Safety.h"
 #include "rover6_serial_bridge/Rover6TOF.h"
+#include "rover6_serial_bridge/Rover6PidSrv.h"
 
 
 using namespace std;
@@ -78,6 +79,11 @@ private:
     rover6_serial_bridge::Rover6TOF tof_msg;
 
     StructReadyState* readyState;
+
+    int _frontTilterServoNum;
+    int _backTilterServoNum;
+    int _panServoNum;
+    int _tiltServoNum;
 
     void configure();
     void checkReady();

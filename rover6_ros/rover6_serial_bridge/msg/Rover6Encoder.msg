@@ -1,5 +1,5 @@
 Header header
-float64 left_cm
-float64 right_cm
-float64 left_speed_cps
-float64 right_speed_cps
+int64 left_ticks
+int64 right_ticks
+int64 left_speed_ticks_per_s
+int64 right_speed_ticks_per_s

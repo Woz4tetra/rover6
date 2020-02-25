@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+roslaunch rover6_ros_config rover6.launch

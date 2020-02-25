@@ -7,15 +7,13 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     nh.param<int>("serial_baud", _serialBaud, 115200);
     nh.param<string>("imu_frame_id", _imuFrameID, "bno055_imu");
     nh.param<string>("enc_frame_id", _encFrameID, "encoders");
-    nh.param<double>("wheel_radius_cm", _wheelRadiusCm, 32.5);
-    nh.param<double>("ticks_per_rotation", _ticksPerRotation, 38400.0);
-    nh.param<double>("max_rpm", _maxRPM, 915.0);
     int num_servos = 0;
     nh.param<int>("num_servos", num_servos, 16);
     _numServos = (unsigned int)num_servos;
-
-    _cmPerTick = 2.0 * M_PI * _wheelRadiusCm / _ticksPerRotation;
-    _cpsToCmd = 255.0 / _maxRPM;
+    nh.param<int>("front_tilter_servo_num", _frontTilterServoNum, 0);
+    nh.param<int>("back_tilter_servo_num", _backTilterServoNum, 1);
+    nh.param<int>("pan_servo_num", _panServoNum, 2);
+    nh.param<int>("tilt_servo_num", _tiltServoNum, 3);
 
     imu_msg.header.frame_id = _imuFrameID;
     enc_msg.header.frame_id = _encFrameID;
@@ -58,6 +56,9 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     ina_pub = nh.advertise<sensor_msgs::BatteryState>("battery", 10);
     servo_pub = nh.advertise<std_msgs::Int16MultiArray>("servos", 10);
     tof_pub = nh.advertise<rover6_serial_bridge::Rover6TOF>("tof", 10);
+
+    ros::ServiceServer pid_service = n.advertiseService("rover6_pid", Rover6SerialBridge::set_pid);
+    ros::ServiceServer safety_service = n.advertiseService("rover6_safety", Rover6SerialBridge::set_safety_thresholds);
 
     ROS_INFO("Rover 6 serial bridge init done");
 }
@@ -401,6 +402,36 @@ int Rover6SerialBridge::run()
     return exit_code;
 }
 
+bool Rover6SerialBridge::set_pid(rover6_serial_bridge::Rover6PidSrv::Request  &req,
+         rover6_serial_bridge::Rover6PidSrv::Response &res)
+{
+    writeK(req.kp_A, req.ki_A, req.kd_A, req.kp_B, req.ki_B, req.kd_B);
+    ROS_INFO("Setting pid: kp_A=%d, ki_A=%d, kd_A=%d, kp_B=%d, ki_B=%d, kd_B=%d",
+        req.kp_A, req.ki_A, req.kd_A, req.kp_B, req.ki_B, req.kd_B
+    );
+    return true;
+}
+
+bool Rover6SerialBridge::set_safety_thresholds(rover6_serial_bridge::Rover6SafetySrv::Request  &req,
+         rover6_serial_bridge::Rover6SafetySrv::Response &res)
+{
+    writeObstacleThresholds(
+        req.front_obstacle_threshold, req.front_ledge_threshold,
+        req.back_obstacle_threshold, req.back_ledge_threshold
+    );
+
+    writeServo(_frontTilterServoNum, req.front_servo_command);
+    writeServo(_backTilterServoNum, req.back_servo_command);
+
+    ROS_INFO("Setting safety: back_lower=%d, back_upper=%d, front_lower=%d, front_upper=%d",
+        req.back_lower, req.back_upper, req.front_lower, req.front_upper
+    );
+    ROS_INFO("Setting servos: front_servo_command=%d, front_servo_command=%d",
+        req.front_servo_command, req.back_servo_command
+    );
+    return true;
+}
+
 void Rover6SerialBridge::setActive(bool state)
 {
     if (state) {
@@ -500,18 +531,13 @@ void Rover6SerialBridge::eulerToQuat(double roll, double pitch, double yaw)
 }
 
 
-double Rover6SerialBridge::convertTicksToCm(long ticks) {
-    return (double)ticks * _cmPerTick;
-}
-
-
 void Rover6SerialBridge::parseEncoder()
 {
     CHECK_SEGMENT(0); enc_msg.header.stamp = getDeviceTime((uint32_t)stol(_currentBufferSegment));
-    CHECK_SEGMENT(1); enc_msg.left_cm = convertTicksToCm(stol(_currentBufferSegment));
-    CHECK_SEGMENT(2); enc_msg.right_cm = convertTicksToCm(stol(_currentBufferSegment));
-    CHECK_SEGMENT(3); enc_msg.left_speed_cps = stof(_currentBufferSegment);
-    CHECK_SEGMENT(4); enc_msg.right_speed_cps = stof(_currentBufferSegment);
+    CHECK_SEGMENT(1); enc_msg.left_ticks = stol(_currentBufferSegment);
+    CHECK_SEGMENT(2); enc_msg.right_ticks = stol(_currentBufferSegment);
+    CHECK_SEGMENT(3); enc_msg.left_speed_ticks_per_s = stol(_currentBufferSegment);
+    CHECK_SEGMENT(4); enc_msg.right_speed_ticks_per_s = stol(_currentBufferSegment);
 
     enc_pub.publish(enc_msg);
 }

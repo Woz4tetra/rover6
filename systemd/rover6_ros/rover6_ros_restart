@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+systemctl --user restart rover6_ros.service
