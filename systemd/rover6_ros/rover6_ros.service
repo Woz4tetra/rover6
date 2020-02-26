@@ -2,10 +2,14 @@
 # Rover6 systemd service file
 Description=Rover6 device client
 
+After=network-online.target
+Wants=network-online.target
+
 [Install]
 WantedBy=default.target
 
 [Service]
 ExecStart=/home/pi/.local/rover6/bin/rover6_ros
-# Restart=on-failure
+Restart=always
+RestartSec=10
 KillSignal=SIGINT
