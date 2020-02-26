@@ -138,7 +138,14 @@ NoDevice()
 ssidChk=('NoSSid')
 
 if [ "$FORCE_HOTSPOT" = false ]; then
-    FindSSID
+    if { wpa_cli -i "$wifidev" status | grep 'ip_address'; } >/dev/null 2>&1
+    then
+        echo "Wifi already connected to a network. Skipping SSID check"
+        ssidChk="SSid"
+    else
+        echo "Finding SSID"
+        FindSSID
+    fi
 fi
 echo $ssidChk
 
