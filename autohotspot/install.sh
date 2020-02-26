@@ -68,10 +68,10 @@ BIN_INSTALL_DEST=${BIN_INSTALL_DIR}/${SCRIPT_NAME}
 sudo cp ${BASE_DIR}/${SCRIPT_NAME} ${BIN_INSTALL_DEST}
 echo ${BIN_INSTALL_DEST}
 
-# echo "Installing cron job"
-# CRON_JOB_NAME=autohotspot_cron
-# CRON_JOB_DEST=/etc/cron.d/${CRON_JOB_NAME}
-# sudo cp ${BASE_DIR}/${CRON_JOB_NAME} ${CRON_JOB_DEST}
+echo "Installing cron job"
+CRON_JOB_NAME=autohotspot_cron
+CRON_JOB_DEST=/etc/cron.d/${CRON_JOB_NAME}
+sudo cp ${BASE_DIR}/${CRON_JOB_NAME} ${CRON_JOB_DEST}
 
 echo "Enabling systemd services"
 sudo systemctl daemon-reload

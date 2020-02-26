@@ -1,1 +1,1 @@
-* * * * * root /usr/bin/autohotspot >/dev/null 2>&1
+* * * * * root systemctl restart autohotspot.service >/dev/null 2>&1
