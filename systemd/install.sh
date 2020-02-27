@@ -8,7 +8,7 @@ if [ "${BASE_INSTALL_DIR}" = "" ]; then
   BASE_INSTALL_DIR=~/.local/rover6
 fi
 
-# bash install_rover6_py.sh
-bash install_rover6_ros.sh
+# bash rover6_py/install_rover6_py.sh
+bash rover6_ros/install_rover6_ros.sh
 
 echo "service installation complete"

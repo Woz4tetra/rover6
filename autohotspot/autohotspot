@@ -154,15 +154,15 @@ CheckHotspotRunning()
 ssidCheck=('NoSSid')
 
 if [ "$FORCE_HOTSPOT" = false ]; then
-    if { CheckWifiIP; } >/dev/null 2>&1
+    if CheckWifiIP >/dev/null 2>&1
     then
         echo "Wifi already connected to a network. Skipping SSID check"
         ssidCheck="SSid"
     else
         echo "Finding SSID"
+        FindSSID
     fi
 fi
-FindSSID
 echo $ssidCheck
 
 #Create Hotspot or connect to valid wifi networks
@@ -174,7 +174,7 @@ then
               echo "Hotspot Deactivated, Bringing Wifi Up"
               BringupWpaSupplicant
               CheckWifiUp
-       elif { CheckWifiIP; } >/dev/null 2>&1
+       elif CheckWifiIP >/dev/null 2>&1
        then #Already connected
               echo "Wifi already connected to a network"
        else #ssid exists and no hotspot running connect to wifi network
