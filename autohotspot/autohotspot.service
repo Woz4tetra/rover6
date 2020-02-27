@@ -1,11 +1,13 @@
 [Unit]
-Description=Auto Hotspot  # Automatically generates an internet Hotspot when a valid ssid is not in range
+Description=Auto Hotspot
+
 After=multi-user.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/bin/autohotspot
+KillMode=none
 
 [Install]
 WantedBy=multi-user.target
