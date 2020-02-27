@@ -30,7 +30,7 @@ void set_active(bool active)
     set_bno_active(active);
     if (!active) {
         stop_motors();
-    }   
+    }
 }
 
 void reset()
@@ -128,78 +128,57 @@ void process_serial_packet(String category, String packet)
     println_info("category: %s, packet: '%s'", category.c_str(), packet.c_str());
     // toggle_active
     if (category.equals("<>")) {
-        if (get_segment(packet, &current_segment, &current_packet_index)) {
-            println_info("toggle_active %d", current_segment.toInt());
-            switch (current_segment.toInt())
-            {
-                case 0: set_active(false); break;
-                case 1: set_active(true); break;
-                case 2: soft_restart(); break;
-                default:
-                    break;
-            }
-        }
-        else {
-            println_error("Not enough segments supplied for toggle_active: %s", packet.c_str());
+        CHECK_SEGMENT(0);
+        println_info("toggle_active %d", current_segment.toInt());
+        switch (current_segment.toInt())
+        {
+            case 0: set_active(false); break;
+            case 1: set_active(true); break;
+            case 2: soft_restart(); break;
+            default:
+                break;
         }
     }
 
     // get_ready
     else if (category.equals("?")) {
-        if (get_segment(packet, &current_segment, &current_packet_index)) {
-            if (current_segment.equals("rover6")) {
-                println_info("Received ready signal!");
-                print_data("ready", "us", CURRENT_TIME, "hana");
-            }
-            else {
-                println_error("Invalid ready segment supplied: %s", current_segment.c_str());
-            }
+        CHECK_SEGMENT(0);
+        if (current_segment.equals("rover6")) {
+            println_info("Received ready signal!");
+            print_data("ready", "us", CURRENT_TIME, "hana");
         }
         else {
-            println_error("Not enough segments supplied for get_ready: %s", packet.c_str());
+            println_error("Invalid ready segment supplied: %s", current_segment.c_str());
         }
     }
 
     // toggle_reporting
     else if (category.equals("[]")) {
-        if (get_segment(packet, &current_segment, &current_packet_index)) {
-            switch (current_segment.toInt())
-            {
-                case 0: rover_state.is_reporting_enabled = false; break;
-                case 1: rover_state.is_reporting_enabled = true; break;
-                case 2: reset(); break;
-                default:
-                    break;
-            }
-        }
-        else {
-            println_error("Not enough segments supplied for toggle_reporting: %s", packet.c_str());
+        CHECK_SEGMENT(0);
+        switch (current_segment.toInt())
+        {
+            case 0: rover_state.is_reporting_enabled = false; break;
+            case 1: rover_state.is_reporting_enabled = true; break;
+            case 2: reset(); break;
+            default:
+                break;
         }
     }
 
-    // update_time_str
-    else if (category.equals("t")) {
-        if (get_segment(packet, &current_segment, &current_packet_index)) {
-            prev_date_str_update = CURRENT_TIME;
-            rpi_date_str = current_segment;
-        }
-        else {
-            println_error("Not enough segments supplied for update_time_str: %s", packet.c_str());
-        }
+    // rpi_state
+    else if (category.equals("rpi")) {
+        CHECK_SEGMENT(0); rover_rpi_state.ip_address = current_segment;
+        CHECK_SEGMENT(1); rover_rpi_state.hostname = current_segment;
+        CHECK_SEGMENT(2); rover_rpi_state.date_str = current_segment;
+        rover_rpi_state.prev_date_str_update = CURRENT_TIME;
+        CHECK_SEGMENT(3); rover_rpi_state.power_button_state = (bool)current_segment.toInt();
+        CHECK_SEGMENT(4); rover_rpi_state.broadcasting_hotspot = current_segment.toInt();
     }
 
     // set_motors
     else if (category.equals("m")) {
-        if (!get_segment(packet, &current_segment, &current_packet_index)) {
-            println_error("Not enough segments supplied for motor command A: %s", packet.c_str());
-            return;
-        }
-        float setpointA = current_segment.toFloat();
-        if (!get_segment(packet, &current_segment, &current_packet_index)) {
-            println_error("Not enough segments supplied for motor command B: %s", packet.c_str());
-            return;
-        }
-        float setpointB = current_segment.toFloat();
+        CHECK_SEGMENT(0); float setpointA = current_segment.toFloat();
+        CHECK_SEGMENT(1); float setpointB = current_segment.toFloat();
         update_setpointA(setpointA);
         update_setpointB(setpointB);
     }
@@ -207,38 +186,22 @@ void process_serial_packet(String category, String packet)
     // set_pid_ks
     else if (category.equals("ks")) {
         for (size_t index = 0; index < NUM_PID_KS; index++) {
-            if (!get_segment(packet, &current_segment, &current_packet_index)) {
-                println_error("Not enough segments supplied for set_pid_ks: %s", packet.c_str());
-                return;
-            }
-            pid_Ks[index] = current_segment.toFloat();
+            CHECK_SEGMENT(index); pid_Ks[index] = current_segment.toFloat();
         }
         set_Ks();  // sets pid constants based on pid_Ks array
     }
 
     // set_servo
     else if (category.equals("s")) {
-        if (!get_segment(packet, &current_segment, &current_packet_index)) {
-            println_error("Not enough segments supplied for set_servo n: %s", packet.c_str());
-            return;
-        }
-        int n = current_segment.toInt();
-        if (!get_segment(packet, &current_segment, &current_packet_index)) {
-            println_error("Not enough segments supplied for set_servo command: %s", packet.c_str());
-            return;
-        }
-        int command = current_segment.toInt();
+        CHECK_SEGMENT(0); int n = current_segment.toInt();
+        CHECK_SEGMENT(1); int command = current_segment.toInt();
         set_servo(n, command);
         report_servo_pos();
     }
 
     // set_servo_default
     else if (category.equals("sd")) {
-        if (!get_segment(packet, &current_segment, &current_packet_index)) {
-            println_error("Not enough segments supplied for set_servo_default: %s", packet.c_str());
-            return;
-        }
-        int n = current_segment.toInt();
+        CHECK_SEGMENT(0); int n = current_segment.toInt();
         set_servo(n);
         report_servo_pos();
     }
@@ -246,11 +209,7 @@ void process_serial_packet(String category, String packet)
     // set_safety_thresholds
     else if (category.equals("safe")) {
         for (size_t index = 0; index < 4; index++) {
-            if (!get_segment(packet, &current_segment, &current_packet_index)) {
-                println_error("Not enough segments supplied for set_safety_thresholds: %s", packet.c_str());
-                return;
-            }
-            LOX_THRESHOLDS[index] = current_segment.toInt();
+            CHECK_SEGMENT(index); LOX_THRESHOLDS[index] = current_segment.toInt();
         }
         set_lox_thresholds();  // sets thresholds based on LOX_THRESHOLDS array
     }

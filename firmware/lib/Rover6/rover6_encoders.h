@@ -32,14 +32,6 @@ uint32_t prev_enc_time = 0;
 // double wheel_radius_cm = 32.5;
 // double cm_per_tick = 2.0 * PI * wheel_radius_cm / 1920.0; //  * ticks / rotation
 
-// 160 rpm @ 6V
-// 135 rpm @ 5V
-// 60 rpm @ 3V
-// double max_rpm = 135.0;
-// double max_linear_speed_cps = max_rpm * 2.0 * PI * wheel_radius_cm / 60.0;  // cm per s, no load
-double max_linear_speed_cps = 915.0;
-double cps_to_cmd = 255.0 / max_linear_speed_cps;
-
 void reset_encoders()
 {
     encA_pos = 0;
@@ -53,7 +45,7 @@ bool read_encoders()
     if (CURRENT_TIME - prev_enc_time < ENCODER_SAMPLERATE_DELAY_MS) {
         return false;
     }
-    
+
     long new_encA_pos = motorA_enc.read();
     long new_encB_pos = motorB_enc.read();
 

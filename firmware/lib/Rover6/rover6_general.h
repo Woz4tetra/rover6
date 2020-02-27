@@ -50,6 +50,15 @@ struct state {
     bool is_speed_pid_enabled;
 } rover_state;
 
+struct rpi_state {
+    String ip_address;
+    String hostname;
+    String date_str;
+    bool power_button_state;
+    uint32_t prev_date_str_update;
+    int broadcasting_hotspot;
+} rover_rpi_state;
+
 void init_structs() {
     safety_struct.is_left_bumper_trig = false;
     safety_struct.is_right_bumper_trig = false;
@@ -64,6 +73,13 @@ void init_structs() {
     rover_state.is_active = false;
     rover_state.is_reporting_enabled = false;
     rover_state.is_speed_pid_enabled = false;
+
+    rover_rpi_state.ip_address = "";
+    rover_rpi_state.hostname = "";
+    rover_rpi_state.date_str = "12:00:00AM";
+    rover_rpi_state.power_button_state = false;
+    rover_rpi_state.prev_date_str_update = 0;
+    rover_rpi_state.broadcasting_hotspot = 0;  // 0 == unknown, 1 == connected to wifi, 2 == broadcasting hotspot
 }
 
 bool is_safe_to_move() {
@@ -94,10 +110,5 @@ void report_structs() {
         rover_state.is_speed_pid_enabled
     );
 }
-
-// RPi connection
-uint32_t prev_date_str_update = 0;
-String rpi_date_str = "12:00:00AM";
-bool broadcasting_hotspot = false;
 
 #endif // ROVER6_GENERAL

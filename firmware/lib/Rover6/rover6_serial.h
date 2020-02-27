@@ -24,6 +24,9 @@ void println_info(const char* message, ...);
 void print_error(const char* message, ...);
 void println_error(const char* message, ...);
 
+
+#define CHECK_SEGMENT(n)  if (!get_segment(packet, &current_segment, &current_packet_index)) {  println_error("Not enough segments supplied for #%d: %s", n, packet.c_str());  return;  }
+
 void process_serial_packet(String category, String packet);
 
 
@@ -98,7 +101,7 @@ bool read_one_packet()
         println_error("Received packet num doesn't match local count. %d != %d", recv_packet_num, read_packet_num);
         read_packet_num = recv_packet_num;
     }
-    
+
     // find category segment
     if (!get_segment(current_packet, &current_segment, &current_packet_index)) {
         print_data("txrx", "dd", read_packet_num, 0);
@@ -184,7 +187,7 @@ void print_data(String name, const char *formats, ...)
     }
     data += String(calc_checksum, HEX);
     data += String(PACKET_STOP);
-  
+
     // checksum might be inserting null characters. Force the buffer to extend
     // to include packet stop and checksum
     // DATA_SERIAL.write(data.c_str(), length + 3);

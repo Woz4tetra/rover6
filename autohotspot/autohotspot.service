@@ -4,7 +4,7 @@ Description=Auto Hotspot
 After=multi-user.target
 
 [Service]
-Type=oneshot
+Type=forking
 RemainAfterExit=yes
 ExecStart=/usr/bin/autohotspot
 KillMode=none

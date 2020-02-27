@@ -57,6 +57,9 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     servo_pub = nh.advertise<std_msgs::Int16MultiArray>("servos", 10);
     tof_pub = nh.advertise<rover6_serial_bridge::Rover6TOF>("tof", 10);
 
+    motors_sub = nh.subscribe("motors", 100, &Rover6SerialBridge::motorsCallback, this);
+    rpi_state_sub = nh.subscribe("rpi_state", 100, &Rover6SerialBridge::rpiStateCallback, this);
+
     pid_service = nh.advertiseService("rover6_pid", &Rover6SerialBridge::set_pid, this);
     safety_service = nh.advertiseService("rover6_safety", &Rover6SerialBridge::set_safety_thresholds, this);
 
@@ -402,6 +405,21 @@ int Rover6SerialBridge::run()
     return exit_code;
 }
 
+void Rover6SerialBridge::motorsCallback(const rover6_serial_bridge::Rover6Motors::ConstPtr& msg) {
+    writeSerial("m", "ff", msg->left, msg->right);
+}
+
+void Rover6SerialBridge::rpiStateCallback(const rover6_serial_bridge::Rover6RpiState::ConstPtr& msg)
+{
+    writeSerial("rpi", "sssdd",
+        msg->ip_address.c_str(),
+        msg->hostname.c_str(),
+        msg->date_str.c_str(),
+        (int)msg->power_button_state,
+        (int)msg->broadcasting_hotspot
+    );
+}
+
 bool Rover6SerialBridge::set_pid(rover6_serial_bridge::Rover6PidSrv::Request  &req,
          rover6_serial_bridge::Rover6PidSrv::Response &res)
 {
@@ -462,16 +480,14 @@ void Rover6SerialBridge::resetSensors() {
     writeSerial("[]", "d", 2);
 }
 
-void Rover6SerialBridge::writeTimeStr()
-{
-    time_t curr_time;
-	tm* curr_tm;
-    time(&curr_time);
-	curr_tm = localtime(&curr_time);
-    strftime(_dateString, 50, "%I:%M:%S%p", curr_tm);
-    writeSerial("t", "s", _dateString);
-
-}
+// void Rover6SerialBridge::writeCurrentState()
+// {
+//     time_t curr_time;
+// 	tm* curr_tm;
+//     time(&curr_time);
+// 	curr_tm = localtime(&curr_time);
+//     strftime(_dateString, 50, "%I:%M:%S%p", curr_tm);
+// }
 
 void Rover6SerialBridge::writeSpeed(float speedA, float speedB) {
     writeSerial("m", "ff", speedA, speedB);

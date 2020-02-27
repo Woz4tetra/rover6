@@ -34,9 +34,9 @@ void init_menus()
     SCREEN_MID_H = tft.height() / 2;
 }
 
-// 
+//
 // Top bar
-// 
+//
 
 uint8_t topbar_rpi_icon_x = 10;
 uint8_t topbar_rpi_icon_y = TOP_BAR_H / 2;
@@ -68,16 +68,16 @@ void draw_datestr()
 {
     int16_t  x1, y1;
     uint16_t w, h;
-    tft.getTextBounds(rpi_date_str, 0, 0, &x1, &y1, &w, &h);
+    tft.getTextBounds(rover_rpi_state.date_str, 0, 0, &x1, &y1, &w, &h);
     tft.setCursor(SCREEN_MID_W - w / 2, TOP_BAR_H / 2 - h / 2);
-    if (CURRENT_TIME - prev_date_str_update > 1000) {
+    if (CURRENT_TIME - rover_rpi_state.prev_date_str_update > 1000) {
         tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
-        if (CURRENT_TIME - prev_date_str_update > 5000) {
+        if (CURRENT_TIME - rover_rpi_state.prev_date_str_update > 5000) {
             tft.setTextColor(ST77XX_RED, ST77XX_BLACK);
         }
     }
 
-    tft.print(rpi_date_str);
+    tft.print(rover_rpi_state.date_str);
     tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
 }
 
@@ -106,22 +106,21 @@ void draw_topbar()
     draw_datestr();
 }
 
-// 
+//
 // Notifications
-// 
+//
 
 
 
-// 
+//
 // Main menu
-// 
+//
 
 enum menu_names {
     MAIN_MENU,
     IMU_MENU,
     MOTORS_MENU,
     SAFETY_MENU,
-    HOTSPOT_MENU,
     WIFI_MENU,
     CAMERA_MENU,
     LIDAR_MENU,
@@ -134,30 +133,22 @@ const menu_names MAIN_MENU_ENUM_MAPPING[] PROGMEM = {
     SAFETY_MENU,
     IMU_MENU,
     MOTORS_MENU,
-    HOTSPOT_MENU,
     WIFI_MENU,
     CAMERA_MENU,
     LIDAR_MENU,
     SHUTDOWN_MENU
-    // "Entry 10",
-    // "Entry 11",
-    // "Entry 12"
 };
 
 const char* const MAIN_MENU_ENTRIES[] PROGMEM = {
     "Safety Systems",
     "IMU",
     "Motors",
-    "Hotspot",
-    "Show Wifi Settings",
+    "Wifi Settings",
     "Camera",
     "LIDAR",
     "Shutdown/restart"
-    // "Entry 10",
-    // "Entry 11",
-    // "Entry 12"
 };
-const int MAIN_MENU_ENTRIES_LEN = 8;
+const int MAIN_MENU_ENTRIES_LEN = 7;
 
 menu_names DISPLAYED_MENU = MAIN_MENU;
 menu_names PREV_DISPLAYED_MENU = NONE_MENU;  // for detecting screen change events
@@ -176,7 +167,7 @@ void draw_main_menu()
     if (PREV_MAIN_MENU_SELECT_INDEX == MAIN_MENU_SELECT_INDEX) {
         return;
     }
-    
+
     // draw_sensor_data();
 
     // tft.fillScreen(ST7735_BLACK);
@@ -189,7 +180,7 @@ void draw_main_menu()
             ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_BLACK
         );
     }
-    
+
     for (int i = 0; i < MAIN_MENU_ENTRIES_LEN; i++)
     {
         tft.setCursor(BORDER_OFFSET_W, ROW_SIZE * i + BORDER_OFFSET_H + TOP_BAR_H);
@@ -206,9 +197,9 @@ void draw_main_menu()
     PREV_MAIN_MENU_SELECT_INDEX = MAIN_MENU_SELECT_INDEX;
 }
 
-// 
+//
 // IMU menu
-// 
+//
 const double IMU_DRAW_COMPASS_RADIUS = 30;
 int16_t imu_draw_x0 = 0;
 int16_t imu_draw_y0 = 0;
@@ -247,9 +238,9 @@ void draw_imu_menu()
 }
 
 
-// 
+//
 // Motor menu
-// 
+//
 
 
 void drive_rover_forward(double speed_cps)
@@ -273,16 +264,16 @@ void draw_motors_menu()
     tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("sB: " + String(enc_speedB) + "   ");  // y_offset += ROW_SIZE;
 }
 
-// 
+//
 // Safety menu
-// 
+//
 struct safety_diagram {
     const int w = 10;
     const int h = 15;
     const int corner_r = 2;
     int origin_x;
     int origin_y;
-    
+
     int bar_h = 8;
     int error_bar_w = 8;
     uint16_t max_display_val_mm = 500;
@@ -414,7 +405,7 @@ void draw_tof_sensor_bars()
                 sd_vals.front_bar_color = ST7735_BLUE;
             }
         }
-        
+
     }
     else {
         sd_vals.front_bar_color = ST7735_RED;
@@ -459,7 +450,7 @@ void draw_safety_servo_diagrams()
     double new_back_servo_angle = tilter_servo_cmd_to_angle(
         servo_positions[BACK_TILTER_SERVO_NUM]
     ) * PI / 180.0;
-    
+
     // erase previous and redraw lines if the value changed
     if (new_front_servo_angle != sd_vals.front_servo_angle)
     {
@@ -481,7 +472,7 @@ void draw_safety_servo_diagrams()
 
         tft.drawFastHLine(sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y, sd_vals.servo_indicator_r, ST7735_WHITE);
         tft.drawFastVLine(sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y, sd_vals.servo_indicator_r, ST7735_WHITE);
-        
+
         tft.drawLine(
             sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y,
             sd_vals.front_servo_x, sd_vals.front_servo_y, ST7735_WHITE
@@ -537,9 +528,37 @@ void draw_safety_menu()
     draw_safety_servo_diagrams();
 }
 
-// 
+//
+// Wifi menu
+//
+void draw_wifi_menu()
+{
+
+    int y_offset = TOP_BAR_H + 5;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("Press enter to set hotspot"); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("IP address: " + rover_rpi_state.ip_address); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("hostname: " + rover_rpi_state.hostname); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset);
+    // 0 == unknown, 1 == connected to wifi, 2 == broadcasting hotspot
+    switch (rover_rpi_state.broadcasting_hotspot) {
+        case 0:  tft.println("No wifi info received!"); break;
+        case 1:  tft.println("Connected to wifi"); break;
+        case 2:  tft.println("Broadcasting hotspot"); break;
+        default:  tft.println("Unknown state: " + String(rover_rpi_state.broadcasting_hotspot)); break;
+    }
+}
+
+//
+// Shutdown menu
+//
+void draw_shutdown_menu()
+{
+
+}
+
+//
 // Menu events
-// 
+//
 
 void down_menu_event() {
     switch (DISPLAYED_MENU) {
@@ -608,6 +627,9 @@ void draw_menus()
         case IMU_MENU: draw_imu_menu(); break;
         case MOTORS_MENU: draw_motors_menu(); break;
         case SAFETY_MENU: draw_safety_menu(); break;
+        case WIFI_MENU: draw_wifi_menu(); break;
+
+        case SHUTDOWN_MENU: draw_shutdown_menu(); break;
         default: break;
         // add new menu entry callbacks
     }

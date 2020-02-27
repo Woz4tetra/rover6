@@ -29,6 +29,16 @@ double ff_command_A, ff_command_B = 0;  // feed forward commands
 double ff_speed_A, ff_speed_B = 0;  // feed forward speed. enc_speed - setpoint
 double ff_setpoint_A, ff_setpoint_B = 0.0;  // always zero
 
+// 160 rpm @ 6V
+// 135 rpm @ 5V
+// 60 rpm @ 3V
+// double max_rpm = 135.0;
+// double max_linear_speed_cps = max_rpm * 2.0 * PI * wheel_radius_cm / 60.0;  // cm per s, no load
+// double max_linear_speed_cps = 915.0;
+// double cps_to_cmd = 255.0 / max_linear_speed_cps;
+double max_linear_speed_tps = 172063.633;  // max speed measured in ticks per second (~915cm/s)
+double tps_to_cmd = 255.0 / max_linear_speed_tps;
+
 PID motorA_pid(&ff_speed_A, &pid_commandA, &ff_setpoint_A, Kp_A, Ki_A, Kd_A, DIRECT);
 PID motorB_pid(&ff_speed_B, &pid_commandB, &ff_setpoint_B, Kp_B, Ki_B, Kd_B, DIRECT);
 
@@ -63,7 +73,7 @@ void setup_pid()
 void update_setpointA(double new_setpoint)
 {
     speed_setpointA = new_setpoint;
-    ff_command_A = speed_setpointA * cps_to_cmd;
+    ff_command_A = speed_setpointA * tps_to_cmd;
     prev_setpointA_time = CURRENT_TIME;
     // print_info("speed_setpointA: ");
     // DATA_SERIAL.println(speed_setpointA);
@@ -72,7 +82,7 @@ void update_setpointA(double new_setpoint)
 void update_setpointB(double new_setpoint)
 {
     speed_setpointB = new_setpoint;
-    ff_command_B = speed_setpointB * cps_to_cmd;
+    ff_command_B = speed_setpointB * tps_to_cmd;
     prev_setpointB_time = CURRENT_TIME;
     // print_info("speed_setpointB: ");
     // DATA_SERIAL.println(speed_setpointB);
@@ -102,7 +112,7 @@ void update_speed_pid()
             update_setpointA(0.0);
         }
     }
-    
+
     if (speed_setpointB != 0.0) {
         if (CURRENT_TIME - prev_setpointB_time > PID_COMMAND_TIMEOUT_MS) {
             println_info("PID B setpoint timed out");

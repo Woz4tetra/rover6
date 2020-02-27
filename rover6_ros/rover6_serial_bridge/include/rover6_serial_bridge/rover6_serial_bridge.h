@@ -18,6 +18,8 @@
 #include "rover6_serial_bridge/Rover6TOF.h"
 #include "rover6_serial_bridge/Rover6PidSrv.h"
 #include "rover6_serial_bridge/Rover6SafetySrv.h"
+#include "rover6_serial_bridge/Rover6Motors.h"
+#include "rover6_serial_bridge/Rover6RpiState.h"
 
 
 using namespace std;
@@ -79,6 +81,12 @@ private:
     ros::Publisher tof_pub;
     rover6_serial_bridge::Rover6TOF tof_msg;
 
+    ros::Subscriber motors_sub;
+    void motorsCallback(const rover6_serial_bridge::Rover6Motors::ConstPtr& msg);
+
+    ros::Subscriber rpi_state_sub;
+    void rpiStateCallback(const rover6_serial_bridge::Rover6RpiState::ConstPtr& msg);
+
     ros::ServiceServer pid_service;
     ros::ServiceServer safety_service;
 
@@ -111,7 +119,7 @@ private:
     void softRestart();
     void setReporting(bool state);
     void resetSensors();
-    void writeTimeStr();
+    // void writeCurrentState();
     void writeSpeed(float speedA, float speedB);
     void writeK(float kp_A, float ki_A, float kd_A, float kp_B, float ki_B, float kd_B);
     void writeServo(int n);

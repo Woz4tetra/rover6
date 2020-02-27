@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from __future__ import division
 import math
+import datetime
 
 import tf
 import rospy
@@ -10,8 +11,11 @@ from std_msgs.msg import Float32MultiArray
 from nav_msgs.msg import Odometry
 
 from rover6_chassis.cfg import Rover6ChassisConfig
+
 from rover6_serial_bridge.msg import Rover6Encoder
-from rover6_serial_bridge.msg import Rover6Motor
+from rover6_serial_bridge.msg import Rover6Motors
+from rover6_serial_bridge.msg import Rover6RpiState
+
 from rover6_serial_bridge.srv import Rover6PidSrv
 from rover6_serial_bridge.srv import Rover6SafetySrv
 
@@ -28,15 +32,17 @@ class Rover6Chassis:
         self.wheel_radius = rospy.get_param("~wheel_radius_cm", 32.5)
         self.wheel_distance = rospy.get_param("~wheel_distance_cm", 1.0)
         self.ticks_per_rotation = rospy.get_param("~ticks_per_rotation", 38400.0)
-        self.motors_pub_name = rospy.get_param("~motors_pub_name", "motors")
+        self.motors_pub_name = "motors"  # rospy.get_param("~motors_pub_name", "motors")
+        self.rpi_state_pub_name = "rpi_state"  # rospy.get_param("~rpi_state_name", "rpi_state")
 
         self.tick_to_cm_factor = 2.0 * self.wheel_radius * math.pi / self.ticks_per_rotation
 
         # speed parameters
         self.max_speed_cps = rospy.get_param("~max_speed_cps", 915.0)
-        self.max_command = rospy.get_param("~max_command", 255)
+        self.max_command = 255
         self.max_speed_mps = self.max_speed_cps / 1000.0
-        self.speed_to_command = self.max_command / self.max_speed_mps
+        self.max_speed_tps = self.max_speed_mps / self.tick_to_cm_factor  # max speed in ticks per s
+        self.speed_to_command = self.max_command / self.max_speed_tps
 
         # TF parameters
         self.child_frame = rospy.get_param("~odom_child_frame", "base_link")
@@ -53,7 +59,10 @@ class Rover6Chassis:
         self.prev_right_ticks = 0
 
         # motor message
-        self.motors_msg = Rover6Motor()
+        self.motors_msg = Rover6Motors()
+
+        # rpi state message
+        self.rpi_state_msg = Rover6RpiState()
 
         # Safety variables
         self.tof_servo_lower_command = rospy.get_param("~tof_servo_lower_command", 180)
@@ -86,7 +95,8 @@ class Rover6Chassis:
 
         # Publishers
         self.odom_pub = rospy.Publisher("odom", Odometry, queue_size=5)
-        self.motors_pub = rospy.Publisher(self.motors_pub_name, Rover6Motor, queue_size=20)
+        self.motors_pub = rospy.Publisher(self.motors_pub_name, Rover6Motors, queue_size=100)
+        self.rpi_state_pub = rospy.Publisher(self.rpi_state_pub_name, Rover6RpiState, queue_size=100)
 
         # Services
         self.pid_service_name = "rover6_pid"
@@ -104,7 +114,6 @@ class Rover6Chassis:
         rospy.wait_for_service(self.safety_service_name)
         self.set_safety_thresholds = rospy.ServiceProxy(self.safety_service_name, Rover6SafetySrv)
         rospy.loginfo("%s service is ready" % self.safety_service_name)
-
 
         # dynamic reconfigure
         dyn_cfg = Server(Rover6ChassisConfig, lambda config, level: Rover6Chassis.dynamic_callback(self, config, level))
@@ -214,6 +223,7 @@ class Rover6Chassis:
 
     def run(self):
         clock_rate = rospy.Rate(30)
+        self.set_timer()
 
         while not rospy.is_shutdown():
             self.compute_odometry()
@@ -281,6 +291,19 @@ class Rover6Chassis:
 
         self.prev_left_ticks = self.enc_msg.left_ticks
         self.prev_right_ticks = self.enc_msg.right_ticks
+
+    def rpi_state_timer_callback(self, event):
+        self.rpi_state_msg.ip_address = "xx.xx.xx.xx"
+        self.rpi_state_msg.hostname = "xxxx"
+        self.rpi_state_msg.date_str = datetime.datetime.now().strftime("%I:%M:%S%p")
+        self.rpi_state_msg.power_button_state = False
+        self.rpi_state_msg.broadcasting_hotspot = 0
+
+        self.rpi_state_pub.publish(self.rpi_state_msg)
+
+    def set_timer(self):
+        rospy.Timer(rospy.Duration(0.5), self.rpi_state_timer_callback)
+
 
 if __name__ == "__main__":
     try:

@@ -161,6 +161,7 @@ if [ "$FORCE_HOTSPOT" = false ]; then
     else
         echo "Finding SSID"
         FindSSID
+
     fi
 fi
 echo $ssidCheck
