@@ -110,7 +110,27 @@ void draw_topbar()
 // Notifications
 //
 
+void draw_prompt(String title, int x0, int y0, int row_size, uint8_t entry_count, ...)
+{
+    int16_t  x1, y1;
+    uint16_t w, h;
+    tft.getTextBounds(title, 0, 0, &x1, &y1, &w, &h);
 
+    int y_row = y0;
+    tft.setCursor(SCREEN_MID_W - w / 2, y_row);
+    tft.print(title);
+    y_row += row_size * 2;
+
+    va_list args;
+    va_start(args, entry_count);
+    for (size_t i = 0; i < entry_count; i++) {
+        char* entry_text = va_arg(args, char*);
+        tft.setCursor(x0, y_row);
+        tft.print(entry_text);
+        y_row += row_size;
+    }
+    va_end(args);
+}
 
 //
 // Main menu
@@ -531,9 +551,39 @@ void draw_safety_menu()
 //
 // Wifi menu
 //
+int WIFI_SUBMENU_INDEX = 0;
+int PREV_WIFI_SUBMENU_INDEX = 0;
+int WIFI_MENU_SELECT_INDEX = 0;
+int PREV_WIFI_MENU_SELECT_INDEX = 0;
+const int NUM_WIFI_MENU_ENTRIES = 3;
+
+void init_wifi_menu()
+{
+    tft.fillScreen(ST77XX_BLACK);
+    WIFI_SUBMENU_INDEX = 0;
+    PREV_WIFI_SUBMENU_INDEX = 0;
+    WIFI_MENU_SELECT_INDEX = 0;
+    PREV_WIFI_MENU_SELECT_INDEX = -1;
+}
+
 void draw_wifi_menu()
 {
+    if (WIFI_SUBMENU_INDEX != PREV_WIFI_SUBMENU_INDEX) {
+        switch (WIFI_SUBMENU_INDEX) {
+            case 0: init_wifi_menu(); break;
+            case 1: init_hotspot_prompt(); break;
+        }
+        PREV_WIFI_SUBMENU_INDEX = WIFI_SUBMENU_INDEX;
+    }
+    switch (WIFI_SUBMENU_INDEX) {
+        case 0: draw_main_wifi_menu(); break;
+        case 1: draw_hotspot_prompt(); break;
+    }
 
+}
+
+void draw_main_wifi_menu()
+{
     int y_offset = TOP_BAR_H + 5;
     tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("Press enter to set hotspot"); y_offset += ROW_SIZE;
     tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("IP address: " + rover_rpi_state.ip_address); y_offset += ROW_SIZE;
@@ -546,6 +596,62 @@ void draw_wifi_menu()
         case 2:  tft.println("Broadcasting hotspot"); break;
         default:  tft.println("Unknown state: " + String(rover_rpi_state.broadcasting_hotspot)); break;
     }
+}
+
+void init_hotspot_prompt() {
+    tft.fillScreen(ST77XX_BLACK);
+}
+
+void draw_hotspot_prompt()
+{
+    if (WIFI_MENU_SELECT_INDEX < 0) {
+        WIFI_MENU_SELECT_INDEX = 0;
+    }
+    if (WIFI_MENU_SELECT_INDEX >= NUM_WIFI_MENU_ENTRIES) {
+        WIFI_MENU_SELECT_INDEX = NUM_WIFI_MENU_ENTRIES - 1;
+    }
+    if (WIFI_MENU_SELECT_INDEX != PREV_WIFI_MENU_SELECT_INDEX)
+    {
+        PREV_WIFI_MENU_SELECT_INDEX = WIFI_MENU_SELECT_INDEX;
+        tft.drawRect(
+            BORDER_OFFSET_W - 1,
+            ROW_SIZE * PREV_WIFI_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1 + TOP_BAR_H,
+            tft.width() - BORDER_OFFSET_W - 1,
+            ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_BLACK
+        );
+        draw_prompt("Select hotspot mode", BORDER_OFFSET_W, TOP_BAR_H + 10, ROW_SIZE, NUM_WIFI_MENU_ENTRIES, "Wifi", "Hotspot", "Cancel");
+        tft.drawRect(
+            BORDER_OFFSET_W - 1,
+            ROW_SIZE * WIFI_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1 + TOP_BAR_H,
+            tft.width() - BORDER_OFFSET_W - 1,
+            ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_WHITE
+        );
+    }
+}
+
+void wifi_menu_enter_event()
+{
+    if (WIFI_SUBMENU_INDEX == 0) {
+        WIFI_SUBMENU_INDEX = 1;
+    }
+    else if (WIFI_SUBMENU_INDEX == 1) {
+        switch (WIFI_MENU_SELECT_INDEX) {
+            case 0: println_info("Wifi selected"); break;  // "Wifi" selected
+            case 1: println_info("Hotspot selected"); break;  // "Hotspot" selected
+            case 2: println_info("Cancel selected"); break;  // "Cancel" selected
+            default: break;
+        }
+        WIFI_SUBMENU_INDEX = 0;
+    }
+}
+
+bool wifi_menu_back_event()
+{
+    if (WIFI_SUBMENU_INDEX == 1) {
+        WIFI_SUBMENU_INDEX = 0;
+        return true;  // displayed menu was a submenu, don't send back to main menu
+    }
+    return false;
 }
 
 //
@@ -564,6 +670,7 @@ void down_menu_event() {
     switch (DISPLAYED_MENU) {
         case MAIN_MENU: MAIN_MENU_SELECT_INDEX += 1; break;
         case MOTORS_MENU: drive_rover_forward(-900.0); break;
+        case WIFI_MENU: WIFI_MENU_SELECT_INDEX += 1; break;
         default: break;
     }
 }
@@ -572,6 +679,7 @@ void up_menu_event() {
     switch (DISPLAYED_MENU) {
         case MAIN_MENU: MAIN_MENU_SELECT_INDEX -= 1; break;
         case MOTORS_MENU: drive_rover_forward(900.0); break;
+        case WIFI_MENU: WIFI_MENU_SELECT_INDEX -= 1; break;
         default: break;
     }
 }
@@ -596,11 +704,15 @@ void enter_menu_event() {
     switch (DISPLAYED_MENU) {
         case MAIN_MENU: DISPLAYED_MENU = MAIN_MENU_ENUM_MAPPING[MAIN_MENU_SELECT_INDEX]; break;
         case MOTORS_MENU: drive_rover_forward(0.0); break;
+        case WIFI_MENU: wifi_menu_enter_event(); break;
         default: break;
         // add new menu entry callbacks (if needed)
     }
 }
 void back_menu_event() {
+    if (DISPLAYED_MENU == WIFI_MENU && wifi_menu_back_event()) {
+        return;
+    }
     if (DISPLAYED_MENU != MAIN_MENU) {
         DISPLAYED_MENU = MAIN_MENU;
     }
@@ -611,6 +723,7 @@ void screen_change_event() {
         case MAIN_MENU: PREV_MAIN_MENU_SELECT_INDEX = -1; break;  // force a redraw of the menu list when switching
         case IMU_MENU: imu_draw_prev_angle += 1; break;  // force compass redraw
         case SAFETY_MENU: init_rover_safety_diagram(); break;  // draw the diagram once
+        case WIFI_MENU: init_wifi_menu(); break;
         default: break;
         // add new menu entry callbacks (if needed)
     }
