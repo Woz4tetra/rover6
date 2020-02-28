@@ -12,6 +12,8 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     _numServos = (unsigned int)num_servos;
     nh.param<int>("front_tilter_servo_num", _frontTilterServoNum, 0);
     nh.param<int>("back_tilter_servo_num", _backTilterServoNum, 1);
+    nh.param<int>("camera_pan_servo_num", _panServoNum, 2);
+    nh.param<int>("camera_tilt_servo_num", _tiltServoNum, 3);
     nh.param<int>("pan_servo_num", _panServoNum, 2);
     nh.param<int>("tilt_servo_num", _tiltServoNum, 3);
 
@@ -54,14 +56,18 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     fsr_pub = nh.advertise<rover6_serial_bridge::Rover6FSR>("fsrs", 100);
     safety_pub = nh.advertise<rover6_serial_bridge::Rover6Safety>("safety", 100);
     ina_pub = nh.advertise<sensor_msgs::BatteryState>("battery", 10);
-    servo_pub = nh.advertise<std_msgs::Int16MultiArray>("servos", 10);
+    servo_pub = nh.advertise<std_msgs::Int16MultiArray>("servo_positions", 10);
     tof_pub = nh.advertise<rover6_serial_bridge::Rover6TOF>("tof", 10);
 
     motors_sub = nh.subscribe("motors", 100, &Rover6SerialBridge::motorsCallback, this);
+    servos_sub = nh.subscribe("servos", 100, &Rover6SerialBridge::servosCallback, this);
     rpi_state_sub = nh.subscribe("rpi_state", 100, &Rover6SerialBridge::rpiStateCallback, this);
 
     pid_service = nh.advertiseService("rover6_pid", &Rover6SerialBridge::set_pid, this);
     safety_service = nh.advertiseService("rover6_safety", &Rover6SerialBridge::set_safety_thresholds, this);
+
+    hotspot_service = nh.serviceClient<rover6_serial_bridge::Rover6AutohotspotSrv>("autohotspot");
+    shutdown_service = nh.serviceClient<rover6_serial_bridge::Rover6ShutdownSrv>("shutdown");
 
     ROS_INFO("Rover 6 serial bridge init done");
 }
@@ -217,7 +223,13 @@ bool Rover6SerialBridge::readSerial()
     // remove checksum
     _serialBuffer = _serialBuffer.substr(0, _serialBuffer.length() - 2);
 
-    processSerialPacket(category);
+    try {
+        processSerialPacket(category);
+    }
+    catch (exception& e) {
+        ROS_ERROR_STREAM("Exception in processSerialPacket: " << e.what());
+        return false;
+    }
 
     _readPacketNum++;
     return true;
@@ -279,11 +291,23 @@ void Rover6SerialBridge::processSerialPacket(string category)
         parseTOF();
     }
     else if (category.compare("ready") == 0) {
-        if (!getNextSegment()) {  ROS_ERROR_STREAM("Failed to parse first segment in 'ready': " << _serialBuffer);  return;  }
-        readyState->time_ms = (uint32_t)stoi(_currentBufferSegment);
-        if (!getNextSegment()) {  ROS_ERROR_STREAM("Failed to parse second segment in 'ready': " << _serialBuffer);  return;  }
-        readyState->rover_name = _currentBufferSegment;
+        CHECK_SEGMENT(0); readyState->time_ms = (uint32_t)stoi(_currentBufferSegment);
+        CHECK_SEGMENT(1); readyState->rover_name = _currentBufferSegment;
         readyState->is_ready = true;
+    }
+    else if (category.compare("wifi") == 0) {
+        CHECK_SEGMENT(0); autohotspot_req.request.mode = stoi(_currentBufferSegment);
+        if (!hotspot_service.call(autohotspot_req)) {
+            ROS_ERROR("Failed to call service autohotspot");
+        }
+    }
+    else if (category.compare("shutdown") == 0) {
+        CHECK_SEGMENT(0);
+        if (_currentBufferSegment == "rover6") {
+            if (!shutdown_service.call(shutdown_req)) {
+                ROS_ERROR("Failed to call service shutdown");
+            }
+        }
     }
 }
 
@@ -312,7 +336,7 @@ void Rover6SerialBridge::writeSerial(string name, const char *formats, ...)
         }
         else if (*formats == 'f') {
             double f = va_arg(args, double);
-            sstream << (float)f;
+            sstream << fixed << setprecision(4) << f;
         }
         else {
             ROS_ERROR("Invalid format %c", *formats);
@@ -406,7 +430,23 @@ int Rover6SerialBridge::run()
 }
 
 void Rover6SerialBridge::motorsCallback(const rover6_serial_bridge::Rover6Motors::ConstPtr& msg) {
+    ROS_INFO("left motor: %f, right motor: %f", msg->left, msg->right);
     writeSerial("m", "ff", msg->left, msg->right);
+}
+
+void Rover6SerialBridge::servosCallback(const rover6_serial_bridge::Rover6Servos::ConstPtr& msg) {
+    writeServo(_panServoNum, msg->camera_pan);
+    writeServo(_tiltServoNum, msg->camera_tilt);
+}
+
+void Rover6SerialBridge::writeServo(unsigned int n, int command) {
+    if (command == -1) {
+        writeSerial("sd", "d", n);
+    }
+    else if (command >= 0) {
+        writeSerial("s", "dd", n, command);
+    }
+    // if command < -1, skip the servo command
 }
 
 void Rover6SerialBridge::rpiStateCallback(const rover6_serial_bridge::Rover6RpiState::ConstPtr& msg)
@@ -495,14 +535,6 @@ void Rover6SerialBridge::writeSpeed(float speedA, float speedB) {
 
 void Rover6SerialBridge::writeK(float kp_A, float ki_A, float kd_A, float kp_B, float ki_B, float kd_B) {
     writeSerial("ks", "ffffff", kp_A, ki_A, kd_A, kp_B, ki_B, kd_B);
-}
-
-void Rover6SerialBridge::writeServo(int n){
-    writeSerial("s", "d", n);
-}
-
-void Rover6SerialBridge::writeServo(int n, int command){
-    writeSerial("s", "dd", n, command);
 }
 
 void Rover6SerialBridge::writeObstacleThresholds(int back_lower, int back_upper, int front_lower, int front_upper) {
@@ -606,6 +638,7 @@ void Rover6SerialBridge::parseServo()
     for (size_t i = 0; i < _numServos; i++) {
         CHECK_SEGMENT(i + 1); servo_msg.data[i] = stoi(_currentBufferSegment);
     }
+    servo_pub.publish(servo_msg);
 }
 
 void Rover6SerialBridge::parseTOF()

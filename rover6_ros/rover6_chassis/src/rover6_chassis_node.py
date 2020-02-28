@@ -1,7 +1,9 @@
 #!/usr/bin/python
 from __future__ import division
+import os
 import math
 import datetime
+import traceback
 
 import tf
 import rospy
@@ -18,11 +20,16 @@ from rover6_serial_bridge.msg import Rover6RpiState
 
 from rover6_serial_bridge.srv import Rover6PidSrv
 from rover6_serial_bridge.srv import Rover6SafetySrv
+from rover6_serial_bridge.srv import Rover6AutohotspotSrv, Rover6AutohotspotSrvResponse
+from rover6_serial_bridge.srv import Rover6ShutdownSrv, Rover6ShutdownSrvResponse
+
+from autohotspot_manager import AutohotspotManager
 
 class Rover6Chassis:
     def __init__(self):
         rospy.init_node(
             "rover6_chassis",
+            disable_signals=True
             # log_level=rospy.DEBUG
         )
 
@@ -30,7 +37,7 @@ class Rover6Chassis:
 
         # robot dimensions
         self.wheel_radius = rospy.get_param("~wheel_radius_cm", 32.5)
-        self.wheel_distance = rospy.get_param("~wheel_distance_cm", 1.0)
+        self.wheel_distance = rospy.get_param("~wheel_distance_cm", 22.0)
         self.ticks_per_rotation = rospy.get_param("~ticks_per_rotation", 38400.0)
         self.motors_pub_name = "motors"  # rospy.get_param("~motors_pub_name", "motors")
         self.rpi_state_pub_name = "rpi_state"  # rospy.get_param("~rpi_state_name", "rpi_state")
@@ -48,9 +55,6 @@ class Rover6Chassis:
         self.child_frame = rospy.get_param("~odom_child_frame", "base_link")
         self.parent_frame = rospy.get_param("~odom_parent_frame", "odom")
         self.tf_broadcaster = tf.TransformBroadcaster()
-
-        self.linear_speed_mps = 0.0
-        self.rotational_speed_mps = 0.0
 
         # Encoder variables
         self.enc_msg = Rover6Encoder()
@@ -117,6 +121,13 @@ class Rover6Chassis:
 
         # dynamic reconfigure
         dyn_cfg = Server(Rover6ChassisConfig, lambda config, level: Rover6Chassis.dynamic_callback(self, config, level))
+
+        # Autohotspot Manager
+        self.autohotspot = AutohotspotManager()
+        self.autohotspot_srv = rospy.Service("autohotspot", Rover6AutohotspotSrv, lambda req: Rover6Chassis.handle_autohotspot(self, req))
+
+        # Shutdown service
+        self.shutdown_srv = rospy.Service("shutdown", Rover6ShutdownSrv, lambda req: Rover6Chassis.handle_shutdown(self, req))
 
     def dynamic_callback(self, config, level):
         if self.set_pid is None:
@@ -203,12 +214,12 @@ class Rover6Chassis:
         )
 
     def twist_callback(self, twist_msg):
-        self.linear_speed_mps = twist_msg.linear.x  # m/s
+        linear_speed_mps = twist_msg.linear.x  # m/s
         angular_speed_radps = twist_msg.angular.z  # rad/s
 
         # arc = angle * radius
         # rotation speed at the wheels
-        self.rotational_speed_mps = angular_speed_radps * self.wheel_distance / 2
+        rotational_speed_mps = angular_speed_radps * self.wheel_distance / 2
 
         left_command = (linear_speed_mps - rotational_speed_mps) * self.speed_to_command
         right_command = (linear_speed_mps + rotational_speed_mps) * self.speed_to_command
@@ -226,8 +237,12 @@ class Rover6Chassis:
         self.set_timer()
 
         while not rospy.is_shutdown():
-            self.compute_odometry()
-            self.publish_chassis_data()
+            try:
+                self.compute_odometry()
+                self.publish_chassis_data()
+            except BaseException, e:
+                traceback.print_exc()
+                rospy.signal_shutdown(str(e))
 
             clock_rate.sleep()
 
@@ -293,16 +308,27 @@ class Rover6Chassis:
         self.prev_right_ticks = self.enc_msg.right_ticks
 
     def rpi_state_timer_callback(self, event):
-        self.rpi_state_msg.ip_address = "xx.xx.xx.xx"
-        self.rpi_state_msg.hostname = "xxxx"
+        self.autohotspot.update()
+        self.rpi_state_msg.ip_address = self.autohotspot.ip_address
+        self.rpi_state_msg.hostname = self.autohotspot.hostname
         self.rpi_state_msg.date_str = datetime.datetime.now().strftime("%I:%M:%S%p")
         self.rpi_state_msg.power_button_state = False
-        self.rpi_state_msg.broadcasting_hotspot = 0
+        self.rpi_state_msg.broadcasting_hotspot = self.autohotspot.status_code
 
         self.rpi_state_pub.publish(self.rpi_state_msg)
 
     def set_timer(self):
         rospy.Timer(rospy.Duration(0.5), self.rpi_state_timer_callback)
+
+    def handle_autohotspot(self, req):
+        success = self.autohotspot.set_mode(req.mode)
+        if not success:
+            rospy.logerror("Invalid mode received: '%s'" % req.mode)
+        return Rover6AutohotspotSrvResponse(success)
+
+    def handle_shutdown(self, req):
+        os.system("sudo shutdown now")
+        return Rover6ShutdownResponse(True)
 
 
 if __name__ == "__main__":

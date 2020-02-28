@@ -65,8 +65,22 @@ echo "Installing autohotspot script"
 BIN_INSTALL_DIR=/usr/bin
 SCRIPT_NAME=autohotspot
 BIN_INSTALL_DEST=${BIN_INSTALL_DIR}/${SCRIPT_NAME}
-sudo cp ${BASE_DIR}/${SCRIPT_NAME} ${BIN_INSTALL_DEST}
+
+AUTOHOTSPOT_SRC=${BASE_DIR}/${SCRIPT_NAME}
+AUTOHOTSPOT_TMP=/tmp/${SCRIPT_NAME}
+
+echo "Home directory: " `echo ${HOME}`
+HOME_DIR_ESC=$(echo ${HOME} | sed 's_/_\\/_g')
+sed "s/%%HOME%%/${HOME_DIR_ESC}/g" ${AUTOHOTSPOT_SRC} > ${AUTOHOTSPOT_TMP}
+sudo mv ${AUTOHOTSPOT_TMP} ${BIN_INSTALL_DIR}
+sudo chmod +x ${BIN_INSTALL_DEST}
 echo ${BIN_INSTALL_DEST}
+
+echo "Installing autohotspot config"
+CONFIG_INSTALL_DIR=${HOME}/.local/rover6/config
+mkdir -p ${CONFIG_INSTALL_DIR}
+cp ${BASE_DIR}/autohotspot.conf ${CONFIG_INSTALL_DIR}
+
 
 echo "Installing cron job"
 CRON_JOB_NAME=autohotspot_cron

@@ -566,6 +566,57 @@ void init_wifi_menu()
     PREV_WIFI_MENU_SELECT_INDEX = -1;
 }
 
+
+void init_hotspot_prompt() {
+    tft.fillScreen(ST77XX_BLACK);
+}
+
+void draw_hotspot_prompt()
+{
+    if (WIFI_MENU_SELECT_INDEX < 0) {
+        WIFI_MENU_SELECT_INDEX = 0;
+    }
+    if (WIFI_MENU_SELECT_INDEX >= NUM_WIFI_MENU_ENTRIES) {
+        WIFI_MENU_SELECT_INDEX = NUM_WIFI_MENU_ENTRIES - 1;
+    }
+    if (WIFI_MENU_SELECT_INDEX != PREV_WIFI_MENU_SELECT_INDEX)
+    {
+        int border_y0 = TOP_BAR_H + 10 + ROW_SIZE * 2 - 1;
+        tft.drawRect(
+            BORDER_OFFSET_W - 1,
+            ROW_SIZE * PREV_WIFI_MENU_SELECT_INDEX + border_y0,
+            tft.width() - BORDER_OFFSET_W - 1,
+            ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_BLACK
+        );
+        draw_prompt("Select hotspot mode", BORDER_OFFSET_W, TOP_BAR_H + 10, ROW_SIZE, NUM_WIFI_MENU_ENTRIES, "Wifi", "Hotspot", "Cancel");
+        tft.drawRect(
+            BORDER_OFFSET_W - 1,
+            ROW_SIZE * WIFI_MENU_SELECT_INDEX + border_y0,
+            tft.width() - BORDER_OFFSET_W - 1,
+            ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_WHITE
+        );
+        PREV_WIFI_MENU_SELECT_INDEX = WIFI_MENU_SELECT_INDEX;
+    }
+}
+
+void draw_main_wifi_menu()
+{
+    int y_offset = TOP_BAR_H + 5;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("Press enter to set hotspot"); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("IP address: " + rover_rpi_state.ip_address); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("hostname: " + rover_rpi_state.hostname); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset);
+    // 0 == unknown, 1 == connected to wifi, 2 == broadcasting hotspot
+    switch (rover_rpi_state.broadcasting_hotspot) {
+        case 0:  tft.println("No wifi info received!"); break;
+        case 1:  tft.println("Connected to wifi     "); break;
+        case 2:  tft.println("Broadcasting hotspot  "); break;
+        case 3:  tft.println("Disconnected          "); break;
+        default:  tft.println("Unknown state: " + String(rover_rpi_state.broadcasting_hotspot)); break;
+    }
+}
+
+
 void draw_wifi_menu()
 {
     if (WIFI_SUBMENU_INDEX != PREV_WIFI_SUBMENU_INDEX) {
@@ -582,53 +633,6 @@ void draw_wifi_menu()
 
 }
 
-void draw_main_wifi_menu()
-{
-    int y_offset = TOP_BAR_H + 5;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("Press enter to set hotspot"); y_offset += ROW_SIZE;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("IP address: " + rover_rpi_state.ip_address); y_offset += ROW_SIZE;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("hostname: " + rover_rpi_state.hostname); y_offset += ROW_SIZE;
-    tft.setCursor(BORDER_OFFSET_W, y_offset);
-    // 0 == unknown, 1 == connected to wifi, 2 == broadcasting hotspot
-    switch (rover_rpi_state.broadcasting_hotspot) {
-        case 0:  tft.println("No wifi info received!"); break;
-        case 1:  tft.println("Connected to wifi"); break;
-        case 2:  tft.println("Broadcasting hotspot"); break;
-        default:  tft.println("Unknown state: " + String(rover_rpi_state.broadcasting_hotspot)); break;
-    }
-}
-
-void init_hotspot_prompt() {
-    tft.fillScreen(ST77XX_BLACK);
-}
-
-void draw_hotspot_prompt()
-{
-    if (WIFI_MENU_SELECT_INDEX < 0) {
-        WIFI_MENU_SELECT_INDEX = 0;
-    }
-    if (WIFI_MENU_SELECT_INDEX >= NUM_WIFI_MENU_ENTRIES) {
-        WIFI_MENU_SELECT_INDEX = NUM_WIFI_MENU_ENTRIES - 1;
-    }
-    if (WIFI_MENU_SELECT_INDEX != PREV_WIFI_MENU_SELECT_INDEX)
-    {
-        PREV_WIFI_MENU_SELECT_INDEX = WIFI_MENU_SELECT_INDEX;
-        tft.drawRect(
-            BORDER_OFFSET_W - 1,
-            ROW_SIZE * PREV_WIFI_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1 + TOP_BAR_H,
-            tft.width() - BORDER_OFFSET_W - 1,
-            ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_BLACK
-        );
-        draw_prompt("Select hotspot mode", BORDER_OFFSET_W, TOP_BAR_H + 10, ROW_SIZE, NUM_WIFI_MENU_ENTRIES, "Wifi", "Hotspot", "Cancel");
-        tft.drawRect(
-            BORDER_OFFSET_W - 1,
-            ROW_SIZE * WIFI_MENU_SELECT_INDEX + BORDER_OFFSET_H - 1 + TOP_BAR_H,
-            tft.width() - BORDER_OFFSET_W - 1,
-            ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_WHITE
-        );
-    }
-}
-
 void wifi_menu_enter_event()
 {
     if (WIFI_SUBMENU_INDEX == 0) {
@@ -636,9 +640,9 @@ void wifi_menu_enter_event()
     }
     else if (WIFI_SUBMENU_INDEX == 1) {
         switch (WIFI_MENU_SELECT_INDEX) {
-            case 0: println_info("Wifi selected"); break;  // "Wifi" selected
-            case 1: println_info("Hotspot selected"); break;  // "Hotspot" selected
-            case 2: println_info("Cancel selected"); break;  // "Cancel" selected
+            case 0: print_data("wifi", "d", 1); break;  // "Wifi" selected
+            case 1: print_data("wifi", "d", 2); break;  // "Hotspot" selected
+            case 2: println_info("Cancel selected "); break;  // "Cancel" selected
             default: break;
         }
         WIFI_SUBMENU_INDEX = 0;
@@ -657,9 +661,44 @@ bool wifi_menu_back_event()
 //
 // Shutdown menu
 //
+
+int SHUTDOWN_MENU_SELECT_INDEX = 0;
+int PREV_SHUTDOWN_MENU_SELECT_INDEX = -1;
+const int NUM_SHUTDOWN_MENU_ENTRIES = 2;
 void draw_shutdown_menu()
 {
+    if (SHUTDOWN_MENU_SELECT_INDEX < 0) {
+        SHUTDOWN_MENU_SELECT_INDEX = 0;
+    }
+    if (SHUTDOWN_MENU_SELECT_INDEX >= NUM_SHUTDOWN_MENU_ENTRIES) {
+        SHUTDOWN_MENU_SELECT_INDEX = NUM_SHUTDOWN_MENU_ENTRIES - 1;
+    }
+    if (SHUTDOWN_MENU_SELECT_INDEX != PREV_SHUTDOWN_MENU_SELECT_INDEX)
+    {
+        int border_y0 = TOP_BAR_H + 10 + ROW_SIZE * 2 - 1;
+        tft.drawRect(
+            BORDER_OFFSET_W - 1,
+            ROW_SIZE * PREV_SHUTDOWN_MENU_SELECT_INDEX + border_y0,
+            tft.width() - BORDER_OFFSET_W - 1,
+            ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_BLACK
+        );
+        draw_prompt("Shutdown?", BORDER_OFFSET_W, TOP_BAR_H + 10, ROW_SIZE, NUM_SHUTDOWN_MENU_ENTRIES, "Yes", "No");
+        tft.drawRect(
+            BORDER_OFFSET_W - 1,
+            ROW_SIZE * SHUTDOWN_MENU_SELECT_INDEX + border_y0,
+            tft.width() - BORDER_OFFSET_W - 1,
+            ROW_SIZE - BORDER_OFFSET_H + 1, ST7735_WHITE
+        );
+        PREV_SHUTDOWN_MENU_SELECT_INDEX = SHUTDOWN_MENU_SELECT_INDEX;
+    }
+}
 
+void shutdown_menu_enter_event()
+{
+    if (SHUTDOWN_MENU_SELECT_INDEX == 0) {
+        print_data("shutdown", "s", "rover6");
+    }
+    DISPLAYED_MENU = MAIN_MENU;
 }
 
 //
@@ -671,6 +710,7 @@ void down_menu_event() {
         case MAIN_MENU: MAIN_MENU_SELECT_INDEX += 1; break;
         case MOTORS_MENU: drive_rover_forward(-900.0); break;
         case WIFI_MENU: WIFI_MENU_SELECT_INDEX += 1; break;
+        case SHUTDOWN_MENU: SHUTDOWN_MENU_SELECT_INDEX += 1; break;
         default: break;
     }
 }
@@ -680,6 +720,7 @@ void up_menu_event() {
         case MAIN_MENU: MAIN_MENU_SELECT_INDEX -= 1; break;
         case MOTORS_MENU: drive_rover_forward(900.0); break;
         case WIFI_MENU: WIFI_MENU_SELECT_INDEX -= 1; break;
+        case SHUTDOWN_MENU: SHUTDOWN_MENU_SELECT_INDEX -= 1; break;
         default: break;
     }
 }
@@ -705,6 +746,7 @@ void enter_menu_event() {
         case MAIN_MENU: DISPLAYED_MENU = MAIN_MENU_ENUM_MAPPING[MAIN_MENU_SELECT_INDEX]; break;
         case MOTORS_MENU: drive_rover_forward(0.0); break;
         case WIFI_MENU: wifi_menu_enter_event(); break;
+        case SHUTDOWN_MENU: shutdown_menu_enter_event(); break;
         default: break;
         // add new menu entry callbacks (if needed)
     }
@@ -724,6 +766,7 @@ void screen_change_event() {
         case IMU_MENU: imu_draw_prev_angle += 1; break;  // force compass redraw
         case SAFETY_MENU: init_rover_safety_diagram(); break;  // draw the diagram once
         case WIFI_MENU: init_wifi_menu(); break;
+        case SHUTDOWN_MENU: PREV_SHUTDOWN_MENU_SELECT_INDEX = -1;
         default: break;
         // add new menu entry callbacks (if needed)
     }

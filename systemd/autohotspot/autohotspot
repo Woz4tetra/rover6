@@ -9,7 +9,8 @@
 #Other setup required find out more at
 #http://www.raspberryconnect.com
 
-FORCE_HOTSPOT=${1:false}
+source %%HOME%%/.local/rover6/config/autohotspot.conf
+
 if [ ! "$FORCE_HOTSPOT" = true ]; then
     FORCE_HOTSPOT=false
     echo "Checking for SSIDs"
