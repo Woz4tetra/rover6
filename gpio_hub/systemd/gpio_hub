@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+/usr/bin/python3 /home/pi/.local/rover6/gpio_hub/gpio_hub/main.py > /dev/null 2>&1

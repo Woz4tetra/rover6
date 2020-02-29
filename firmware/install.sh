@@ -26,6 +26,5 @@ pip3 install platformio
 source ~/.profile
 platformio --version
 
-echo "Uploading firmware to teensy device"
-upload-rover
-echo "firmware installation complete"
+echo "Please close this terminal session to load platformio in ~/.local/bin"
+echo "run ./upload-rover afterwards"
