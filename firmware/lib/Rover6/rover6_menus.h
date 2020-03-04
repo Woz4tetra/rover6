@@ -278,10 +278,10 @@ void rotate_rover(double speed_cps)
 void draw_motors_menu()
 {
     int y_offset = TOP_BAR_H + 5;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("A: " + String(encA_pos) + "   "); y_offset += ROW_SIZE;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("B: " + String(encB_pos) + "   "); y_offset += ROW_SIZE;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("sA: " + String(enc_speedA) + "   "); y_offset += ROW_SIZE;
-    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("sB: " + String(enc_speedB) + "   ");  // y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("A: " + String(encA_pos) + "  " + String(enc_speedA) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("B: " + String(encB_pos) + "  " + String(enc_speedB) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("m: " + String(motorA.getSpeed()) + "  " + String(motorB.getSpeed()) + "   "); y_offset += ROW_SIZE;
+    tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("move: " + String(is_moving_forward()) + "  " + String(is_moving()) + "   "); y_offset += ROW_SIZE;
 }
 
 //

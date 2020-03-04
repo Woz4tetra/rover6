@@ -36,20 +36,21 @@ class Rover6Chassis:
         # rospy.on_shutdown(self.shutdown)
 
         # robot dimensions
-        self.wheel_radius = rospy.get_param("~wheel_radius_cm", 32.5)
-        self.wheel_distance = rospy.get_param("~wheel_distance_cm", 22.0)
-        self.ticks_per_rotation = rospy.get_param("~ticks_per_rotation", 38400.0)
+        self.wheel_radius_cm = rospy.get_param("~wheel_radius_cm", 3.25)
+        self.wheel_distance_cm = rospy.get_param("~wheel_distance_cm", 16.0)
+        self.ticks_per_rotation = rospy.get_param("~ticks_per_rotation", 3840.0)
         self.motors_pub_name = "motors"  # rospy.get_param("~motors_pub_name", "motors")
         self.rpi_state_pub_name = "rpi_state"  # rospy.get_param("~rpi_state_name", "rpi_state")
-
-        self.tick_to_cm_factor = 2.0 * self.wheel_radius * math.pi / self.ticks_per_rotation
-
-        # speed parameters
         self.max_speed_cps = rospy.get_param("~max_speed_cps", 915.0)
-        self.max_command = 255
-        self.max_speed_mps = self.max_speed_cps / 1000.0
-        self.max_speed_tps = self.max_speed_mps / self.tick_to_cm_factor  # max speed in ticks per s
-        self.speed_to_command = self.max_command / self.max_speed_tps
+
+        self.wheel_radius_m = self.wheel_radius_cm / 100.0
+        self.wheel_distance_m = self.wheel_distance_cm / 100.0
+
+        self.m_to_tick_factor = self.ticks_per_rotation / (2.0 * self.wheel_radius_m * math.pi)
+        self.tick_to_m_factor = 1.0 / self.m_to_tick_factor
+
+        self.max_speed_mps = self.max_speed_cps / 100.0
+        self.max_speed_tps = self.max_speed_mps * self.m_to_tick_factor  # max speed in ticks per s
 
         # TF parameters
         self.child_frame = rospy.get_param("~odom_child_frame", "base_link")
@@ -149,7 +150,9 @@ class Rover6Chassis:
                 config["kd_A"],
                 config["kp_B"],
                 config["ki_B"],
-                config["kd_B"]
+                config["kd_B"],
+                config["speed_kA"],
+                config["speed_kB"],
             )
         except rospy.ServiceException, e:
             rospy.logwarn("%s service call failed: %s" % (self.pid_service_name, e))
@@ -219,10 +222,10 @@ class Rover6Chassis:
 
         # arc = angle * radius
         # rotation speed at the wheels
-        rotational_speed_mps = angular_speed_radps * self.wheel_distance / 2
+        rotational_speed_mps = angular_speed_radps * self.wheel_distance_m / 2
 
-        left_command = (linear_speed_mps - rotational_speed_mps) * self.speed_to_command
-        right_command = (linear_speed_mps + rotational_speed_mps) * self.speed_to_command
+        left_command = self.m_to_ticks(linear_speed_mps - rotational_speed_mps)
+        right_command = self.m_to_ticks(linear_speed_mps + rotational_speed_mps)
 
         self.motors_msg.left = left_command
         self.motors_msg.right = right_command
@@ -276,19 +279,22 @@ class Rover6Chassis:
 
         self.odom_pub.publish(self.odom_msg)
 
-    def ticks_to_cm(self, ticks):
-        return ticks * self.tick_to_cm_factor
+    def ticks_to_m(self, ticks):
+        return ticks * self.tick_to_m_factor
+
+    def m_to_ticks(self, meters):
+        return meters * self.m_to_tick_factor
 
     def compute_odometry(self):
-        delta_left = self.ticks_to_cm(self.enc_msg.left_ticks - self.prev_left_ticks)
-        delta_right = self.ticks_to_cm(self.enc_msg.right_ticks - self.prev_right_ticks)
+        delta_left = self.ticks_to_m(self.enc_msg.left_ticks - self.prev_left_ticks)
+        delta_right = self.ticks_to_m(self.enc_msg.right_ticks - self.prev_right_ticks)
         delta_dist = (delta_right + delta_left) / 2
 
-        left_speed = self.ticks_to_cm(self.enc_msg.left_speed_ticks_per_s)
-        right_speed = self.ticks_to_cm(self.enc_msg.right_speed_ticks_per_s)
+        left_speed = self.ticks_to_m(self.enc_msg.left_speed_ticks_per_s)
+        right_speed = self.ticks_to_m(self.enc_msg.right_speed_ticks_per_s)
 
         # angle = arc / radius
-        delta_angle = (delta_right - delta_left) / self.wheel_distance
+        delta_angle = (delta_right - delta_left) / self.wheel_distance_m
         self.odom_t += delta_angle
 
         dx = delta_dist * math.cos(self.odom_t)
@@ -300,7 +306,7 @@ class Rover6Chassis:
         speed = (left_speed + right_speed) / 2
         self.odom_vx = speed * math.cos(self.odom_t)
         self.odom_vy = speed * math.sin(self.odom_t)
-        self.odom_vt = (right_speed - left_speed) / (self.wheel_distance / 2)
+        self.odom_vt = (right_speed - left_speed) / (self.wheel_distance_m / 2)
 
         # print self.odom_x, self.odom_y, math.degrees(self.odom_t)
 

@@ -135,7 +135,7 @@ private:
     void resetSensors();
     // void writeCurrentState();
     void writeSpeed(float speedA, float speedB);
-    void writeK(float kp_A, float ki_A, float kd_A, float kp_B, float ki_B, float kd_B);
+    void writeK(float kp_A, float ki_A, float kd_A, float kp_B, float ki_B, float kd_B, float speed_kA, float speed_kB);
     void writeObstacleThresholds(int back_lower, int back_upper, int front_lower, int front_upper);
 
     void parseImu();
