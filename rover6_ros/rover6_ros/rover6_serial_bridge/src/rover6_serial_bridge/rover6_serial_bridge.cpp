@@ -157,7 +157,7 @@ void Rover6SerialBridge::waitForPacketStart()
         }
 
         else if (c1 == PACKET_STOP) {
-            ROS_INFO_STREAM("Device message: " << msg_buffer.str());
+            ROS_DEBUG_STREAM("Device message: " << msg_buffer.str());
             msg_buffer.str(std::string());
         }
         else {
@@ -351,7 +351,7 @@ void Rover6SerialBridge::writeSerial(string name, const char *formats, ...)
     for (size_t index = 2; index < packet.length(); index++) {
         calc_checksum += (uint8_t)packet.at(index);
     }
-    ROS_INFO("calc_checksum: %d", calc_checksum);
+    ROS_DEBUG("calc_checksum: %d", calc_checksum);
 
     if (calc_checksum < 0x10) {
         sstream << "0";
@@ -366,7 +366,7 @@ void Rover6SerialBridge::writeSerial(string name, const char *formats, ...)
     // checksum might be inserting null characters. Force the buffer to extend
     // to include packet stop and checksum
 
-    ROS_INFO_STREAM("Writing: " << packet);
+    ROS_DEBUG_STREAM("Writing: " << packet);
     _serialRef.write(packet);
     _writePacketNum++;
 }
@@ -432,7 +432,7 @@ int Rover6SerialBridge::run()
 
 void Rover6SerialBridge::motorsCallback(const rover6_serial_bridge::Rover6Motors::ConstPtr& msg) {
     // motor commands in ticks per second
-    ROS_INFO("left motor: %f, right motor: %f", msg->left, msg->right);
+    ROS_DEBUG("left motor: %f, right motor: %f", msg->left, msg->right);
     writeSerial("m", "ff", msg->left, msg->right);
 }
 
