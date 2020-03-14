@@ -68,7 +68,7 @@ bool read_one_packet()
     // \t + at least 1 category char
     // 2 chars for checksum
     if (current_packet.length() < 5) {
-        print_data("txrx", "dd", read_packet_num, 0);
+        print_data("txrx", "dd", read_packet_num, 1);
         read_packet_num++;
         return true;
     }
@@ -85,13 +85,13 @@ bool read_one_packet()
 
     if (calc_checksum != recv_checksum) {
         // checksum failed
-        print_data("txrx", "dd", read_packet_num, 0);
+        print_data("txrx", "dd", read_packet_num, 2);
         read_packet_num++;
         return true;
     }
     if (!get_segment(current_packet, &current_segment, &current_packet_index)) {
         // failed to find packet num segment, but we read one packet
-        print_data("txrx", "dd", read_packet_num, 0);
+        print_data("txrx", "dd", read_packet_num, 3);
         read_packet_num++;
         return true;
     }
@@ -104,7 +104,7 @@ bool read_one_packet()
 
     // find category segment
     if (!get_segment(current_packet, &current_segment, &current_packet_index)) {
-        print_data("txrx", "dd", read_packet_num, 0);
+        print_data("txrx", "dd", read_packet_num, 4);
         read_packet_num++;
         return true;
     }
@@ -114,7 +114,7 @@ bool read_one_packet()
     current_packet = current_packet.substring(0, current_packet.length() - 2);
     process_serial_packet(category, current_packet);
 
-    print_data("txrx", "dd", read_packet_num, 1);
+    print_data("txrx", "dd", read_packet_num, 0);
 
     read_packet_num++;
     return true;

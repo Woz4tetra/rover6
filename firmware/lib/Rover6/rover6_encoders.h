@@ -23,8 +23,12 @@ Encoder motorB_enc(MOTORB_ENCB, MOTORB_ENCA);
 #define ENCODER_SAMPLERATE_DELAY_MS 33  // ~30 Hz
 
 long encA_pos, encB_pos = 0;
-double enc_speedA, enc_speedB = 0.0;  // cm/s
+double enc_speedA, enc_speedB = 0.0;  // ticks/s, smoothed
+double enc_speedA_raw, enc_speedB_raw = 0.0;  // ticks/s
 uint32_t prev_enc_time = 0;
+
+double speed_smooth_kA = 1.0;
+double speed_smooth_kB = 1.0;
 
 // cm per rotation = 2pi * wheel radius (cm); arc = angle * radius
 // ticks per rotation = 1920
@@ -49,8 +53,10 @@ bool read_encoders()
     long new_encA_pos = motorA_enc.read();
     long new_encB_pos = motorB_enc.read();
 
-    enc_speedA = (double)(new_encA_pos - encA_pos) / (CURRENT_TIME - prev_enc_time) * 1000.0;
-    enc_speedB = (double)(new_encB_pos - encB_pos) / (CURRENT_TIME - prev_enc_time) * 1000.0;
+    enc_speedA_raw = (double)(new_encA_pos - encA_pos) / (CURRENT_TIME - prev_enc_time) * 1000.0;
+    enc_speedB_raw = (double)(new_encB_pos - encB_pos) / (CURRENT_TIME - prev_enc_time) * 1000.0;
+    enc_speedA += speed_smooth_kA * (enc_speedA_raw - enc_speedA);
+    enc_speedB += speed_smooth_kB * (enc_speedB_raw - enc_speedB);
 
     encA_pos = new_encA_pos;
     encB_pos = new_encB_pos;

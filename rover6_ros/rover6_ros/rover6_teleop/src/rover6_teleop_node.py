@@ -5,6 +5,7 @@ import traceback
 import math
 
 import tf
+import time
 import rospy
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Twist
@@ -27,10 +28,10 @@ class Rover6Teleop:
         self.prev_joy_msg = None
 
         # parameters from launch file
-        self.linear_axis = rospy.get_param("~linear_axis", 1)
-        self.angular_axis = rospy.get_param("~angular_axis", 2)
-        self.camera_pan_axis = rospy.get_param("~camera_pan_axis", 3)
-        self.camera_tilt_axis = rospy.get_param("~camera_tilt_axis", 4)
+        self.linear_axis = int(rospy.get_param("~linear_axis", 1))
+        self.angular_axis = int(rospy.get_param("~angular_axis", 2))
+        self.camera_pan_axis = int(rospy.get_param("~camera_pan_axis", 3))
+        self.camera_tilt_axis = int(rospy.get_param("~camera_tilt_axis", 4))
 
         self.linear_scale = rospy.get_param("~linear_scale", 1.0)
         self.angular_scale = rospy.get_param("~angular_scale", 1.0)
@@ -109,21 +110,16 @@ class Rover6Teleop:
         # if self.did_button_change(msg, 0):
         #     pass
 
-        linear_val = self.joy_to_speed(self.linear_scale, msg.axes[int(self.linear_axis)])
-        angular_val = self.joy_to_speed(self.angular_scale, msg.axes[int(self.angular_axis)])
+        linear_val = self.joy_to_speed(self.linear_scale, msg.axes[self.linear_axis])
+        angular_val = self.joy_to_speed(self.angular_scale, -msg.axes[self.angular_axis])
         publish_cmd_vel = False
         if self.twist_command.linear.x != linear_val:
             self.twist_command.linear.x = linear_val
-            publish_cmd_vel = True
         if self.twist_command.angular.z != angular_val:
             self.twist_command.angular.z = angular_val
-            publish_cmd_vel = True
 
-        if publish_cmd_vel:
-            self.cmd_vel_pub.publish(self.twist_command)
-
-        camera_pan_val = self.joy_to_pan_servo(msg.axes[int(self.camera_pan_axis)])
-        camera_tilt_val = self.joy_to_tilt_servo(msg.axes[int(self.camera_tilt_axis)])
+        camera_pan_val = self.joy_to_pan_servo(msg.axes[self.camera_pan_axis])
+        camera_tilt_val = self.joy_to_tilt_servo(msg.axes[self.camera_tilt_axis])
         if camera_pan_val is None:
             camera_pan_val = -1
         if camera_tilt_val is None:
@@ -144,26 +140,31 @@ class Rover6Teleop:
         #
         # if publish_servo_vals:
         #     self.servo_pub.publish(self.servo_command)
-
         self.servo_command.camera_pan = camera_pan_val
         self.servo_command.camera_tilt = camera_tilt_val
-        self.servo_pub.publish(self.servo_command)
 
         self.prev_joy_msg = msg
 
     def run(self):
-        clock_rate = rospy.Rate(30)
+        clock_rate = rospy.Rate(10)
+
+        self.twist_command.linear.x = 0.0
+        self.twist_command.angular.z = 0.0
+        self.servo_command.camera_pan = -1
+        self.servo_command.camera_tilt = -1
 
         prev_time = rospy.get_rostime()
         while not rospy.is_shutdown():
+            self.cmd_vel_pub.publish(self.twist_command)
+            self.servo_pub.publish(self.servo_command)
             clock_rate.sleep()
 
 
 if __name__ == "__main__":
     try:
         node = Rover6Teleop()
-        # node.run()
-        rospy.spin()
+        node.run()
+        # rospy.spin()
     except rospy.ROSInterruptException:
         pass
     rospy.loginfo("Exiting earth_rover_chassis node")

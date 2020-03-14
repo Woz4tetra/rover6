@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+LOCAL_IP=`ifconfig enp0s3 | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1'`
+# HOST_MACHINE_NAME=`hostname`.local
+
+if [ -z ${LOCAL_IP} ]; then
+    echo "Network not configured. Not setting ROS_IP or URI"
+else
+    HOST_MACHINE_NAME=hana.local
+    export ROS_IP=${LOCAL_IP}
+    export ROS_MASTER_URI=http://${HOST_MACHINE_NAME}:11311
+
+    echo ${ROS_IP}
+    echo ${ROS_MASTER_URI}
+fi

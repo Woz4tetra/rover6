@@ -157,7 +157,7 @@ void Rover6SerialBridge::waitForPacketStart()
         }
 
         else if (c1 == PACKET_STOP) {
-            ROS_INFO_STREAM("Device message: " << msg_buffer.str());
+            ROS_DEBUG_STREAM("Device message: " << msg_buffer.str());
             msg_buffer.str(std::string());
         }
         else {
@@ -260,10 +260,10 @@ void Rover6SerialBridge::processSerialPacket(string category)
         CHECK_SEGMENT(0);
         unsigned long long packet_num = (unsigned long long)stol(_currentBufferSegment);
         CHECK_SEGMENT(1);
-        bool success = (bool)stoi(_currentBufferSegment);
+        int error_code = stoi(_currentBufferSegment);
 
-        if (!success) {
-            ROS_ERROR("Device failed to parse sent packet number '%llu'", packet_num);
+        if (error_code != 0) {
+            ROS_ERROR("Device failed to parse sent packet number '%llu'. Error code '%d'", packet_num, error_code);
         }
     }
     else if (category.compare("bno") == 0) {
@@ -351,7 +351,7 @@ void Rover6SerialBridge::writeSerial(string name, const char *formats, ...)
     for (size_t index = 2; index < packet.length(); index++) {
         calc_checksum += (uint8_t)packet.at(index);
     }
-    ROS_INFO("calc_checksum: %d", calc_checksum);
+    ROS_DEBUG("calc_checksum: %d", calc_checksum);
 
     if (calc_checksum < 0x10) {
         sstream << "0";
@@ -366,7 +366,7 @@ void Rover6SerialBridge::writeSerial(string name, const char *formats, ...)
     // checksum might be inserting null characters. Force the buffer to extend
     // to include packet stop and checksum
 
-    ROS_INFO_STREAM("Writing: " << packet);
+    ROS_DEBUG_STREAM("Writing: " << packet);
     _serialRef.write(packet);
     _writePacketNum++;
 }
@@ -379,6 +379,7 @@ void Rover6SerialBridge::setup()
     checkReady();
 
     // tell the microcontroller to start
+    resetSensors();
     setActive(true);
     setReporting(true);
 }
@@ -430,13 +431,14 @@ int Rover6SerialBridge::run()
 }
 
 void Rover6SerialBridge::motorsCallback(const rover6_serial_bridge::Rover6Motors::ConstPtr& msg) {
-    ROS_INFO("left motor: %f, right motor: %f", msg->left, msg->right);
+    // motor commands in ticks per second
+    ROS_DEBUG("left motor: %f, right motor: %f", msg->left, msg->right);
     writeSerial("m", "ff", msg->left, msg->right);
 }
 
 void Rover6SerialBridge::servosCallback(const rover6_serial_bridge::Rover6Servos::ConstPtr& msg) {
-    writeServo(_panServoNum, msg->camera_pan);
     writeServo(_tiltServoNum, msg->camera_tilt);
+    writeServo(_panServoNum, msg->camera_pan);
 }
 
 void Rover6SerialBridge::writeServo(unsigned int n, int command) {
@@ -463,9 +465,9 @@ void Rover6SerialBridge::rpiStateCallback(const rover6_serial_bridge::Rover6RpiS
 bool Rover6SerialBridge::set_pid(rover6_serial_bridge::Rover6PidSrv::Request  &req,
          rover6_serial_bridge::Rover6PidSrv::Response &res)
 {
-    writeK(req.kp_A, req.ki_A, req.kd_A, req.kp_B, req.ki_B, req.kd_B);
-    ROS_INFO("Setting pid: kp_A=%d, ki_A=%d, kd_A=%d, kp_B=%d, ki_B=%d, kd_B=%d",
-        req.kp_A, req.ki_A, req.kd_A, req.kp_B, req.ki_B, req.kd_B
+    writeK(req.kp_A, req.ki_A, req.kd_A, req.kp_B, req.ki_B, req.kd_B, req.speed_kA, req.speed_kB);
+    ROS_INFO("Setting pid: kp_A=%f, ki_A=%f, kd_A=%f, kp_B=%f, ki_B=%f, kd_B=%f, speed_kA=%f, speed_kB=%f",
+        req.kp_A, req.ki_A, req.kd_A, req.kp_B, req.ki_B, req.kd_B, req.speed_kA, req.speed_kB
     );
     res.resp = true;
     return true;
@@ -533,8 +535,8 @@ void Rover6SerialBridge::writeSpeed(float speedA, float speedB) {
     writeSerial("m", "ff", speedA, speedB);
 }
 
-void Rover6SerialBridge::writeK(float kp_A, float ki_A, float kd_A, float kp_B, float ki_B, float kd_B) {
-    writeSerial("ks", "ffffff", kp_A, ki_A, kd_A, kp_B, ki_B, kd_B);
+void Rover6SerialBridge::writeK(float kp_A, float ki_A, float kd_A, float kp_B, float ki_B, float kd_B, float speed_kA, float speed_kB) {
+    writeSerial("ks", "ffffffff", kp_A, ki_A, kd_A, kp_B, ki_B, kd_B, speed_kA, speed_kB);
 }
 
 void Rover6SerialBridge::writeObstacleThresholds(int back_lower, int back_upper, int front_lower, int front_upper) {
