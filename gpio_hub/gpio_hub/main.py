@@ -18,6 +18,7 @@ def shutdown():
 
 def main():
     logger.info("Starting GPIO Hub\n\n")
+    gpio_hub.set_fan(100)
 
     while True:
         gpio_hub.update()

@@ -263,16 +263,16 @@ void draw_imu_menu()
 //
 
 
-void drive_rover_forward(double speed_cps)
+void drive_rover_forward(double speed_tps)
 {
-    update_setpointA(speed_cps);  // cm per s
-    update_setpointB(speed_cps);  // cm per s
+    update_setpointA(speed_tps);  // ticks per s
+    update_setpointB(speed_tps);  // ticks per s
 }
 
-void rotate_rover(double speed_cps)
+void rotate_rover(double speed_tps)
 {
-    update_setpointA(speed_cps);  // cm per s
-    update_setpointB(-speed_cps);  // cm per s
+    update_setpointA(speed_tps);  // ticks per s
+    update_setpointB(-speed_tps);  // ticks per s
 }
 
 void draw_motors_menu()
@@ -708,7 +708,7 @@ void shutdown_menu_enter_event()
 void down_menu_event() {
     switch (DISPLAYED_MENU) {
         case MAIN_MENU: MAIN_MENU_SELECT_INDEX += 1; break;
-        case MOTORS_MENU: drive_rover_forward(-900.0); break;
+        case MOTORS_MENU: drive_rover_forward(-170000.0); break;
         case WIFI_MENU: WIFI_MENU_SELECT_INDEX += 1; break;
         case SHUTDOWN_MENU: SHUTDOWN_MENU_SELECT_INDEX += 1; break;
         default: break;
@@ -718,7 +718,7 @@ void down_menu_event() {
 void up_menu_event() {
     switch (DISPLAYED_MENU) {
         case MAIN_MENU: MAIN_MENU_SELECT_INDEX -= 1; break;
-        case MOTORS_MENU: drive_rover_forward(900.0); break;
+        case MOTORS_MENU: drive_rover_forward(170000.0); break;
         case WIFI_MENU: WIFI_MENU_SELECT_INDEX -= 1; break;
         case SHUTDOWN_MENU: SHUTDOWN_MENU_SELECT_INDEX -= 1; break;
         default: break;
@@ -727,7 +727,7 @@ void up_menu_event() {
 
 void left_menu_event() {
     switch (DISPLAYED_MENU) {
-        case MOTORS_MENU: rotate_rover(-450.0); break;
+        case MOTORS_MENU: rotate_rover(-85000.0); break;
         default: break;
         // add new menu entry callbacks (if needed)
     }
@@ -735,7 +735,7 @@ void left_menu_event() {
 
 void right_menu_event() {
     switch (DISPLAYED_MENU) {
-        case MOTORS_MENU: rotate_rover(450.0); break;
+        case MOTORS_MENU: rotate_rover(85000.0); break;
         default: break;
         // add new menu entry callbacks (if needed)
     }

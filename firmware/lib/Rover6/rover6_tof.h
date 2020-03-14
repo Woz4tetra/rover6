@@ -75,7 +75,7 @@ bool read_front_VL53L0X() {
 bool read_back_VL53L0X() {
     // lox2.rangingTest(&measure2, false);
     // return true;
-    
+
     lox2.getContinuousRangingMeasurement(&measure2, &lox2_measurement_ready);
     return lox2_measurement_ready > 0;
 }
@@ -96,7 +96,7 @@ void set_lox_active(bool active) {
     if (is_lox_active == active) {
         return;
     }
-    
+
     is_lox_active = active;
     if (active) {
         lox1.startContinuousMeasurement();
