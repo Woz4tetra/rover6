@@ -65,6 +65,7 @@ max_framebuffers=2
 #dtoverlay=vc4-fkms-v3d
 
 dtoverlay=gpio-poweroff,gpiopin=17
+gpio=18=op,dh
 start_x=1
 gpu_mem=128
 enable_uart=1
