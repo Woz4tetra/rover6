@@ -6,16 +6,14 @@ from . import tof_obstacles
 from ..device_port import DevicePort, DevicePortReadException, DevicePortWriteException
 from ..config import ConfigManager
 from ..logger_manager import LoggerManager
+from .packet import Packet
 
 rover_config = ConfigManager.get_rover_config()
 device_port_config = ConfigManager.get_device_port_config()
 logger = LoggerManager.get_logger()
 
-from .packet import Packet, get_checksum
 
-
-class LowBatteryException(Exception):
-    pass
+class LowBatteryException(Exception):  pass
 
 
 class RoverClient:
@@ -27,7 +25,12 @@ class RoverClient:
     NUM_SERVOS = rover_config.num_servos
 
     def __init__(self):
-        self.device = DevicePort()
+        self.device = DevicePort(
+            device_port_config.address,
+            device_port_config.baud_rate,
+            device_port_config.timeout,
+            device_port_config.write_timeout
+        )
         self.data_frame = {header: {} for header in self.PACKET_CODES.keys()}
 
         self.name = ""
@@ -42,7 +45,7 @@ class RoverClient:
         self.thread_exception = None
 
         self.recv_times = {}
-        self.read_update_rate_hz = 360.0
+        self.read_update_rate_hz = device_port_config.update_rate_hz
         self.prev_packet_time = 0.0
 
         self.write_lock = threading.Lock()
@@ -100,7 +103,7 @@ class RoverClient:
             self.device.write(packet.packet)
         self.written_packets[packet.packet_num] = packet
         self.remove_timedout_written_packets()
-        
+
     def wait_for_packet_start(self):
         print_buffer = b""
         self.prev_packet_time = time.time()
@@ -172,7 +175,8 @@ class RoverClient:
         if not success:
             if packet_num in self.written_packets:
                 sent_packet = self.written_packets[packet_num]
-                logger.info("Device failed to receive packet num %s, identifier = %s. Re-transmitting." % (packet_num, sent_packet.identifier))
+                logger.info("Device failed to receive packet num %s, identifier = %s. Re-transmitting." % (
+                    packet_num, sent_packet.identifier))
                 new_packet = Packet.from_packet(sent_packet)
                 self.device.write(new_packet.packet)
             else:
@@ -254,7 +258,7 @@ class RoverClient:
                         identifier = packet.identifier
                 except DevicePortReadException:
                     logger.info("Waiting for ready signal timed out. Trying again.")
-                
+
                 if packet:
                     logger.info(identifier, self.data_frame[packet.identifier])
             time.sleep(0.05)
