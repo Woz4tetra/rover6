@@ -10,7 +10,7 @@
 
 
 #define INA_SAMPLERATE_DELAY_MS 1000
-#define INA_VOLTAGE_THRESHOLD 5.5
+#define INA_VOLTAGE_THRESHOLD 6.0
 
 /*
  * Adafruit High-side current and voltage meter
@@ -65,6 +65,7 @@ namespace rover6_ina
             return;
         }
         rover6_serial::data->write("ina", "ufff", CURRENT_TIME, ina219_current_mA, ina219_power_mW, ina219_loadvoltage);
+        rover6_serial::info->write(rover6_serial::data->get_written_packet());
     }
 };  // namespace rover6_i2c
 

@@ -22,31 +22,43 @@ namespace rover6_serial
     class Rover6Serial {
     public:
 
-        Rover6Serial(Stream* device, void (*read_callback)(String, String)) {
-            this->device = device;
+        Rover6Serial(void (*read_callback)(String, String)) {
             this->read_callback = read_callback;
             init_variables();
         }
+        virtual bool ready() {  // override
+            return false;
+        }
+        virtual Stream* device() {  // override
+            return 0;
+        }
+
         void write(String name, const char *formats, ...) {
             va_list args;
             va_start(args, formats);
-            make_packet(name, write_packet, formats, args);
-            device->print(*write_packet);
+            if (ready()) {
+                make_packet(name, write_packet, formats, args);
+                device()->print(*write_packet);
+            }
             va_end(args);
         }
         void write(String packet) {
-            device->print(packet);
+            if (!ready()) {
+                return;
+            }
+            device()->print(packet);
         }
         void read() {
-            if (device->available()) {
-                String incoming = device->readString(2048);
+            if (!ready()) {
+                return;
+            }
+            if (device()->available()) {
+                String incoming = device()->readString(2048);
                 *read_buffer += incoming;
             }
-            if (read_buffer->length() > 0) {
-                while (read_buffer->length() > 0) {
-                    parse_packet();
-                }
-                read_buffer->remove(0, buffer_index);
+
+            if (readline()) {
+                parse_packet();
             }
         }
         bool next_segment()
@@ -76,14 +88,17 @@ namespace rover6_serial
         }
 
         void print_buffer(PRINT_BUFFER_TYPES type, bool newline, const char* message) {
+            if (!ready()) {
+                return;
+            }
             switch (type) {
-                case PRINT_INFO:  device->print("msg\tINFO\t"); break;
-                case PRINT_ERROR:  device->print("msg\tERROR\t"); break;
+                case PRINT_INFO:  device()->print("msg\tINFO\t"); break;
+                case PRINT_ERROR:  device()->print("msg\tERROR\t"); break;
                 default: return;
             }
-            device->print(message);
+            device()->print(message);
             if (newline) {
-                device->print('\n');
+                device()->print('\n');
             }
         }
 
@@ -91,8 +106,7 @@ namespace rover6_serial
             return *write_packet;
         }
 
-    private:
-        Stream* device;
+    protected:
         String* write_packet;
         String* read_buffer;
         String* read_packet;
@@ -161,29 +175,39 @@ namespace rover6_serial
         }
 
         char get_char() {
-            return read_packet->charAt(buffer_index++);
+            return read_packet->charAt(read_packet_index++);
+        }
+
+        bool readline()
+        {
+            if (read_buffer->length() > 0) {
+                return false;
+            }
+            int stop_index = read_buffer->indexOf('\n', buffer_index);
+            if (stop_index == -1) {  // packet isn't ready. Come back later
+                return false;
+            }
+            *read_packet = read_buffer->substring(0, stop_index);
+            read_packet_index = 0;
+            read_buffer->remove(0, stop_index);
+            // buffer_index = 0;
+            return true;
         }
 
         void parse_packet()
         {
-            unsigned int start_index = buffer_index;
             char c1 = get_char();
             if (c1 != PACKET_START_0) {
                 write("txrx", "dd", read_packet_num, 1);  // error 1: c1 != \x12
+                return;
             }
             char c2 = get_char();
             if (c2 != PACKET_START_1) {
                 write("txrx", "dd", read_packet_num, 2);  // error 2: c2 != \x34
-            }
-
-            int stop_index = read_buffer->indexOf('\n', buffer_index);
-            if (stop_index == -1) {  // packet isn't ready. Come back later
-                buffer_index = start_index;
                 return;
             }
-            *read_packet = read_buffer->substring(buffer_index, stop_index);
-            buffer_index = stop_index;
-            read_packet_index = 0;
+
+            *read_packet = read_packet->substring(2);  // remove start characters
 
             // at least 1 char for packet num
             // \t + at least 1 category char
@@ -243,8 +267,41 @@ namespace rover6_serial
 
         // virtual ~Rover6Serial ();
     };
-    Rover6Serial* data;
-    Rover6Serial* info;
+
+    class Rover6HWSerial : public Rover6Serial {
+    private:
+        HardwareSerial* __device;
+
+    public:
+        Rover6HWSerial (HardwareSerial* device, void (*read_callback)(String, String)) : Rover6Serial(read_callback) {
+            __device = device;
+        }
+        Stream* device() {
+            return __device;
+        }
+        bool ready() {
+            return true;  // UART is always ready
+        }
+    };
+
+    class Rover6USBSerial : public Rover6Serial {
+    private:
+        usb_serial_class* __device;
+
+    public:
+        Rover6USBSerial (usb_serial_class* device, void (*read_callback)(String, String)) : Rover6Serial(read_callback) {
+            __device = device;
+        }
+        Stream* device() {
+            return __device;
+        }
+        bool ready() {
+            return __device->dtr();
+        }
+    };
+
+    Rover6HWSerial* data;
+    Rover6USBSerial* info;
 
     void data_packet_callback(String category, String packet);
     void info_packet_callback(String category, String packet);
@@ -294,9 +351,12 @@ namespace rover6_serial
         DATA_SERIAL.begin(115200);
         INFO_SERIAL.begin(115200);
         // DATA_SERIAL.begin(500000);  // see https://www.pjrc.com/teensy/td_uart.html for UART info
+        // while (!INFO_SERIAL) {
+        //     delay(1);
+        // }
 
-        data = new Rover6Serial(&DATA_SERIAL, data_packet_callback);
-        info = new Rover6Serial(&INFO_SERIAL, info_packet_callback);
+        data = new Rover6HWSerial(&DATA_SERIAL, data_packet_callback);
+        info = new Rover6USBSerial(&INFO_SERIAL, info_packet_callback);
 
         println_info("Rover #6");
         println_info("Serial buses initialized.");

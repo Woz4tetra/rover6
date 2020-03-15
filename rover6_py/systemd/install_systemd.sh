@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-echo "Running ros systemd service install script"
+echo "Running rover6_py systemd service install script"
 
 BASE_DIR=$(realpath "$(dirname $0)")
 
 if [ "${BASE_INSTALL_DIR}" = "" ]; then
-  BASE_INSTALL_DIR=~/.local/rover6
+  BASE_INSTALL_DIR=~/.local/rover6/rover6_py
 fi
 
 SCRIPT_NAME=rover6_py
@@ -27,4 +27,4 @@ systemctl --user daemon-reload
 systemctl --user restart ${SERVICE_NAME}
 loginctl enable-linger $USER
 systemctl --user enable ${SERVICE_NAME}
-echo "ros systemd service installation complete"
+echo "rover6_py systemd service installation complete"
