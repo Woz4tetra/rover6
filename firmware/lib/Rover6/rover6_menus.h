@@ -144,7 +144,7 @@ namespace rover6_menus
         MOTORS_MENU,
         SAFETY_MENU,
         WIFI_MENU,
-        CAMERA_MENU,
+        SERVO_MENU,
         LIDAR_MENU,
         SHUTDOWN_MENU,
         NONE_MENU,
@@ -156,7 +156,7 @@ namespace rover6_menus
         IMU_MENU,
         MOTORS_MENU,
         WIFI_MENU,
-        CAMERA_MENU,
+        SERVO_MENU,
         LIDAR_MENU,
         SHUTDOWN_MENU
     };
@@ -661,6 +661,41 @@ namespace rover6_menus
     }
 
     //
+    // Camera menu
+    //
+
+    void draw_servo_menu()
+    {
+
+    }
+    /*
+    void servo_menu_left_event()
+    {
+
+    }
+
+    void servo_menu_right_event()
+    {
+
+    }
+
+    void servo_menu_up_event()
+    {
+
+    }
+
+    void servo_menu_down_event()
+    {
+
+    }
+
+    void servo_menu_enter_event()
+    {
+
+    }
+    */
+
+    //
     // Shutdown menu
     //
 
@@ -786,6 +821,7 @@ namespace rover6_menus
             case MOTORS_MENU: draw_motors_menu(); break;
             case SAFETY_MENU: draw_safety_menu(); break;
             case WIFI_MENU: draw_wifi_menu(); break;
+            case SERVO_MENU: draw_servo_menu(); break;
 
             case SHUTDOWN_MENU: draw_shutdown_menu(); break;
             default: break;

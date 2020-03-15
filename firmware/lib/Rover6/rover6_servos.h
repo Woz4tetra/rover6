@@ -72,11 +72,8 @@ namespace rover6_servos
         servos.begin();
         servos.setPWMFreq(60);
         delay(10);
-        rover6_serial::println_info("PCA9685 Servos initialized.");
         pinMode(SERVO_STBY, OUTPUT);
         digitalWrite(SERVO_STBY, LOW);
-
-        set_servos_active(true);
 
         servo_max_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_DOWN;
         servo_max_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_DOWN;
@@ -93,14 +90,12 @@ namespace rover6_servos
         servo_default_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_CENTER;
         servo_default_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_CENTER;
 
-        for (size_t i = 0; i < NUM_SERVOS; i++) {
-            servo_positions[i] = servo_default_positions[i];
-        }
+        rover6::safety_struct.are_servos_active = false;
+        servos.sleep();
+        set_servos_default();
 
         servo_cmd_to_angle_m = (270.0 - 360.0) / ((double)servo_min_positions[BACK_TILTER_SERVO_NUM] - (double)servo_max_positions[BACK_TILTER_SERVO_NUM]);
-        set_servos_default();
-        delay(1000);
-        set_servos_active(false);
+        rover6_serial::println_info("PCA9685 Servos initialized.");
     }
 
 

@@ -268,7 +268,7 @@ void setup()
     rover6_tof::setup_VL53L0X();   tft.print("VL53L0Xs ready!\n");
     rover6_pid::setup_pid();
 
-    set_active(false);
+    set_active(true);
     // set_servos_default();
 
     rover6_servos::set_front_tilter(FRONT_TILTER_UP);
