@@ -22,48 +22,42 @@
 #define TFT_RST    9
 #define TFT_DC     8
 #define TFT_LITE   6
-const float TFT_PI = 3.1415926;
-#define TFT_BUFFER_SIZE  0xff
-char TFT_MSG_BUFFER[TFT_BUFFER_SIZE];
-uint32_t tft_display_timer = 0;
 #define TFT_UPDATE_DELAY_MS 250
 
-
-Adafruit_ST7735 tft(TFT_CS, TFT_DC, TFT_RST);
-uint8_t tft_brightness;
-
-void set_display_brightness(int brightness)
+namespace rover6_tft
 {
-    analogWrite(TFT_LITE, brightness);
-    tft_brightness = brightness;
-}
+    const float TFT_PI = 3.1415926;
+    uint32_t tft_display_timer = 0;
 
-void initialize_display()
-{
-    pinMode(TFT_LITE, OUTPUT);
-    tft.initR(INITR_BLACKTAB);      // Init ST7735S chip, black tab
-    delay(10);
-    set_display_brightness(255);
-    tft.fillScreen(ST77XX_BLACK);
-    tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+    Adafruit_ST7735 tft(TFT_CS, TFT_DC, TFT_RST);
+    uint8_t tft_brightness;
 
-    tft.setTextWrap(false);
-    tft.setTextSize(1);
-    tft.setRotation(1); // horizontal display
+    void set_display_brightness(int brightness)
+    {
+        analogWrite(TFT_LITE, brightness);
+        tft_brightness = brightness;
+    }
 
-    println_info("TFT display initialized.");
-    tft.print("Hello!\n");
-}
+    void black_display() {
+        tft.fillScreen(ST77XX_BLACK);
+    }
 
+    void initialize_display()
+    {
+        pinMode(TFT_LITE, OUTPUT);
+        tft.initR(INITR_BLACKTAB);      // Init ST7735S chip, black tab
+        delay(10);
+        set_display_brightness(255);
+        black_display();
+        tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
 
-void print_display(const char* message, ...)
-{
-    va_list args;
-    va_start(args, message);
-    vsnprintf(TFT_MSG_BUFFER, TFT_BUFFER_SIZE, message, args);
-    va_end(args);
+        tft.setTextWrap(false);
+        tft.setTextSize(1);
+        tft.setRotation(1); // horizontal display
 
-    tft.print(TFT_MSG_BUFFER);
-}
+        rover6_serial::println_info("TFT display initialized.");
+        tft.print("Hello!\n");
+    }
+};
 
 #endif  // ROVER6_TFT

@@ -14,51 +14,54 @@
 #define FSR_PIN_1 35
 #define FSR_PIN_2 36
 
-uint16_t fsr_1_val;
-uint16_t fsr_2_val;
-uint32_t fsr_report_timer = 0;
-
 #define FSR_SAMPLERATE_DELAY_MS 33  // ~30 Hz
 
 #define FSR_CONTACT_THRESHOLD 50
 #define FSR_NOISE_THRESHOLD 2
 
-void setup_fsrs()
+namespace rover6_fsr
 {
-    pinMode(FSR_PIN_1, INPUT);
-    pinMode(FSR_PIN_2, INPUT);
-    println_info("FSRs initialized.");
-}
+    uint16_t fsr_1_val;
+    uint16_t fsr_2_val;
+    uint32_t fsr_report_timer = 0;
 
-
-bool is_left_bumper_in_contact() {
-    return fsr_1_val >= FSR_CONTACT_THRESHOLD;
-}
-
-bool is_right_bumper_in_contact() {
-    return fsr_2_val >= FSR_CONTACT_THRESHOLD;
-}
-
-bool read_fsrs()
-{
-    if (CURRENT_TIME - fsr_report_timer < FSR_SAMPLERATE_DELAY_MS) {
-        return false;
+    void setup_fsrs()
+    {
+        pinMode(FSR_PIN_1, INPUT);
+        pinMode(FSR_PIN_2, INPUT);
+        rover6_serial::println_info("FSRs initialized.");
     }
-    fsr_report_timer = CURRENT_TIME;
-    fsr_1_val = analogRead(FSR_PIN_1);
-    fsr_2_val = analogRead(FSR_PIN_2);
 
-    safety_struct.is_left_bumper_trig = is_left_bumper_in_contact();
-    safety_struct.is_right_bumper_trig = is_right_bumper_in_contact();
-    return true;
-}
 
-void report_fsrs()
-{
-    if (!rover_state.is_reporting_enabled) {
-        return;
+    bool is_left_bumper_in_contact() {
+        return fsr_1_val >= FSR_CONTACT_THRESHOLD;
     }
-    print_data("fsr", "udd", CURRENT_TIME, fsr_1_val, fsr_2_val);
-}
+
+    bool is_right_bumper_in_contact() {
+        return fsr_2_val >= FSR_CONTACT_THRESHOLD;
+    }
+
+    bool read_fsrs()
+    {
+        if (CURRENT_TIME - fsr_report_timer < FSR_SAMPLERATE_DELAY_MS) {
+            return false;
+        }
+        fsr_report_timer = CURRENT_TIME;
+        fsr_1_val = analogRead(FSR_PIN_1);
+        fsr_2_val = analogRead(FSR_PIN_2);
+
+        rover6::safety_struct.is_left_bumper_trig = is_left_bumper_in_contact();
+        rover6::safety_struct.is_right_bumper_trig = is_right_bumper_in_contact();
+        return true;
+    }
+
+    void report_fsrs()
+    {
+        if (!rover6::rover_state.is_reporting_enabled) {
+            return;
+        }
+        rover6_serial::print_data("fsr", "udd", CURRENT_TIME, fsr_1_val, fsr_2_val);
+    }
+};
 
 #endif  // ROVER6_FSR

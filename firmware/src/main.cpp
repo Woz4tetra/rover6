@@ -17,33 +17,33 @@
 
 void set_active(bool active)
 {
-    if (rover_state.is_active == active) {
+    if (rover6::rover_state.is_active == active) {
         return;
     }
-    println_info("Setting active to: %d", active);
+    rover6_serial::println_info("Setting active to: %d", active);
 
-    rover_state.is_active = active;
-    set_motors_active(active);
-    set_servos_active(active);
-    set_speed_pid(active);
-    set_lox_active(active);
-    set_bno_active(active);
+    rover6::rover_state.is_active = active;
+    rover6_motors::set_motors_active(active);
+    rover6_servos::set_servos_active(active);
+    rover6_pid::set_speed_pid(active);
+    rover6_tof::set_lox_active(active);
+    rover6_bno::set_bno_active(active);
     if (!active) {
-        stop_motors();
+        rover6_motors::stop_motors();
     }
 }
 
 void reset()
 {
-    if (is_moving()) {
-        stop_motors();
+    if (rover6_motors::is_moving()) {
+        rover6_motors::stop_motors();
         delay(200);
     }
-    reset_encoders();
+    rover6_encoders::reset_encoders();
 }
 
 
-void callback_ir()
+void rover6_ir_remote::callback_ir()
 {
     if (!ir_result_available) {
         return;
@@ -54,54 +54,54 @@ void callback_ir()
     }
 
     switch (ir_value) {
-        case 0x00ff: println_info("IR: VOL-"); break;  // VOL-
+        case 0x00ff: rover6_serial::println_info("IR: VOL-"); break;  // VOL-
         case 0x807f:
-            println_info("IR: Play/Pause");
-            set_active(!rover_state.is_active);
+            rover6_serial::println_info("IR: Play/Pause");
+            set_active(!rover6::rover_state.is_active);
             break;  // Play/Pause
-        case 0x40bf: println_info("IR: VOL+"); break;  // VOL+
+        case 0x40bf: rover6_serial::println_info("IR: VOL+"); break;  // VOL+
         case 0x20df:
-            println_info("IR: SETUP");
-            soft_restart();
+            rover6_serial::println_info("IR: SETUP");
+            rover6::soft_restart();
             break;  // SETUP
         case 0xa05f:
-            println_info("IR: ^");
-            up_menu_event();
+            rover6_serial::println_info("IR: ^");
+            rover6_menus::up_menu_event();
             break;  // ^
-        case 0x609f: println_info("IR: MODE"); break;  // MODE
+        case 0x609f: rover6_serial::println_info("IR: MODE"); break;  // MODE
         case 0x10ef:
-            println_info("IR: <");
-            left_menu_event();
+            rover6_serial::println_info("IR: <");
+            rover6_menus::left_menu_event();
             break;  // <
         case 0x906f:
-            println_info("IR: ENTER");
-            enter_menu_event();
+            rover6_serial::println_info("IR: ENTER");
+            rover6_menus::enter_menu_event();
             break;  // ENTER
         case 0x50af:
-            println_info("IR: >");
-            right_menu_event();
+            rover6_serial::println_info("IR: >");
+            rover6_menus::right_menu_event();
             break;  // >
         case 0x30cf:
-            println_info("IR: 0 10+");
-            rover_state.is_reporting_enabled = !rover_state.is_reporting_enabled;
+            rover6_serial::println_info("IR: 0 10+");
+            rover6::rover_state.is_reporting_enabled = !rover6::rover_state.is_reporting_enabled;
             break;  // 0 10+
         case 0xb04f:
-            println_info("IR: v");
-            down_menu_event();
+            rover6_serial::println_info("IR: v");
+            rover6_menus::down_menu_event();
             break;  // v
         case 0x708f:
-            println_info("IR: Del");
-            back_menu_event();
+            rover6_serial::println_info("IR: Del");
+            rover6_menus::back_menu_event();
             break;  // Del
-        case 0x08f7: println_info("IR: 1"); break;  // 1
-        case 0x8877: println_info("IR: 2"); break;  // 2
-        case 0x48B7: println_info("IR: 3"); break;  // 3
-        case 0x28D7: println_info("IR: 4"); break;  // 4
-        case 0xA857: println_info("IR: 5"); break;  // 5
-        case 0x6897: println_info("IR: 6"); break;  // 6
-        case 0x18E7: println_info("IR: 7"); break;  // 7
-        case 0x9867: println_info("IR: 8"); break;  // 8
-        case 0x58A7: println_info("IR: 9"); break;  // 9
+        case 0x08f7: rover6_serial::println_info("IR: 1"); break;  // 1
+        case 0x8877: rover6_serial::println_info("IR: 2"); break;  // 2
+        case 0x48B7: rover6_serial::println_info("IR: 3"); break;  // 3
+        case 0x28D7: rover6_serial::println_info("IR: 4"); break;  // 4
+        case 0xA857: rover6_serial::println_info("IR: 5"); break;  // 5
+        case 0x6897: rover6_serial::println_info("IR: 6"); break;  // 6
+        case 0x18E7: rover6_serial::println_info("IR: 7"); break;  // 7
+        case 0x9867: rover6_serial::println_info("IR: 8"); break;  // 8
+        case 0x58A7: rover6_serial::println_info("IR: 9"); break;  // 9
 
     }
     // String decode_type;
@@ -117,24 +117,24 @@ void callback_ir()
     //     decode_type = "???";
     // }
 
-    ir_result_available = false;
-    ir_type = 0;
-    ir_value = 0;
+    rover6_ir_remote::ir_result_available = false;
+    rover6_ir_remote::ir_type = 0;
+    rover6_ir_remote::ir_value = 0;
 }
 
 // method header defined in rover6_serial.h
-void process_serial_packet(String category, String packet)
+void rover6_serial::process_serial_packet(String category, String packet)
 {
-    println_info("category: %s, packet: '%s'", category.c_str(), packet.c_str());
+    rover6_serial::println_info("category: %s, packet: '%s'", category.c_str(), packet.c_str());
     // toggle_active
     if (category.equals("<>")) {
         CHECK_SEGMENT(0);
-        println_info("toggle_active %d", current_segment.toInt());
+        rover6_serial::println_info("toggle_active %d", current_segment.toInt());
         switch (current_segment.toInt())
         {
             case 0: set_active(false); break;
             case 1: set_active(true); break;
-            case 2: soft_restart(); break;
+            case 2: rover6::soft_restart(); break;
             default:
                 break;
         }
@@ -144,11 +144,11 @@ void process_serial_packet(String category, String packet)
     else if (category.equals("?")) {
         CHECK_SEGMENT(0);
         if (current_segment.equals("rover6")) {
-            println_info("Received ready signal!");
-            print_data("ready", "us", CURRENT_TIME, "hana");
+            rover6_serial::println_info("Received ready signal!");
+            rover6_serial::print_data("ready", "us", CURRENT_TIME, "hana");
         }
         else {
-            println_error("Invalid ready segment supplied: %s", current_segment.c_str());
+            rover6_serial::println_error("Invalid ready segment supplied: %s", current_segment.c_str());
         }
     }
 
@@ -157,8 +157,8 @@ void process_serial_packet(String category, String packet)
         CHECK_SEGMENT(0);
         switch (current_segment.toInt())
         {
-            case 0: rover_state.is_reporting_enabled = false; break;
-            case 1: rover_state.is_reporting_enabled = true; break;
+            case 0: rover6::rover_state.is_reporting_enabled = false; break;
+            case 1: rover6::rover_state.is_reporting_enabled = true; break;
             case 2: reset(); break;
             default:
                 break;
@@ -167,51 +167,51 @@ void process_serial_packet(String category, String packet)
 
     // rpi_state
     else if (category.equals("rpi")) {
-        CHECK_SEGMENT(0); rover_rpi_state.ip_address = current_segment;
-        CHECK_SEGMENT(1); rover_rpi_state.hostname = current_segment;
-        CHECK_SEGMENT(2); rover_rpi_state.date_str = current_segment;
-        rover_rpi_state.prev_date_str_update = CURRENT_TIME;
-        CHECK_SEGMENT(3); rover_rpi_state.power_button_state = (bool)current_segment.toInt();
-        CHECK_SEGMENT(4); rover_rpi_state.broadcasting_hotspot = current_segment.toInt();
+        CHECK_SEGMENT(0); rover6::rover_rpi_state.ip_address = current_segment;
+        CHECK_SEGMENT(1); rover6::rover_rpi_state.hostname = current_segment;
+        CHECK_SEGMENT(2); rover6::rover_rpi_state.date_str = current_segment;
+        rover6::rover_rpi_state.prev_date_str_update = CURRENT_TIME;
+        CHECK_SEGMENT(3); rover6::rover_rpi_state.power_button_state = (bool)current_segment.toInt();
+        CHECK_SEGMENT(4); rover6::rover_rpi_state.broadcasting_hotspot = current_segment.toInt();
     }
 
     // set_motors
     else if (category.equals("m")) {
         CHECK_SEGMENT(0); float setpointA = current_segment.toFloat();
         CHECK_SEGMENT(1); float setpointB = current_segment.toFloat();
-        update_setpointA(setpointA);
-        update_setpointB(setpointB);
+        rover6_pid::update_setpointA(setpointA);
+        rover6_pid::update_setpointB(setpointB);
     }
 
     // set_pid_ks
     else if (category.equals("ks")) {
         for (size_t index = 0; index < NUM_PID_KS; index++) {
-            CHECK_SEGMENT(index); pid_Ks[index] = current_segment.toFloat();
+            CHECK_SEGMENT(index); rover6_pid::pid_Ks[index] = current_segment.toFloat();
         }
-        set_Ks();  // sets pid constants based on pid_Ks array
+        rover6_pid::set_Ks();  // sets pid constants based on pid_Ks array
     }
 
     // set_servo
     else if (category.equals("s")) {
         CHECK_SEGMENT(0); int n = current_segment.toInt();
         CHECK_SEGMENT(1); int command = current_segment.toInt();
-        set_servo(n, command);
-        report_servo_pos();
+        rover6_servos::set_servo(n, command);
+        rover6_servos::report_servo_pos();
     }
 
     // set_servo_default
     else if (category.equals("sd")) {
         CHECK_SEGMENT(0); int n = current_segment.toInt();
-        set_servo(n);
-        report_servo_pos();
+        rover6_servos::set_servo(n);
+        rover6_servos::report_servo_pos();
     }
 
     // set_safety_thresholds
     else if (category.equals("safe")) {
         for (size_t index = 0; index < 4; index++) {
-            CHECK_SEGMENT(index); LOX_THRESHOLDS[index] = current_segment.toInt();
+            CHECK_SEGMENT(index); rover6_tof::LOX_THRESHOLDS[index] = current_segment.toInt();
         }
-        set_lox_thresholds();  // sets thresholds based on LOX_THRESHOLDS array
+        rover6_tof::set_lox_thresholds();  // sets thresholds based on LOX_THRESHOLDS array
     }
 }
 
@@ -222,30 +222,30 @@ void update_display()
     }
     tft_display_timer = CURRENT_TIME;
 
-    draw_menus();
+    rover6_menus::draw_menus();
 }
 
 
 void report_data()
 {
-    if (read_BNO055()) {
-        report_BNO055();
+    if (rover6_bno::read_BNO055()) {
+        rover6_bno::report_BNO055();
     }
-    if (read_VL53L0X()) {
-        report_VL53L0X();
+    if (rover6_tof::read_VL53L0X()) {
+        rover6_tof::report_VL53L0X();
     }
-    if (read_INA219()) {
-        report_INA219();
+    if (rover6_ina::read_INA219()) {
+        rover6_ina::report_INA219();
     }
-    if (read_encoders()) {
-        report_encoders();
+    if (rover6_encoders::read_encoders()) {
+        rover6_encoders::report_encoders();
     }
-    if (read_fsrs()) {
-        report_fsrs();
+    if (rover6_fsr::read_fsrs()) {
+        rover6_fsr::report_fsrs();
     }
-    if (read_IR()) {
-        report_IR();
-        callback_ir();
+    if (rover6_ir_remote::read_IR()) {
+        rover6_ir_remote::report_IR();
+        rover6_ir_remote::callback_ir();
     }
 
 }
@@ -253,36 +253,36 @@ void report_data()
 
 void setup()
 {
-    init_structs();
+    rover6::init_structs();
 
-    initialize_display();
-    setup_serial();  tft.print("Serial ready!\n");
-    setup_i2c();  tft.print("I2C ready!\n");
-    reset_encoders();  tft.print("Encoders ready!\n");
-    setup_fsrs();  tft.print("FSRs ready!\n");
-    setup_IR();   tft.print("IR ready!\n");
-    setup_motors();   tft.print("Motors ready!\n");
-    setup_BNO055();   tft.print("BNO055 ready!\n");
-    setup_INA219();   tft.print("INA219 ready!\n");
-    setup_servos();   tft.print("Servos ready!\n");
-    setup_VL53L0X();   tft.print("VL53L0Xs ready!\n");
-    setup_pid();
+    rover6_tft::initialize_display();
+    rover6_serial::setup_serial();  tft.print("Serial ready!\n");
+    rover6_i2c::setup_i2c();  tft.print("I2C ready!\n");
+    rover6_encoders::reset_encoders();  tft.print("Encoders ready!\n");
+    rover6_fsr::setup_fsrs();  tft.print("FSRs ready!\n");
+    rover6_ir_remote::setup_IR();   tft.print("IR ready!\n");
+    rover6_motors::setup_motors();   tft.print("Motors ready!\n");
+    rover6_bno::setup_BNO055();   tft.print("BNO055 ready!\n");
+    rover6_ina::setup_INA219();   tft.print("INA219 ready!\n");
+    rover6_servos::setup_servos();   tft.print("Servos ready!\n");
+    rover6_tof::setup_VL53L0X();   tft.print("VL53L0Xs ready!\n");
+    rover6_pid::setup_pid();
 
     set_active(false);
     // set_servos_default();
 
-    set_front_tilter(FRONT_TILTER_UP);
-    set_back_tilter(BACK_TILTER_UP);
-    center_camera();
-    tft.fillScreen(ST77XX_BLACK);
-    init_menus();
+    rover6_servos::set_front_tilter(FRONT_TILTER_UP);
+    rover6_servos::set_back_tilter(BACK_TILTER_UP);
+    rover6_servos::center_camera();
+    rover6_tft::black_display();
+    rover6_menus::init_menus();
 }
 
 void loop()
 {
-    read_all_serial();
+    rover6_serial::read_all_serial();
     report_data();
     update_display();
-    update_speed_pid();
-    check_motor_timeout();
+    rover6_pid::update_speed_pid();
+    rover6_motors::check_motor_timeout();
 }
