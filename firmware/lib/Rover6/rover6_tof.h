@@ -163,7 +163,7 @@ namespace rover6_tof
         if (!rover6::rover_state.is_reporting_enabled) {
             return;
         }
-        rover6_serial::print_data("lox", "udddddd", CURRENT_TIME,
+        rover6_serial::data->write("lox", "udddddd", CURRENT_TIME,
             measure1.RangeMilliMeter, measure2.RangeMilliMeter,
             measure1.RangeStatus, measure2.RangeStatus,
             lox1.Status, lox2.Status  // lookup table in vl53l0x_def.h line 133

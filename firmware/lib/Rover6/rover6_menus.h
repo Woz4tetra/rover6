@@ -641,12 +641,17 @@ namespace rover6_menus
             WIFI_SUBMENU_INDEX = 1;
         }
         else if (WIFI_SUBMENU_INDEX == 1) {
+            bool packet_written = true;
             switch (WIFI_MENU_SELECT_INDEX) {
-                case 0: rover6_serial::print_data("wifi", "d", 1); break;  // "Wifi" selected
-                case 1: rover6_serial::print_data("wifi", "d", 2); break;  // "Hotspot" selected
-                case 2: rover6_serial::println_info("Cancel selected "); break;  // "Cancel" selected
-                default: break;
+                case 0: rover6_serial::data->write("wifi", "d", 1); break;  // "Wifi" selected
+                case 1: rover6_serial::data->write("wifi", "d", 2); break;  // "Hotspot" selected
+                case 2: rover6_serial::data->write("wifi", "d", 3); break;  // "Cancel" selected
+                default: packet_written = false; break;
             }
+            if (packet_written) {
+                rover6_serial::info->write(rover6_serial::data->get_written_packet());
+            }
+
             WIFI_SUBMENU_INDEX = 0;
         }
     }
@@ -733,7 +738,7 @@ namespace rover6_menus
     void shutdown_menu_enter_event()
     {
         if (SHUTDOWN_MENU_SELECT_INDEX == 0) {
-            rover6_serial::print_data("shutdown", "s", "rover6");
+            rover6_serial::info->write("shutdown", "s", "rover6");
         }
         DISPLAYED_MENU = MAIN_MENU;
     }

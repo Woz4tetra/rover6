@@ -73,7 +73,7 @@ namespace rover6_encoders
         if (!rover6::rover_state.is_reporting_enabled) {
             return;
         }
-        rover6_serial::print_data("enc", "uddff", CURRENT_TIME, encA_pos, encB_pos, enc_speedA, enc_speedB);
+        rover6_serial::data->write("enc", "uddff", CURRENT_TIME, encA_pos, encB_pos, enc_speedA, enc_speedB);
     }
 }; // namespace rover6_encoders
 

@@ -123,14 +123,18 @@ void rover6_ir_remote::callback_ir()
 }
 
 // method header defined in rover6_serial.h
-void rover6_serial::process_serial_packet(String category, String packet)
+void rover6_serial::info_packet_callback(String category, String packet) {
+    data_packet_callback(category, packet);
+}
+
+void rover6_serial::data_packet_callback(String category, String packet)
 {
     rover6_serial::println_info("category: %s, packet: '%s'", category.c_str(), packet.c_str());
     // toggle_active
     if (category.equals("<>")) {
-        CHECK_SEGMENT(0);
-        rover6_serial::println_info("toggle_active %d", current_segment.toInt());
-        switch (current_segment.toInt())
+        CHECK_SEGMENT(data);
+        rover6_serial::println_info("toggle_active %d", data->get_segment().toInt());
+        switch (data->get_segment().toInt())
         {
             case 0: set_active(false); break;
             case 1: set_active(true); break;
@@ -142,20 +146,21 @@ void rover6_serial::process_serial_packet(String category, String packet)
 
     // get_ready
     else if (category.equals("?")) {
-        CHECK_SEGMENT(0);
-        if (current_segment.equals("rover6")) {
+        CHECK_SEGMENT(data);
+        if (data->get_segment().equals("rover6")) {
             rover6_serial::println_info("Received ready signal!");
-            rover6_serial::print_data("ready", "us", CURRENT_TIME, "hana");
+            rover6_serial::data->write("ready", "us", CURRENT_TIME, "hana");
+            rover6_serial::info->write(rover6_serial::data->get_written_packet());
         }
         else {
-            rover6_serial::println_error("Invalid ready segment supplied: %s", current_segment.c_str());
+            rover6_serial::println_error("Invalid ready segment supplied: %s", data->get_segment().c_str());
         }
     }
 
     // toggle_reporting
     else if (category.equals("[]")) {
-        CHECK_SEGMENT(0);
-        switch (current_segment.toInt())
+        CHECK_SEGMENT(data);
+        switch (data->get_segment().toInt())
         {
             case 0: rover6::rover_state.is_reporting_enabled = false; break;
             case 1: rover6::rover_state.is_reporting_enabled = true; break;
@@ -167,18 +172,18 @@ void rover6_serial::process_serial_packet(String category, String packet)
 
     // rpi_state
     else if (category.equals("rpi")) {
-        CHECK_SEGMENT(0); rover6::rover_rpi_state.ip_address = current_segment;
-        CHECK_SEGMENT(1); rover6::rover_rpi_state.hostname = current_segment;
-        CHECK_SEGMENT(2); rover6::rover_rpi_state.date_str = current_segment;
+        CHECK_SEGMENT(data); rover6::rover_rpi_state.ip_address = data->get_segment();
+        CHECK_SEGMENT(data); rover6::rover_rpi_state.hostname = data->get_segment();
+        CHECK_SEGMENT(data); rover6::rover_rpi_state.date_str = data->get_segment();
         rover6::rover_rpi_state.prev_date_str_update = CURRENT_TIME;
-        CHECK_SEGMENT(3); rover6::rover_rpi_state.power_button_state = (bool)current_segment.toInt();
-        CHECK_SEGMENT(4); rover6::rover_rpi_state.broadcasting_hotspot = current_segment.toInt();
+        CHECK_SEGMENT(data); rover6::rover_rpi_state.power_button_state = (bool)data->get_segment().toInt();
+        CHECK_SEGMENT(data); rover6::rover_rpi_state.broadcasting_hotspot = data->get_segment().toInt();
     }
 
     // set_motors
     else if (category.equals("m")) {
-        CHECK_SEGMENT(0); float setpointA = current_segment.toFloat();
-        CHECK_SEGMENT(1); float setpointB = current_segment.toFloat();
+        CHECK_SEGMENT(data); float setpointA = data->get_segment().toFloat();
+        CHECK_SEGMENT(data); float setpointB = data->get_segment().toFloat();
         rover6_pid::update_setpointA(setpointA);
         rover6_pid::update_setpointB(setpointB);
     }
@@ -186,22 +191,22 @@ void rover6_serial::process_serial_packet(String category, String packet)
     // set_pid_ks
     else if (category.equals("ks")) {
         for (size_t index = 0; index < NUM_PID_KS; index++) {
-            CHECK_SEGMENT(index); rover6_pid::pid_Ks[index] = current_segment.toFloat();
+            CHECK_SEGMENT(data); rover6_pid::pid_Ks[index] = data->get_segment().toFloat();
         }
         rover6_pid::set_Ks();  // sets pid constants based on pid_Ks array
     }
 
     // set_servo
     else if (category.equals("s")) {
-        CHECK_SEGMENT(0); int n = current_segment.toInt();
-        CHECK_SEGMENT(1); int command = current_segment.toInt();
+        CHECK_SEGMENT(data); int n = data->get_segment().toInt();
+        CHECK_SEGMENT(data); int command = data->get_segment().toInt();
         rover6_servos::set_servo(n, command);
         rover6_servos::report_servo_pos();
     }
 
     // set_servo_default
     else if (category.equals("sd")) {
-        CHECK_SEGMENT(0); int n = current_segment.toInt();
+        CHECK_SEGMENT(data); int n = data->get_segment().toInt();
         rover6_servos::set_servo(n);
         rover6_servos::report_servo_pos();
     }
@@ -209,7 +214,7 @@ void rover6_serial::process_serial_packet(String category, String packet)
     // set_safety_thresholds
     else if (category.equals("safe")) {
         for (size_t index = 0; index < 4; index++) {
-            CHECK_SEGMENT(index); rover6_tof::LOX_THRESHOLDS[index] = current_segment.toInt();
+            CHECK_SEGMENT(data); rover6_tof::LOX_THRESHOLDS[index] = data->get_segment().toInt();
         }
         rover6_tof::set_lox_thresholds();  // sets thresholds based on LOX_THRESHOLDS array
     }
@@ -280,7 +285,8 @@ void setup()
 
 void loop()
 {
-    rover6_serial::read_all_serial();
+    rover6_serial::data->read();
+    rover6_serial::info->read();
     report_data();
     update_display();
     rover6_pid::update_speed_pid();

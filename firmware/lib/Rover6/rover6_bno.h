@@ -222,7 +222,7 @@ namespace rover6_bno
             return;
         }
 
-        rover6_serial::print_data(
+        rover6_serial::data->write(
             "bno", "ufffffffffd",
             CURRENT_TIME,
             orientationData.orientation.x,

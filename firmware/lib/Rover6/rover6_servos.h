@@ -170,7 +170,7 @@ namespace rover6_servos
     }
 
     void report_servo_pos() {
-        rover6_serial::print_data("servo", "udddddddddddddddd", CURRENT_TIME,
+        rover6_serial::data->write("servo", "udddddddddddddddd", CURRENT_TIME,
             servo_positions[0], servo_positions[1], servo_positions[2], servo_positions[3],
             servo_positions[4], servo_positions[5], servo_positions[6], servo_positions[7],
             servo_positions[8], servo_positions[9], servo_positions[10], servo_positions[11],

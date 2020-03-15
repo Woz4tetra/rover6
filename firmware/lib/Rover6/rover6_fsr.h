@@ -60,7 +60,7 @@ namespace rover6_fsr
         if (!rover6::rover_state.is_reporting_enabled) {
             return;
         }
-        rover6_serial::print_data("fsr", "udd", CURRENT_TIME, fsr_1_val, fsr_2_val);
+        rover6_serial::data->write("fsr", "udd", CURRENT_TIME, fsr_1_val, fsr_2_val);
     }
 };
 
