@@ -641,15 +641,10 @@ namespace rover6_menus
             WIFI_SUBMENU_INDEX = 1;
         }
         else if (WIFI_SUBMENU_INDEX == 1) {
-            bool packet_written = true;
             switch (WIFI_MENU_SELECT_INDEX) {
-                case 0: rover6_serial::data->write("wifi", "d", 1); break;  // "Wifi" selected
-                case 1: rover6_serial::data->write("wifi", "d", 2); break;  // "Hotspot" selected
-                case 2: rover6_serial::data->write("wifi", "d", 3); break;  // "Cancel" selected
-                default: packet_written = false; break;
-            }
-            if (packet_written) {
-                rover6_serial::info->write(rover6_serial::data->get_written_packet());
+                case 0: ROVER6_SERIAL_WRITE_BOTH("wifi", "d", 1); break;  // "Wifi" selected
+                case 1: ROVER6_SERIAL_WRITE_BOTH("wifi", "d", 2); break;  // "Hotspot" selected
+                case 2: ROVER6_SERIAL_WRITE_BOTH("wifi", "d", 3); break;  // "Cancel" selected
             }
 
             WIFI_SUBMENU_INDEX = 0;

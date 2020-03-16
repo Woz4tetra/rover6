@@ -57,6 +57,18 @@ class RoverClient:
 
         self.written_packets = {}
 
+        self.txrx_error_codes = {
+            0: "no error",
+            1: "c1 != \\x12",
+            2: "c2 != \\x34",
+            3: "packet is too short",
+            4: "checksums don't match",
+            5: "packet count segment not found",
+            6: "packet counts not synchronized",
+            7: "failed to find category segment",
+            8: "invalid format"
+        }
+
     def start(self):
         logger.info("Starting rover client")
         self.device.configure()
@@ -170,9 +182,7 @@ class RoverClient:
         return packet
 
     def on_device_packet_status(self):
-        packet_num = self.get("txrx", "packet_num")
-        success = bool(self.get("txrx", "success"))
-        if not success:
+        if not self.on_txrx():
             if packet_num in self.written_packets:
                 sent_packet = self.written_packets[packet_num]
                 logger.info("Device failed to receive packet num %s, identifier = %s. Re-transmitting." % (
@@ -211,7 +221,7 @@ class RoverClient:
                     return
 
                 if time.time() - self.prev_time_command_update > 0.5:
-                    self.write_time_str()
+                    self.update_rpi_state()
                     self.prev_time_command_update = time.time()
 
                 if self.device.in_waiting() == 0:
@@ -260,7 +270,10 @@ class RoverClient:
                     logger.info("Waiting for ready signal timed out. Trying again.")
 
                 if packet:
-                    logger.info(identifier, self.data_frame[packet.identifier])
+                    if identifier == "txrx":
+                        self.on_txrx()
+                    else:
+                        logger.info(identifier, self.data_frame[packet.identifier])
             time.sleep(0.05)
 
         self.name = self.get(identifier, "name")
@@ -284,8 +297,14 @@ class RoverClient:
     def reset_sensors(self):
         self.write("toggle_reporting", 2)
 
-    def write_time_str(self):
-        self.write("update_time_str", datetime.datetime.now().strftime("%I:%M:%S%p"))
+    def update_rpi_state(self):
+        self.write("rpi_state",
+            "xx.xx.xx.xx",
+            "dul",
+            datetime.datetime.now().strftime("%I:%M:%S%p"),
+            0,
+            0
+        )
 
     def set_speed(self, speed_A, speed_B):
         self.write("set_motors", float(speed_A), float(speed_B))
@@ -328,6 +347,15 @@ class RoverClient:
 
         elif identifier == "servo":
             print([self.get(identifier, str(index)) for index in range(4)])
+        elif identifier == "txrx":
+            self.on_txrx()
+
+    def on_txrx(self):
+        packet_num = self.get("txrx", "packet_num")
+        success = self.get("txrx", "success")
+        if success != 0:
+            logger.warn("Serial packet error %s: %s" % (success, self.txrx_error_codes[success]))
+        return success == 0
 
     def set_obstacle_thresholds(self, back_lower: int, back_upper: int, front_lower: int, front_upper: int):
         self.write("set_safety_thresholds", back_lower, back_upper, front_lower, front_upper)

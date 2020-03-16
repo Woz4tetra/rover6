@@ -50,8 +50,8 @@ namespace rover6_ir_remote
         if (!rover6::rover_state.is_reporting_enabled) {
             return;
         }
-        rover6_serial::data->write("ir", "udd", CURRENT_TIME, ir_type, ir_value);
-        rover6_serial::info->write(rover6_serial::data->get_written_packet());
+        ROVER6_SERIAL_WRITE_BOTH("ir", "udd", CURRENT_TIME, ir_type, ir_value);
+        // rover6_serial::info->write(rover6_serial::data->get_written_packet());
     }
 };  // namespace rover6_ir_remote
 

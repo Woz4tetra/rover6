@@ -6,6 +6,6 @@ Description=Rover6 device client
 WantedBy=default.target
 
 [Service]
-ExecStart=/home/pi/.local/rover6/bin/rover6_py
+ExecStart=/home/pi/.local/rover6/rover6_py/bin/rover6_py
 Restart=on-failure
 KillSignal=SIGINT

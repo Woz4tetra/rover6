@@ -64,8 +64,9 @@ namespace rover6_ina
         if (!rover6::rover_state.is_reporting_enabled) {
             return;
         }
-        rover6_serial::data->write("ina", "ufff", CURRENT_TIME, ina219_current_mA, ina219_power_mW, ina219_loadvoltage);
-        rover6_serial::info->write(rover6_serial::data->get_written_packet());
+        // rover6_serial::data->write("ina", "ufff", CURRENT_TIME, ina219_current_mA, ina219_power_mW, ina219_loadvoltage);
+        // rover6_serial::info->write(rover6_serial::data->get_written_packet());
+        ROVER6_SERIAL_WRITE_BOTH("ina", "ufff", CURRENT_TIME, ina219_current_mA, ina219_power_mW, ina219_loadvoltage);
     }
 };  // namespace rover6_i2c
 

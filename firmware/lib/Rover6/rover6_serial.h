@@ -11,7 +11,8 @@ char SERIAL_MSG_BUFFER[SERIAL_MSG_BUFFER_SIZE];
 #define PACKET_START_1 '\x34'
 #define PACKET_STOP '\n'
 
-#define CHECK_SEGMENT(__SERIAL_OBJ__)  if (!__SERIAL_OBJ__->next_segment()) {  println_error("Not enough segments supplied for #%d: %s", __SERIAL_OBJ__->next_segment_num(), packet.c_str());  return;  }
+#define CHECK_SEGMENT(__SERIAL_OBJ__)  if (!__SERIAL_OBJ__->next_segment()) {  println_error("Not enough segments supplied for #%d: %s", __SERIAL_OBJ__->get_segment_num(), packet.c_str());  return;  }
+#define ROVER6_SERIAL_WRITE_BOTH(...)  rover6_serial::data->write(__VA_ARGS__);  rover6_serial::info->write(__VA_ARGS__);
 
 namespace rover6_serial
 {
@@ -39,6 +40,7 @@ namespace rover6_serial
             if (ready()) {
                 make_packet(name, write_packet, formats, args);
                 device()->print(*write_packet);
+                write_packet_num++;
             }
             va_end(args);
         }
@@ -52,12 +54,13 @@ namespace rover6_serial
             if (!ready()) {
                 return;
             }
-            if (device()->available()) {
-                String incoming = device()->readString(2048);
+            int available = device()->available();
+            if (available > 0) {
+                String incoming = device()->readString(available);
                 *read_buffer += incoming;
             }
 
-            if (readline()) {
+            while (readline()) {
                 parse_packet();
             }
         }
@@ -81,9 +84,9 @@ namespace rover6_serial
             }
         }
         String get_segment() {
-            return *read_packet;
+            return *segment;
         }
-        int next_segment_num() {
+        int get_segment_num() {
             return current_segment_num;
         }
 
@@ -108,8 +111,8 @@ namespace rover6_serial
 
     protected:
         String* write_packet;
-        String* read_buffer;
         String* read_packet;
+        String* read_buffer;
         String* segment;
         unsigned int read_packet_num;
         unsigned int write_packet_num;
@@ -175,22 +178,23 @@ namespace rover6_serial
         }
 
         char get_char() {
-            return read_packet->charAt(read_packet_index++);
+            char c = read_packet->charAt(read_packet_index);
+            read_packet_index++;
+            return c;
         }
 
         bool readline()
         {
-            if (read_buffer->length() > 0) {
+            if (read_buffer->length() == 0) {
                 return false;
             }
-            int stop_index = read_buffer->indexOf('\n', buffer_index);
+            int stop_index = read_buffer->indexOf('\n');
             if (stop_index == -1) {  // packet isn't ready. Come back later
                 return false;
             }
-            *read_packet = read_buffer->substring(0, stop_index);
+            read_packet = new String(read_buffer->substring(0, stop_index));
             read_packet_index = 0;
-            read_buffer->remove(0, stop_index);
-            // buffer_index = 0;
+            read_buffer->remove(0, stop_index + 1);
             return true;
         }
 
@@ -199,15 +203,20 @@ namespace rover6_serial
             char c1 = get_char();
             if (c1 != PACKET_START_0) {
                 write("txrx", "dd", read_packet_num, 1);  // error 1: c1 != \x12
+                DATA_SERIAL.print("c1: ");
+                DATA_SERIAL.println(c1);
                 return;
             }
             char c2 = get_char();
             if (c2 != PACKET_START_1) {
                 write("txrx", "dd", read_packet_num, 2);  // error 2: c2 != \x34
+                DATA_SERIAL.print("c2: ");
+                DATA_SERIAL.println(c2);
                 return;
             }
 
-            *read_packet = read_packet->substring(2);  // remove start characters
+            read_packet->remove(0, 2);  // remove start characters
+            read_packet_index = 0;
 
             // at least 1 char for packet num
             // \t + at least 1 category char
@@ -259,7 +268,7 @@ namespace rover6_serial
             String category = *segment;
 
             // remove checksum
-            *read_packet = read_packet->substring(0, read_packet->length() - 2);
+            read_packet->remove(read_packet->length() - 2, 2);
             (*read_callback)(category, *read_packet);
             write("txrx", "dd", read_packet_num, 0);  // 0: no error
             read_packet_num++;

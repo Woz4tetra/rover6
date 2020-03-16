@@ -17,7 +17,8 @@ class SoundHub:
             self.__class__.process = subprocess.Popen(["omxplayer", "-o", "alsa:hw:1,0", uri], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=None, bufsize=0, close_fds=True)
 
     def send(self, command):
-        if self.process is not None:
+        # if self.process is not None:
+        if self.is_running():
             self.process.stdin.write(command)
 
     def set_volume(self, percent):

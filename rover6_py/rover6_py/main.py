@@ -150,6 +150,7 @@ def main():
             # print("%s:\t%s" % (identifier, np.diff(times).tolist()))
         logger.info("Closing GPIO Hub\n\n")
         gpio_hub.close()
+        sound_hub.quit()
 
 
 if __name__ == "__main__":

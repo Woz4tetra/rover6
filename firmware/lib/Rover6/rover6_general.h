@@ -87,7 +87,7 @@ namespace rover6
     }
 
     void report_structs() {
-        rover6_serial::data->write("safe", "ldddddddddddd", CURRENT_TIME,
+        ROVER6_SERIAL_WRITE_BOTH("safe", "ldddddddddddd", CURRENT_TIME,
             safety_struct.is_left_bumper_trig,
             safety_struct.is_right_bumper_trig,
             safety_struct.is_front_tof_trig,
@@ -101,7 +101,6 @@ namespace rover6
             rover_state.is_reporting_enabled,
             rover_state.is_speed_pid_enabled
         );
-        rover6_serial::info->write(rover6_serial::data->get_written_packet());
     }
 };  // namespace rover6
 
