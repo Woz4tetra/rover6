@@ -3,12 +3,13 @@ import time
 import numpy as np
 import subprocess
 
-from lib.rover.rover_client import RoverClient, LowBatteryException
+from lib.rover.rover_client import RoverClient
 # from lib.joystick import Joystick
 from lib.config import ConfigManager
 from lib.logger_manager import LoggerManager
-from lib.gpio_hub import GpioHub, ShutdownException
+from lib.gpio_hub import GpioHub
 from lib.sound_hub import SoundHub
+from lib.exceptions import ShutdownException, LowBatteryException
 
 logger = LoggerManager.get_logger()
 
@@ -87,6 +88,8 @@ def main():
     sounds.set_volume(25)
     sounds.play(sound_config.boot_sound)
 
+    gpio_hub.update()
+
     # joystick = Joystick("/dev/input/event0")
     #
     # forward_speed = 0.0
@@ -150,7 +153,7 @@ def main():
             # print("%s:\t%s" % (identifier, np.diff(times).tolist()))
         logger.info("Closing GPIO Hub\n\n")
         gpio_hub.close()
-        sound_hub.quit()
+        sounds.quit()
 
 
 if __name__ == "__main__":

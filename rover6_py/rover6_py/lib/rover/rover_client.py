@@ -7,13 +7,12 @@ from ..device_port import DevicePort, DevicePortReadException, DevicePortWriteEx
 from ..config import ConfigManager
 from ..logger_manager import LoggerManager
 from .packet import Packet
+from ..exceptions import ShutdownException, LowBatteryException
 
 rover_config = ConfigManager.get_rover_config()
 device_port_config = ConfigManager.get_device_port_config()
 logger = LoggerManager.get_logger()
 
-
-class LowBatteryException(Exception):  pass
 
 
 class RoverClient:
@@ -344,9 +343,9 @@ class RoverClient:
             elif voltage_V >= rover_config.critical_voltage:
                 logger.error("Battery is critically low: %0.2f!! Shutting down." % voltage_V)
                 raise LowBatteryException("Battery is critically low: %0.2f!! Shutting down." % voltage_V)
-
-        elif identifier == "servo":
-            print([self.get(identifier, str(index)) for index in range(4)])
+        elif identifier == "shutdown":
+            if self.get(identifier, "name") == "rover6":
+                raise ShutdownException("Device requested a shutdown.")
         elif identifier == "txrx":
             self.on_txrx()
 

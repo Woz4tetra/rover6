@@ -7,8 +7,7 @@ from .logger_manager import LoggerManager
 logger = LoggerManager.get_logger()
 gpio_config = ConfigManager.get_gpio_config()
 
-
-class ShutdownException(Exception):  pass
+from .exceptions import ShutdownException
 
 
 class GpioHub:
