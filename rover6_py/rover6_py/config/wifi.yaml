@@ -1,0 +1,2 @@
+interface_name: wlan0
+update_delay_s: 10.0
