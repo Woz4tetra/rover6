@@ -229,10 +229,10 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
 
 void update_display()
 {
-    if (CURRENT_TIME - tft_display_timer < TFT_UPDATE_DELAY_MS) {
+    if (CURRENT_TIME - rover6_tft::tft_display_timer < TFT_UPDATE_DELAY_MS) {
         return;
     }
-    tft_display_timer = CURRENT_TIME;
+    rover6_tft::tft_display_timer = CURRENT_TIME;
 
     rover6_menus::draw_menus();
 }

@@ -259,6 +259,10 @@ class RoverClient:
                 try:
                     with self.read_lock:
                         packet = self.parse_packet()
+                except DevicePortReadException as e:
+                    logger.error("%s occurred while waiting for packet! Exiting." % str(e), exc_info=True)
+                    self.thread_exception = e
+                    break
                 except BaseException as e:
                     logger.error("An error occurred while waiting for a packet!", exc_info=True)
                     continue
