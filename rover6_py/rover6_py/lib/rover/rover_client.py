@@ -14,6 +14,30 @@ device_port_config = ConfigManager.get_device_port_config()
 logger = LoggerManager.get_logger()
 
 
+class BatteryState:
+    FULL = 0
+    OK = 1
+    LOW = 2
+    CRITICAL = 3
+    def __init__(self):
+        self.state = 0
+        self.prev_critical_time = time.time()
+
+    def set(self, voltage_V):
+        if voltage_V >= rover_config.full_voltage:
+            self.state = self.FULL
+            logger.info("Fully charged: %0.2f" % voltage_V)
+        elif voltage_V >= rover_config.ok_voltage:
+            self.state = self.OK
+            logger.info("Battery ok: %0.2f" % voltage_V)
+        elif voltage_V >= rover_config.low_voltage:
+            self.state = self.LOW
+            logger.warn("Battery is low: %0.2f. Shutting down soon." % voltage_V)
+        elif voltage_V >= rover_config.critical_voltage:
+            self.state = self.CRITICAL
+            self.prev_critical_time = time.time()
+            logger.error("Battery is critically low: %0.2f!!" % voltage_V)
+
 
 class RoverClient:
     PACKET_CODES = rover_config.packet_codes
@@ -67,6 +91,11 @@ class RoverClient:
             7: "failed to find category segment",
             8: "invalid format"
         }
+
+        self.wifi_hub = None
+        self.gpio_hub = None
+
+        self.battery_state = BatteryState()
 
     def start(self):
         logger.info("Starting rover client")
@@ -252,6 +281,7 @@ class RoverClient:
         identifier = None
         start_time = time.time()
         prev_write_time = time.time()
+        packet = None
         while identifier != "ready":
             if time.time() - prev_write_time > 1.0:
                 self.write("get_ready", "rover6")
@@ -296,13 +326,19 @@ class RoverClient:
     def reset_sensors(self):
         self.write("toggle_reporting", 2)
 
+    def set_wifi_hub(self, wifi_hub):
+        self.wifi_hub = wifi_hub
+
+    def set_gpio_hub(self, gpio_hub):
+        self.gpio_hub = gpio_hub
+
     def update_rpi_state(self):
         self.write("rpi_state",
-            "xx.xx.xx.xx",
-            "dul",
+            self.wifi_hub.ip_address,
+            self.wifi_hub.hostname,
             datetime.datetime.now().strftime("%I:%M:%S%p"),
-            0,
-            0
+            int(self.gpio_hub.button_state),
+            self.wifi_hub.status_code
         )
 
     def set_speed(self, speed_A, speed_B):
@@ -334,14 +370,9 @@ class RoverClient:
     def on_receive(self, identifier):
         if identifier == "ina":
             voltage_V = self.get(identifier, "voltage_V")
-            if voltage_V >= rover_config.full_voltage:
-                logger.info("Fully charged: %0.2f" % voltage_V)
-            elif voltage_V >= rover_config.ok_voltage:
-                logger.info("Battery ok: %0.2f" % voltage_V)
-            elif voltage_V >= rover_config.low_voltage:
-                logger.warn("Battery is low: %0.2f. Shutting down soon." % voltage_V)
-            elif voltage_V >= rover_config.critical_voltage:
-                logger.error("Battery is critically low: %0.2f!! Shutting down." % voltage_V)
+            self.battery_state.set(voltage_V)
+            is_timedout = time.time() - self.battery_state.prev_critical_time > rover_config.critical_voltage_timeout_s
+            if self.battery_state == BatteryState.CRITICAL and is_timedout:
                 raise LowBatteryException("Battery is critically low: %0.2f!! Shutting down." % voltage_V)
         elif identifier == "shutdown":
             if self.get(identifier, "name") == "rover6":

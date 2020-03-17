@@ -30,6 +30,7 @@ class GpioHub:
 
         self.led_cycle_direction = False
         self.prev_button_state = False
+        self.button_state = False
         self.time_print_out = None
 
         logger.info("GPIO Hub initialized")
@@ -52,17 +53,17 @@ class GpioHub:
             self.time_print_out = time_print_out
 
     def update(self):
-        button_state = self.is_button_pressed()
-        if button_state != self.prev_button_state:
-            if button_state:
+        self.button_state = self.is_button_pressed()
+        if self.button_state != self.prev_button_state:
+            if self.button_state:
                 logger.info("Shutdown button is being held. Shutting down in...")
                 self.shutdown_timer = time.time()
             else:
                 self.time_print_out = None
                 logger.info("Shutdown button released. Shutdown cancelled")
 
-            self.prev_button_state = button_state
-        if button_state:
+            self.prev_button_state = self.button_state
+        if self.button_state:
             if self.led_cycle_direction:
                 cycle = self.led_duty_cycle + gpio_config.led_pwm_rate
                 if cycle > 100:

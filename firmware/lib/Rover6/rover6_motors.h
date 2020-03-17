@@ -29,8 +29,8 @@ namespace rover6_motors
     uint32_t prev_commandB_time = 0;
 
 
-    TB6612 motorA(MOTORA_PWM, MOTORA_DR2, MOTORA_DR1);
-    TB6612 motorB(MOTORB_PWM, MOTORB_DR1, MOTORB_DR2);
+    TB6612 motorA(MOTORA_PWM, MOTORA_DR1, MOTORA_DR2);
+    TB6612 motorB(MOTORB_PWM, MOTORB_DR2, MOTORB_DR1);
 
     void set_motors_active(bool active)
     {

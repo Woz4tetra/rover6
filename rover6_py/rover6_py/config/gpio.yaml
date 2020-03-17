@@ -3,4 +3,4 @@ button_in: 27
 fan_out: 22
 shutdown_time_s: 3.0
 led_pwm_rate: 20
-update_rate_Hz: 20
+update_rate_hz: 15

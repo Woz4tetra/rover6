@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
+systemctl stop --user rover6_py.service
 platformio run --target upload

@@ -3,6 +3,7 @@ from .rover_config import RoverConfig
 from .device_port_config import DevicePortConfig
 from .gpio_config import GpioConfig
 from .sound_config import SoundConfig
+from .wifi_config import WifiConfig
 
 
 class ConfigManager:
@@ -11,6 +12,7 @@ class ConfigManager:
     device_port_config = None
     gpio_config = None
     sound_config = None
+    wifi_config = None
 
     def __init__(self):
         raise Exception("{} is class only".format(self.__class__.__name__))
@@ -44,3 +46,9 @@ class ConfigManager:
         if cls.sound_config is None:
             cls.sound_config = SoundConfig()
         return cls.sound_config
+
+    @classmethod
+    def get_wifi_config(cls):
+        if cls.wifi_config is None:
+            cls.wifi_config = WifiConfig()
+        return cls.wifi_config

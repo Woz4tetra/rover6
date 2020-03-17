@@ -9,6 +9,7 @@ from lib.config import ConfigManager
 from lib.logger_manager import LoggerManager
 from lib.gpio_hub import GpioHub
 from lib.sound_hub import SoundHub
+from lib.wifi_hub import WifiHub
 from lib.exceptions import ShutdownException, LowBatteryException
 
 logger = LoggerManager.get_logger()
@@ -20,6 +21,7 @@ sound_config = ConfigManager.get_sound_config()
 rover = RoverClient()
 gpio_hub = GpioHub()
 sounds = SoundHub()
+wifi = WifiHub()
 
 
 # max_speed = 915.0
@@ -83,10 +85,15 @@ def shutdown():
 def main():
     logger.info("Starting rover\n\n")
 
+    rover.set_wifi_hub(wifi)
+    rover.set_gpio_hub(gpio_hub)
+
     gpio_hub.set_fan(100)
 
-    sounds.set_volume(25)
+    sounds.set_volume(sound_config.volume)
+    time.sleep(0.15)
     sounds.play(sound_config.boot_sound)
+    time.sleep(1.0)
 
     gpio_hub.update()
 
@@ -109,7 +116,8 @@ def main():
 
         while True:
             gpio_hub.update()
-            time.sleep(1.0 / gpio_config.update_rate_Hz)
+            wifi.update()
+            time.sleep(1.0 / gpio_config.update_rate_hz)
 
             # if not joystick.is_open():
             #     time.sleep(1.0)

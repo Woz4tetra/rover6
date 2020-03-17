@@ -83,7 +83,7 @@ class Packet:
         packet += str(cls.WRITE_PACKET_NUM).encode()
         packet += b"\t" + command
         for index, code in enumerate(self.code):
-            assert cls.CODE_TO_TYPE[code] == type(args[index]), "%s != %s" % (args[index], cls.CODE_TO_TYPE[code])
+            assert cls.CODE_TO_TYPE[code] == type(args[index]), "command: %s, %s is not type %s" % (command_name, args[index], cls.CODE_TO_TYPE[code])
             packet += b"\t" + str(args[index]).encode()
 
         checksum = get_checksum(packet[2:])
@@ -113,6 +113,6 @@ class Packet:
 
     def __str__(self):
         return str(self.packet)
-    
+
     def __bool__(self):
         return bool(self.packet)

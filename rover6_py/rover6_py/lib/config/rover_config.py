@@ -9,12 +9,13 @@ class RoverConfig(Config):
         self.ok_voltage = 7
         self.low_voltage = 6.3
         self.critical_voltage = 5.5
+        self.critical_voltage_timeout_s = 3.0
 
         self.wheel_radius_cm = 32.5
         self.cm_per_tick = 2.0 * math.pi * self.wheel_radius_cm / 1920.0
         self.max_linear_speed_cps = 915.0
         self.cps_to_cmd = 255.0 / self.max_linear_speed_cps
-        
+
         self.tof_off_axis_mm = 15.0  # how far the sensor is from the axis of rotation
         self.tof_ground_dist_mm = 28.7  # how far the axis of rotation is off the ground
         self.tof_front_wall_dist_mm = 30.8  # how far the front wall is from the axis of rotation
