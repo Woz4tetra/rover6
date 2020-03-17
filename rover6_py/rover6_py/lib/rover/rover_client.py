@@ -19,6 +19,7 @@ class BatteryState:
     OK = 1
     LOW = 2
     CRITICAL = 3
+
     def __init__(self):
         self.state = 0
         self.prev_critical_time = time.time()
@@ -78,7 +79,7 @@ class RoverClient:
 
         self.servo_pos = [None for _ in range(self.NUM_SERVOS)]
 
-        self.written_packets = {}
+        # self.written_packets = {}
 
         self.txrx_error_codes = {
             0: "no error",
@@ -125,24 +126,24 @@ class RoverClient:
             self.device.stop()
         logger.info("Device connection closed")
 
-    def remove_timedout_written_packets(self):
-        current_time = time.time()
-        packet_nums_to_remove = []
-        for packet_num, written_packet in self.written_packets.items():
-            if current_time - written_packet.timestamp > 10.0:
-                packet_nums_to_remove.append(packet_num)
-        if len(packet_nums_to_remove):
-            logger.debug("Purging written packets: %s" % str(packet_nums_to_remove))
-        for packet_num in packet_nums_to_remove:
-            self.written_packets.pop(packet_num)
+    # def remove_timedout_written_packets(self):
+    #     current_time = time.time()
+    #     packet_nums_to_remove = []
+    #     for packet_num, written_packet in self.written_packets.items():
+    #         if current_time - written_packet.timestamp > 10.0:
+    #             packet_nums_to_remove.append(packet_num)
+    #     if len(packet_nums_to_remove):
+    #         logger.debug("Purging written packets: %s" % str(packet_nums_to_remove))
+    #     for packet_num in packet_nums_to_remove:
+    #         self.written_packets.pop(packet_num)
 
     def write(self, write_command_name: str, *args):
         packet = Packet.from_args(write_command_name, *args)
         logger.debug("Writing: %s" % str(packet))
         with self.write_lock:
             self.device.write(packet.packet)
-        self.written_packets[packet.packet_num] = packet
-        self.remove_timedout_written_packets()
+        # self.written_packets[packet.packet_num] = packet
+        # self.remove_timedout_written_packets()
 
     def wait_for_packet_start(self):
         print_buffer = b""
@@ -209,17 +210,18 @@ class RoverClient:
         self.read_packet_num += 1
         return packet
 
-    def on_device_packet_status(self):
-        if not self.on_txrx():
-            if packet_num in self.written_packets:
-                sent_packet = self.written_packets[packet_num]
-                logger.info("Device failed to receive packet num %s, identifier = %s. Re-transmitting." % (
-                    packet_num, sent_packet.identifier))
-                new_packet = Packet.from_packet(sent_packet)
-                self.device.write(new_packet.packet)
-            else:
-                logger.error("Device failed to receive packet num %s, but we never sent it!" % packet_num)
-                logger.info("Written packets: %s" % str(self.written_packets))
+    # def on_device_packet_status(self):
+    #     if not self.on_txrx():
+    #         packet_num = self.get("txrx", "packet_num")
+    #         if packet_num in self.written_packets:
+    #             sent_packet = self.written_packets[packet_num]
+    #             logger.info("Device failed to receive packet num %s, identifier = %s. Re-transmitting." % (
+    #                 packet_num, sent_packet.identifier))
+    #             new_packet = Packet.from_packet(sent_packet)
+    #             self.device.write(new_packet.packet)
+    #         else:
+    #             logger.error("Device failed to receive packet num %s, but we never sent it!" % packet_num)
+    #             logger.info("Written packets: %s" % str(self.written_packets))
 
     def on_recv_time(self, identifier):
         recv_time = self.get(identifier, "time")
@@ -263,7 +265,7 @@ class RoverClient:
 
                 identifier = packet.identifier
                 if identifier == "txrx":
-                    self.on_device_packet_status()
+                    self.on_txrx()
                 self.on_recv_time(identifier)
                 self.on_receive(identifier)
         except BaseException as e:
@@ -333,7 +335,8 @@ class RoverClient:
         self.gpio_hub = gpio_hub
 
     def update_rpi_state(self):
-        self.write("rpi_state",
+        self.write(
+            "rpi_state",
             self.wifi_hub.ip_address,
             self.wifi_hub.hostname,
             datetime.datetime.now().strftime("%I:%M:%S%p"),
@@ -384,7 +387,7 @@ class RoverClient:
         packet_num = self.get("txrx", "packet_num")
         success = self.get("txrx", "success")
         if success != 0:
-            logger.warn("Serial packet error %s: %s" % (success, self.txrx_error_codes[success]))
+            logger.warn("Serial packet #%s error %s: %s" % (packet_num, success, self.txrx_error_codes[success]))
         return success == 0
 
     def set_obstacle_thresholds(self, back_lower: int, back_upper: int, front_lower: int, front_upper: int):

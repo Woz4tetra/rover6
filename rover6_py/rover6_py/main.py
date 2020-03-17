@@ -93,7 +93,6 @@ def main():
     sounds.set_volume(sound_config.volume)
     time.sleep(0.15)
     sounds.play(sound_config.boot_sound)
-    time.sleep(1.0)
 
     gpio_hub.update()
 
