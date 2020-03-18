@@ -3,7 +3,7 @@
     <arg name="cmd_vel_topic" default="cmd_vel"/>
 
     <group ns="rover6" >
-        <node name="rover6_chassis" pkg="rover6_chassis" type="rover6_chassis_node.py" output="log" required="true">
+        <node name="rover6_chassis" pkg="rover6_chassis" type="rover6_chassis_node.py" output="screen" required="true">
             <remap from="cmd_vel" to="$(arg cmd_vel_topic)" />
         </node>
     </group>

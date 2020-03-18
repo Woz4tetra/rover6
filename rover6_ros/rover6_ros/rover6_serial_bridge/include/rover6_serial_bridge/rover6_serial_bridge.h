@@ -17,13 +17,10 @@
 #include "rover6_serial_bridge/Rover6Safety.h"
 #include "rover6_serial_bridge/Rover6TOF.h"
 #include "rover6_serial_bridge/Rover6Motors.h"
-#include "rover6_serial_bridge/Rover6RpiState.h"
 #include "rover6_serial_bridge/Rover6Servos.h"
 
 #include "rover6_serial_bridge/Rover6PidSrv.h"
 #include "rover6_serial_bridge/Rover6SafetySrv.h"
-#include "rover6_serial_bridge/Rover6AutohotspotSrv.h"
-#include "rover6_serial_bridge/Rover6ShutdownSrv.h"
 
 
 using namespace std;
@@ -59,6 +56,7 @@ private:
     char* _dateString;
     ros::Time deviceStartTime;
     uint32_t offsetTimeMs;
+    string _roverNamespace;
 
     string _imuFrameID;
     ros::Publisher imu_pub;
@@ -92,17 +90,8 @@ private:
     void servosCallback(const rover6_serial_bridge::Rover6Servos::ConstPtr& msg);
     void writeServo(unsigned int n, int command);
 
-    ros::Subscriber rpi_state_sub;
-    void rpiStateCallback(const rover6_serial_bridge::Rover6RpiState::ConstPtr& msg);
-
     ros::ServiceServer pid_service;
     ros::ServiceServer safety_service;
-
-    ros::ServiceClient hotspot_service;
-    rover6_serial_bridge::Rover6AutohotspotSrv autohotspot_req;
-
-    ros::ServiceClient shutdown_service;
-    rover6_serial_bridge::Rover6ShutdownSrv shutdown_req;
 
     StructReadyState* readyState;
 

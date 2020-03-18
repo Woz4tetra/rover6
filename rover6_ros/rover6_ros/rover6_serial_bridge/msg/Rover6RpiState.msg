@@ -1,5 +1,0 @@
-string ip_address
-string hostname
-string date_str
-bool power_button_state
-int32 broadcasting_hotspot

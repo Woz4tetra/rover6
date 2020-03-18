@@ -3,19 +3,20 @@
 
 Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehandle)
 {
-    nh.param<string>("serial_port", _serialPort, "/dev/serial0");
-    nh.param<int>("serial_baud", _serialBaud, 115200);
-    nh.param<string>("imu_frame_id", _imuFrameID, "bno055_imu");
-    nh.param<string>("enc_frame_id", _encFrameID, "encoders");
+    _roverNamespace = "rover6";
+    nh.param<string>("/" + _roverNamespace + "/serial_port", _serialPort, "");
+    nh.param<int>("/" + _roverNamespace + "/serial_baud", _serialBaud, 115200);
+    nh.param<string>("/" + _roverNamespace + "/imu_frame_id", _imuFrameID, "bno055_imu");
+    nh.param<string>("/" + _roverNamespace + "/enc_frame_id", _encFrameID, "encoders");
     int num_servos = 0;
-    nh.param<int>("num_servos", num_servos, 16);
+    nh.param<int>("/" + _roverNamespace + "/num_servos", num_servos, 16);
     _numServos = (unsigned int)num_servos;
-    nh.param<int>("front_tilter_servo_num", _frontTilterServoNum, 0);
-    nh.param<int>("back_tilter_servo_num", _backTilterServoNum, 1);
-    nh.param<int>("camera_pan_servo_num", _panServoNum, 2);
-    nh.param<int>("camera_tilt_servo_num", _tiltServoNum, 3);
-    nh.param<int>("pan_servo_num", _panServoNum, 2);
-    nh.param<int>("tilt_servo_num", _tiltServoNum, 3);
+    nh.param<int>("/" + _roverNamespace + "/front_tilter_servo_num", _frontTilterServoNum, 0);
+    nh.param<int>("/" + _roverNamespace + "/back_tilter_servo_num", _backTilterServoNum, 1);
+    nh.param<int>("/" + _roverNamespace + "/camera_pan_servo_num", _panServoNum, 2);
+    nh.param<int>("/" + _roverNamespace + "/camera_tilt_servo_num", _tiltServoNum, 3);
+    nh.param<int>("/" + _roverNamespace + "/pan_servo_num", _panServoNum, 2);
+    nh.param<int>("/" + _roverNamespace + "/tilt_servo_num", _tiltServoNum, 3);
 
     imu_msg.header.frame_id = _imuFrameID;
     enc_msg.header.frame_id = _encFrameID;
@@ -61,13 +62,9 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
 
     motors_sub = nh.subscribe("motors", 100, &Rover6SerialBridge::motorsCallback, this);
     servos_sub = nh.subscribe("servos", 100, &Rover6SerialBridge::servosCallback, this);
-    rpi_state_sub = nh.subscribe("rpi_state", 100, &Rover6SerialBridge::rpiStateCallback, this);
 
     pid_service = nh.advertiseService("rover6_pid", &Rover6SerialBridge::set_pid, this);
     safety_service = nh.advertiseService("rover6_safety", &Rover6SerialBridge::set_safety_thresholds, this);
-
-    hotspot_service = nh.serviceClient<rover6_serial_bridge::Rover6AutohotspotSrv>("autohotspot");
-    shutdown_service = nh.serviceClient<rover6_serial_bridge::Rover6ShutdownSrv>("shutdown");
 
     ROS_INFO("Rover 6 serial bridge init done");
 }
@@ -79,7 +76,9 @@ void Rover6SerialBridge::configure()
     // attempt to open the serial port
     try
     {
+        ROS_DEBUG_STREAM("Selected port: " << _serialPort);
         _serialRef.setPort(_serialPort);
+        ROS_DEBUG_STREAM("Selected baud: " << _serialBaud);
         _serialRef.setBaudrate(_serialBaud);
         serial::Timeout timeout = serial::Timeout::simpleTimeout(1000);
         _serialRef.setTimeout(timeout);
@@ -124,6 +123,7 @@ void Rover6SerialBridge::checkReady()
             throw ReadyTimeoutException;
         }
         if ((ros::Time::now() - write_time) > write_timeout) {
+            ROS_INFO("Writing signal again");
             writeSerial("?", "s", "rover6");
             write_time = ros::Time::now();
         }
@@ -295,20 +295,6 @@ void Rover6SerialBridge::processSerialPacket(string category)
         CHECK_SEGMENT(1); readyState->rover_name = _currentBufferSegment;
         readyState->is_ready = true;
     }
-    else if (category.compare("wifi") == 0) {
-        CHECK_SEGMENT(0); autohotspot_req.request.mode = stoi(_currentBufferSegment);
-        if (!hotspot_service.call(autohotspot_req)) {
-            ROS_ERROR("Failed to call service autohotspot");
-        }
-    }
-    else if (category.compare("shutdown") == 0) {
-        CHECK_SEGMENT(0);
-        if (_currentBufferSegment == "rover6") {
-            if (!shutdown_service.call(shutdown_req)) {
-                ROS_ERROR("Failed to call service shutdown");
-            }
-        }
-    }
 }
 
 
@@ -397,8 +383,8 @@ void Rover6SerialBridge::loop()
 
 void Rover6SerialBridge::stop()
 {
-    setActive(false);
-    setReporting(false);
+    // setActive(false);
+    // setReporting(false);
     _serialRef.close();
 }
 
@@ -449,17 +435,6 @@ void Rover6SerialBridge::writeServo(unsigned int n, int command) {
         writeSerial("s", "dd", n, command);
     }
     // if command < -1, skip the servo command
-}
-
-void Rover6SerialBridge::rpiStateCallback(const rover6_serial_bridge::Rover6RpiState::ConstPtr& msg)
-{
-    writeSerial("rpi", "sssdd",
-        msg->ip_address.c_str(),
-        msg->hostname.c_str(),
-        msg->date_str.c_str(),
-        (int)msg->power_button_state,
-        (int)msg->broadcasting_hotspot
-    );
 }
 
 bool Rover6SerialBridge::set_pid(rover6_serial_bridge::Rover6PidSrv::Request  &req,

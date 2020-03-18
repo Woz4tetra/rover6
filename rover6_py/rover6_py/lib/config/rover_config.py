@@ -10,6 +10,7 @@ class RoverConfig(Config):
         self.low_voltage = 6.3
         self.critical_voltage = 5.5
         self.critical_voltage_timeout_s = 3.0
+        self.battery_log_report_time = 30.0
 
         self.wheel_radius_cm = 32.5
         self.cm_per_tick = 2.0 * math.pi * self.wheel_radius_cm / 1920.0
@@ -57,6 +58,8 @@ class RoverConfig(Config):
         self.packet_names = {}
         self.write_commands = {}
         self.write_codes = {}
+
+        self.update_rpi_state_delay = 0.5
 
         super(RoverConfig, self).__init__("rover.yaml")
 

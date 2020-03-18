@@ -1,8 +1,8 @@
 <launch>
     <group ns="rover6" >
-        <node type="rover6_serial_bridge_node" name="rover6_serial_bridge_node" pkg="rover6_serial_bridge" required="true" output="log">
-            <param name="serial_port" type="string" value="/dev/serial0"/>
-            <param name="serial_baud" type="int" value="115200"/>
-        </node>
+        <param name="serial_port" type="string" value="/dev/serial0"/>
+        <param name="serial_baud" type="int" value="115200"/>
+
+        <node type="rover6_serial_bridge_node" name="rover6_serial_bridge_node" pkg="rover6_serial_bridge" required="true" output="screen"/>
     </group>
 </launch>

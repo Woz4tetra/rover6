@@ -21,8 +21,8 @@
 
 namespace rover6_encoders
 {
-    Encoder motorA_enc(MOTORA_ENCA, MOTORA_ENCB);
-    Encoder motorB_enc(MOTORB_ENCB, MOTORB_ENCA);
+    Encoder motorA_enc(MOTORA_ENCB, MOTORA_ENCA);
+    Encoder motorB_enc(MOTORB_ENCA, MOTORB_ENCB);
 
     long encA_pos, encB_pos = 0;
     double enc_speedA, enc_speedB = 0.0;  // ticks/s, smoothed

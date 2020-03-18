@@ -38,8 +38,8 @@ namespace rover6_serial
             va_list args;
             va_start(args, formats);
             if (ready()) {
-                make_packet(name, write_packet, formats, args);
-                device()->print(*write_packet);
+                make_packet(name, formats, args);
+                device()->print(write_packet);
                 write_packet_num++;
             }
             va_end(args);
@@ -57,34 +57,33 @@ namespace rover6_serial
             int available = device()->available();
             if (available > 0) {
                 String incoming = device()->readString(available);
-                *read_buffer += incoming;
-            }
-
-            while (readline()) {
-                parse_packet();
+                read_buffer += incoming;
+                while (readline()) {
+                    parse_packet();
+                }
             }
         }
         bool next_segment()
         {
-            if (read_packet_index >= read_packet->length()) {
+            if (read_packet_index >= read_packet.length()) {
                 current_segment_num = -1;
                 return false;
             }
-            int separator = read_packet->indexOf('\t', read_packet_index);
+            int separator = read_packet.indexOf('\t', read_packet_index);
             current_segment_num++;
             if (separator < 0) {
-                *segment = read_packet->substring(read_packet_index);
-                read_packet_index = read_packet->length();
+                segment = read_packet.substring(read_packet_index);
+                read_packet_index = read_packet.length();
                 return true;
             }
             else {
-                *segment = read_packet->substring(read_packet_index, separator);
+                segment = read_packet.substring(read_packet_index, separator);
                 read_packet_index = separator + 1;
                 return true;
             }
         }
         String get_segment() {
-            return *segment;
+            return segment;
         }
         int get_segment_num() {
             return current_segment_num;
@@ -106,56 +105,58 @@ namespace rover6_serial
         }
 
         String get_written_packet() {
-            return *write_packet;
+            return write_packet;
         }
 
     protected:
-        String* write_packet;
-        String* read_packet;
-        String* read_buffer;
-        String* segment;
+        String write_packet;
+        String read_packet;
+        String read_buffer;
+        String segment;
         unsigned int read_packet_num;
         unsigned int write_packet_num;
         unsigned int buffer_index;
         unsigned int read_packet_index;
         int current_segment_num;
+        bool prev_ready_state;
 
         void init_variables() {
-            write_packet = new String();
-            read_packet = new String();
-            read_buffer = new String();
-            segment = new String();
+            write_packet = "";
+            read_packet = "";
+            read_buffer = "";
+            segment = "";
 
             read_packet_num = 0;
             write_packet_num = 0;
             buffer_index = 0;
             read_packet_index = 0;
             current_segment_num = -1;
+            prev_ready_state = false;
         }
 
         void (*read_callback)(String, String);
-        void make_packet(String name, String* packet, const char *formats, va_list args)
+        void make_packet(String name, const char *formats, va_list args)
         {
-            *packet = String(PACKET_START_0) + String(PACKET_START_1);
-            *packet += String(write_packet_num) + "\t";
-            *packet += name;
+            write_packet = String(PACKET_START_0) + String(PACKET_START_1);
+            write_packet += String(write_packet_num) + "\t";
+            write_packet += name;
             while (*formats != '\0') {
-                *packet += "\t";
+                write_packet += "\t";
                 if (*formats == 'd') {
                     int i = va_arg(args, int32_t);
-                    *packet += String(i);
+                    write_packet += String(i);
                 }
                 else if (*formats == 'u') {
                     uint32_t u = va_arg(args, uint32_t);
-                    *packet += String(u);
+                    write_packet += String(u);
                 }
                 else if (*formats == 's') {
                     char *s = va_arg(args, char*);
-                    *packet += s;
+                    write_packet += s;
                 }
                 else if (*formats == 'f') {
                     double f = va_arg(args, double);
-                    *packet += String(f);
+                    write_packet += String(f);
                 }
                 else {
                     write("txrx", "dd", read_packet_num, 8);  // error 8: invalid format
@@ -165,36 +166,36 @@ namespace rover6_serial
             // println_info("*packet: %s", *packet.c_str());
 
             uint8_t calc_checksum = 0;
-            unsigned int length = packet->length();
+            unsigned int length = write_packet.length();
             for (size_t index = 2; index < length; index++) {
-                calc_checksum += (uint16_t)packet->charAt(index);
+                calc_checksum += (uint16_t)write_packet.charAt(index);
             }
 
             if (calc_checksum < 0x10) {
-                *packet += "0";
+                write_packet += "0";
             }
-            *packet += String(calc_checksum, HEX);
-            *packet += String(PACKET_STOP);
+            write_packet += String(calc_checksum, HEX);
+            write_packet += String(PACKET_STOP);
         }
 
         char get_char() {
-            char c = read_packet->charAt(read_packet_index);
+            char c = read_packet.charAt(read_packet_index);
             read_packet_index++;
             return c;
         }
 
         bool readline()
         {
-            if (read_buffer->length() == 0) {
+            if (read_buffer.length() == 0) {
                 return false;
             }
-            int stop_index = read_buffer->indexOf('\n');
+            int stop_index = read_buffer.indexOf('\n');
             if (stop_index == -1) {  // packet isn't ready. Come back later
                 return false;
             }
-            read_packet = new String(read_buffer->substring(0, stop_index));
+            read_packet = read_buffer.substring(0, stop_index);
             read_packet_index = 0;
-            read_buffer->remove(0, stop_index + 1);
+            read_buffer.remove(0, stop_index + 1);
             return true;
         }
 
@@ -203,25 +204,21 @@ namespace rover6_serial
             char c1 = get_char();
             if (c1 != PACKET_START_0) {
                 write("txrx", "dd", read_packet_num, 1);  // error 1: c1 != \x12
-                DATA_SERIAL.print("c1: ");
-                DATA_SERIAL.println(c1);
                 return;
             }
             char c2 = get_char();
             if (c2 != PACKET_START_1) {
                 write("txrx", "dd", read_packet_num, 2);  // error 2: c2 != \x34
-                DATA_SERIAL.print("c2: ");
-                DATA_SERIAL.println(c2);
                 return;
             }
 
-            read_packet->remove(0, 2);  // remove start characters
+            read_packet.remove(0, 2);  // remove start characters
             read_packet_index = 0;
 
             // at least 1 char for packet num
             // \t + at least 1 category char
             // 2 chars for checksum
-            if (read_packet->length() < 5) {
+            if (read_packet.length() < 5) {
                 write("txrx", "dd", read_packet_num, 3);  // error 3: packet is too short
                 read_packet_num++;
                 return;
@@ -230,12 +227,12 @@ namespace rover6_serial
             // Calculate checksum
             uint8_t calc_checksum = 0;
             // compute checksum using all characters except the checksum itself
-            for (size_t index = 0; index < read_packet->length() - 2; index++) {
-                calc_checksum += (uint8_t)read_packet->charAt(index);
+            for (size_t index = 0; index < read_packet.length() - 2; index++) {
+                calc_checksum += (uint8_t)read_packet.charAt(index);
             }
 
             // extract checksum from packet
-            uint8_t recv_checksum = strtol(read_packet->substring(read_packet->length() - 2).c_str(), NULL, 16);
+            uint8_t recv_checksum = strtol(read_packet.substring(read_packet.length() - 2).c_str(), NULL, 16);
 
             if (calc_checksum != recv_checksum) {
                 // checksum failed
@@ -251,7 +248,7 @@ namespace rover6_serial
                 return;
             }
 
-            uint32_t recv_packet_num = segment->toInt();
+            uint32_t recv_packet_num = segment.toInt();
             if (recv_packet_num != read_packet_num) {
                 // this is considered a warning since it isn't critical for packet
                 // numbers to be in sync
@@ -265,11 +262,11 @@ namespace rover6_serial
                 read_packet_num++;
                 return;
             }
-            String category = *segment;
+            String category = String(segment);
 
             // remove checksum
-            read_packet->remove(read_packet->length() - 2, 2);
-            (*read_callback)(category, *read_packet);
+            read_packet.remove(read_packet.length() - 2, 2);
+            (*read_callback)(category, read_packet);
             write("txrx", "dd", read_packet_num, 0);  // 0: no error
             read_packet_num++;
         }
@@ -305,7 +302,12 @@ namespace rover6_serial
             return __device;
         }
         bool ready() {
-            return __device->dtr();
+            bool is_ready = (bool)__device->dtr();
+            if (is_ready != prev_ready_state) {
+                prev_ready_state = is_ready;
+            }
+
+            return is_ready;
         }
     };
 

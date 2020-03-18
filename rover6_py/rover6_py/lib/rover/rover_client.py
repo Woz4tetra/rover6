@@ -15,29 +15,40 @@ logger = LoggerManager.get_logger()
 
 
 class BatteryState:
-    FULL = 0
-    OK = 1
-    LOW = 2
-    CRITICAL = 3
+    UNKNOWN = 0
+    FULL = 1
+    OK = 2
+    LOW = 3
+    CRITICAL = 4
 
     def __init__(self):
         self.state = 0
+        self.voltage_V = 0.0
         self.prev_critical_time = time.time()
 
     def set(self, voltage_V):
+        self.voltage_V = voltage_V
         if voltage_V >= rover_config.full_voltage:
             self.state = self.FULL
-            logger.info("Fully charged: %0.2f" % voltage_V)
         elif voltage_V >= rover_config.ok_voltage:
             self.state = self.OK
-            logger.info("Battery ok: %0.2f" % voltage_V)
         elif voltage_V >= rover_config.low_voltage:
             self.state = self.LOW
-            logger.warn("Battery is low: %0.2f. Shutting down soon." % voltage_V)
         elif voltage_V >= rover_config.critical_voltage:
             self.state = self.CRITICAL
             self.prev_critical_time = time.time()
-            logger.error("Battery is critically low: %0.2f!!" % voltage_V)
+
+    def log_state(self):
+        if self.state == self.FULL:
+            logger.info("Fully charged: %0.2f" % self.voltage_V)
+        elif self.state == self.OK:
+            logger.info("Battery ok: %0.2f" % self.voltage_V)
+        elif self.state == self.LOW:
+            logger.warn("Battery is low: %0.2f. Shutting down soon." % self.voltage_V)
+        elif self.state == self.CRITICAL:
+            logger.error("Battery is critically low: %0.2f!!" % self.voltage_V)
+        else:
+            logger.error("Battery is in an unknown state")
 
 
 class RoverClient:
@@ -97,6 +108,7 @@ class RoverClient:
         self.gpio_hub = None
 
         self.battery_state = BatteryState()
+        self.prev_battery_report_time = time.time()
 
     def start(self):
         logger.info("Starting rover client")
@@ -114,13 +126,17 @@ class RoverClient:
         time.sleep(3.0)
 
     def stop(self):
+        if self.should_stop:
+            logger.info("Stop flag already set")
+            return
         logger.info("Stopping rover client")
         self.should_stop = True
         logger.info("Set read thread stop flag")
-        self.set_active(False)
-        logger.info("Active is False")
         self.set_reporting(False)
         logger.info("Reporting is False")
+        time.sleep(0.01)  # make sure controller doesn't miss the next command
+        self.set_active(False)
+        logger.info("Active is False")
         # self.soft_restart()
         with self.read_lock:
             self.device.stop()
@@ -142,6 +158,7 @@ class RoverClient:
         logger.debug("Writing: %s" % str(packet))
         with self.write_lock:
             self.device.write(packet.packet)
+            time.sleep(0.0005)
         # self.written_packets[packet.packet_num] = packet
         # self.remove_timedout_written_packets()
 
@@ -250,22 +267,19 @@ class RoverClient:
                     logger.info("Exiting read thread")
                     return
 
-                if time.time() - self.prev_time_command_update > 0.5:
+                if time.time() - self.prev_time_command_update > rover_config.update_rpi_state_delay:
                     self.update_rpi_state()
                     self.prev_time_command_update = time.time()
 
                 if self.device.in_waiting() == 0:
                     continue
-                try:
-                    with self.read_lock:
-                        packet = self.parse_packet()
-                except DevicePortReadException as e:
-                    logger.error("%s occurred while waiting for packet! Exiting." % str(e), exc_info=True)
-                    self.thread_exception = e
-                    break
-                except BaseException as e:
-                    logger.error("An error occurred while waiting for a packet!", exc_info=True)
-                    continue
+                # try:
+                with self.read_lock:
+                    packet = self.parse_packet()
+                # except DevicePortReadException as e:
+                #     logger.error("%s occurred while waiting for packet! Exiting." % str(e), exc_info=True)
+                #     self.thread_exception = e
+                #     break
 
                 identifier = packet.identifier
                 if identifier == "txrx":
@@ -378,6 +392,9 @@ class RoverClient:
         if identifier == "ina":
             voltage_V = self.get(identifier, "voltage_V")
             self.battery_state.set(voltage_V)
+            if time.time() - self.prev_battery_report_time > rover_config.battery_log_report_time:
+                self.battery_state.log_state()
+                self.prev_battery_report_time = time.time()
             is_timedout = time.time() - self.battery_state.prev_critical_time > rover_config.critical_voltage_timeout_s
             if self.battery_state == BatteryState.CRITICAL and is_timedout:
                 raise LowBatteryException("Battery is critically low: %0.2f!! Shutting down." % voltage_V)

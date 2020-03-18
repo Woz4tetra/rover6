@@ -137,12 +137,13 @@ namespace rover6_serial {
 
 void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, String packet)
 {
-    rover6_serial::println_info("category: %s, packet: '%s'", category.c_str(), packet.c_str());
+    // rover6_serial::println_info("category: %s, packet: '%s'", category.c_str(), packet.c_str());
     // toggle_active
     if (category.equals("<>")) {
         CHECK_SEGMENT(serial_obj);
-        rover6_serial::println_info("toggle_active %d", serial_obj->get_segment().toInt());
-        switch (serial_obj->get_segment().toInt())
+        int active_state = serial_obj->get_segment().toInt();
+        rover6_serial::println_info("toggle_active %d", active_state);
+        switch (active_state)
         {
             case 0: set_active(false); break;
             case 1: set_active(true); break;
@@ -157,7 +158,7 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
         CHECK_SEGMENT(serial_obj);
         if (serial_obj->get_segment().equals("rover6")) {
             rover6_serial::println_info("Received ready signal!");
-            ROVER6_SERIAL_WRITE_BOTH("ready", "us", CURRENT_TIME, "hana");
+            ROVER6_SERIAL_WRITE_BOTH("ready", "us", CURRENT_TIME, "dul");
         }
         else {
             rover6_serial::println_error("Invalid ready segment supplied: %s", serial_obj->get_segment().c_str());
@@ -167,12 +168,15 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
     // toggle_reporting
     else if (category.equals("[]")) {
         CHECK_SEGMENT(serial_obj);
-        switch (serial_obj->get_segment().toInt())
+        int reporting_state = serial_obj->get_segment().toInt();
+        rover6_serial::println_info("toggle_reporting %d", reporting_state);
+        switch (reporting_state)
         {
             case 0: rover6::rover_state.is_reporting_enabled = false; break;
             case 1: rover6::rover_state.is_reporting_enabled = true; break;
             case 2: reset(); break;
             default:
+                rover6_serial::println_error("Invalid reporting flag received: %d", reporting_state);
                 break;
         }
     }

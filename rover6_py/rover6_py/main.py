@@ -73,13 +73,31 @@ wifi = WifiHub()
 #     return int(command)
 
 def shutdown():
+    logger.warn("Shutdown function called. Shutting down everything.")
     sounds.play(sound_config.shutdown_sound)
     rover.stop()
-    time.sleep(0.5)
-    logger.warn("Shutdown function called. Shutting down everything.")
+    logger.info(rover.data_frame)
     # gpio_hub.close()
+    while sounds.is_running():
+        time.sleep(0.1)
     subprocess.call("sudo shutdown -h now", shell=True)
     sys.exit()
+
+
+def close():
+    logger.info("Close function called. Exiting\n\n")
+    sounds.play(sound_config.shutdown_sound)
+    while sounds.is_running():
+        time.sleep(0.1)
+
+    rover.stop()
+    logger.info(rover.data_frame)
+    for identifier, times in rover.recv_times.items():
+        logger.info("%s:\t%0.4fHz" % (identifier, 1 / np.mean(np.diff(times))))
+        # print("%s:\t%s" % (identifier, np.diff(times).tolist()))
+    logger.info("Closing GPIO Hub\n\n")
+    gpio_hub.close()
+    sounds.quit()
 
 
 def main():
@@ -103,9 +121,10 @@ def main():
     # pan_servo = None
     # tilt_servo = None
 
-    rover.start()
 
     try:
+        rover.start()
+
         # rover.set_k(0.40, 0.0, 0.01)
         # rover.set_safety_thresholds(110, 35, 20)
         # rover.set_obstacle_thresholds(120, 0x10000, 0)
@@ -151,16 +170,7 @@ def main():
         shutdown()
     except BaseException as e:
         logger.error(str(e), exc_info=True)
-    finally:
-        logger.info("Closing rover\n\n")
-        rover.stop()
-        print(rover.data_frame)
-        for identifier, times in rover.recv_times.items():
-            logger.info("%s:\t%0.4fHz" % (identifier, 1 / np.mean(np.diff(times))))
-            # print("%s:\t%s" % (identifier, np.diff(times).tolist()))
-        logger.info("Closing GPIO Hub\n\n")
-        gpio_hub.close()
-        sounds.quit()
+        close()
 
 
 if __name__ == "__main__":

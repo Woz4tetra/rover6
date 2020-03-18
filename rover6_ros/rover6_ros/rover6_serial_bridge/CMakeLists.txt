@@ -59,7 +59,6 @@ add_message_files(
     Rover6Safety.msg
     Rover6TOF.msg
     Rover6Motors.msg
-    Rover6RpiState.msg
     Rover6Servos.msg
 )
 
@@ -68,8 +67,6 @@ add_service_files(
     FILES
     Rover6PidSrv.srv
     Rover6SafetySrv.srv
-    Rover6AutohotspotSrv.srv
-    Rover6ShutdownSrv.srv
 )
 
 ## Generate actions in the 'action' folder

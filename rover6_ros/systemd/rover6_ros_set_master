@@ -7,6 +7,7 @@ if [ -z ${LOCAL_IP} ]; then
 else
     export ROS_IP=${LOCAL_IP}
     export ROS_MASTER_URI=http://${LOCAL_IP}:11311
+    # export ROS_MASTER_URI=http://${HOST_MACHINE_NAME}:11311
 
     echo ${ROS_IP}
     echo ${ROS_MASTER_URI}

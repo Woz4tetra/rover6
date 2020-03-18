@@ -16,14 +16,10 @@ from rover6_chassis.cfg import Rover6ChassisConfig
 
 from rover6_serial_bridge.msg import Rover6Encoder
 from rover6_serial_bridge.msg import Rover6Motors
-from rover6_serial_bridge.msg import Rover6RpiState
 
 from rover6_serial_bridge.srv import Rover6PidSrv
 from rover6_serial_bridge.srv import Rover6SafetySrv
-from rover6_serial_bridge.srv import Rover6AutohotspotSrv, Rover6AutohotspotSrvResponse
-from rover6_serial_bridge.srv import Rover6ShutdownSrv, Rover6ShutdownSrvResponse
 
-from autohotspot_manager import AutohotspotManager
 
 class Rover6Chassis:
     def __init__(self):
@@ -40,7 +36,6 @@ class Rover6Chassis:
         self.wheel_distance_cm = rospy.get_param("~wheel_distance_cm", 16.0)
         self.ticks_per_rotation = rospy.get_param("~ticks_per_rotation", 3840.0)
         self.motors_pub_name = "motors"  # rospy.get_param("~motors_pub_name", "motors")
-        self.rpi_state_pub_name = "rpi_state"  # rospy.get_param("~rpi_state_name", "rpi_state")
         self.max_speed_cps = rospy.get_param("~max_speed_cps", 915.0)
 
         self.wheel_radius_m = self.wheel_radius_cm / 100.0
@@ -66,11 +61,8 @@ class Rover6Chassis:
         # motor message
         self.motors_msg = Rover6Motors()
 
-        # rpi state message
-        self.rpi_state_msg = Rover6RpiState()
-
         # Safety variables
-        self.tof_servo_lower_command = rospy.get_param("~tof_servo_lower_command", 180)
+        self.tof_servo_lower_command = rospy.get_param("~tof_servo_lower_command", 0)
         self.tof_servo_upper_command = rospy.get_param("~tof_servo_upper_command", 90)
         self.tof_servo_lower_angle_deg = rospy.get_param("~tof_servo_lower_angle_deg", 275.0)
         self.tof_servo_upper_angle_deg = rospy.get_param("~tof_servo_upper_angle_deg", 360.0)
@@ -101,7 +93,6 @@ class Rover6Chassis:
         # Publishers
         self.odom_pub = rospy.Publisher("odom", Odometry, queue_size=5)
         self.motors_pub = rospy.Publisher(self.motors_pub_name, Rover6Motors, queue_size=100)
-        self.rpi_state_pub = rospy.Publisher(self.rpi_state_pub_name, Rover6RpiState, queue_size=100)
 
         # Services
         self.pid_service_name = "rover6_pid"
@@ -122,13 +113,6 @@ class Rover6Chassis:
 
         # dynamic reconfigure
         dyn_cfg = Server(Rover6ChassisConfig, lambda config, level: Rover6Chassis.dynamic_callback(self, config, level))
-
-        # Autohotspot Manager
-        self.autohotspot = AutohotspotManager()
-        self.autohotspot_srv = rospy.Service("autohotspot", Rover6AutohotspotSrv, lambda req: Rover6Chassis.handle_autohotspot(self, req))
-
-        # Shutdown service
-        self.shutdown_srv = rospy.Service("shutdown", Rover6ShutdownSrv, lambda req: Rover6Chassis.handle_shutdown(self, req))
 
     def dynamic_callback(self, config, level):
         if self.set_pid is None:
@@ -237,7 +221,6 @@ class Rover6Chassis:
 
     def run(self):
         clock_rate = rospy.Rate(30)
-        self.set_timer()
 
         while not rospy.is_shutdown():
             try:
@@ -312,29 +295,6 @@ class Rover6Chassis:
 
         self.prev_left_ticks = self.enc_msg.left_ticks
         self.prev_right_ticks = self.enc_msg.right_ticks
-
-    def rpi_state_timer_callback(self, event):
-        self.autohotspot.update()
-        self.rpi_state_msg.ip_address = self.autohotspot.ip_address
-        self.rpi_state_msg.hostname = self.autohotspot.hostname
-        self.rpi_state_msg.date_str = datetime.datetime.now().strftime("%I:%M:%S%p")
-        self.rpi_state_msg.power_button_state = False
-        self.rpi_state_msg.broadcasting_hotspot = self.autohotspot.status_code
-
-        self.rpi_state_pub.publish(self.rpi_state_msg)
-
-    def set_timer(self):
-        rospy.Timer(rospy.Duration(0.5), self.rpi_state_timer_callback)
-
-    def handle_autohotspot(self, req):
-        success = self.autohotspot.set_mode(req.mode)
-        if not success:
-            rospy.logerror("Invalid mode received: '%s'" % req.mode)
-        return Rover6AutohotspotSrvResponse(success)
-
-    def handle_shutdown(self, req):
-        os.system("sudo shutdown now")
-        return Rover6ShutdownResponse(True)
 
 
 if __name__ == "__main__":

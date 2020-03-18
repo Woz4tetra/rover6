@@ -111,7 +111,7 @@ class Rover6Teleop:
         #     pass
 
         linear_val = self.joy_to_speed(self.linear_scale, msg.axes[self.linear_axis])
-        angular_val = self.joy_to_speed(self.angular_scale, -msg.axes[self.angular_axis])
+        angular_val = self.joy_to_speed(self.angular_scale, msg.axes[self.angular_axis])
         publish_cmd_vel = False
         if self.twist_command.linear.x != linear_val:
             self.twist_command.linear.x = linear_val

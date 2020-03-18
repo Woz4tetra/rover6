@@ -37,9 +37,9 @@ namespace rover6_servos
     #define CAMERA_TILT_SERVO_NUM 3
 
     #define FRONT_TILTER_UP 90
-    #define FRONT_TILTER_DOWN 180
+    #define FRONT_TILTER_DOWN 0
     #define BACK_TILTER_UP 90
-    #define BACK_TILTER_DOWN 180
+    #define BACK_TILTER_DOWN 0
 
     #define CAMERA_PAN_RIGHT 90
     #define CAMERA_PAN_CENTER 43
@@ -75,13 +75,13 @@ namespace rover6_servos
         pinMode(SERVO_STBY, OUTPUT);
         digitalWrite(SERVO_STBY, LOW);
 
-        servo_max_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_DOWN;
-        servo_max_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_DOWN;
+        servo_max_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_UP;
+        servo_max_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_UP;
         servo_max_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_RIGHT;
         servo_max_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_DOWN;
 
-        servo_min_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_UP;
-        servo_min_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_UP;
+        servo_min_positions[FRONT_TILTER_SERVO_NUM] = FRONT_TILTER_DOWN;
+        servo_min_positions[BACK_TILTER_SERVO_NUM] = BACK_TILTER_DOWN;
         servo_min_positions[CAMERA_PAN_SERVO_NUM] = CAMERA_PAN_LEFT;
         servo_min_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_UP;
 
@@ -94,7 +94,7 @@ namespace rover6_servos
         servos.sleep();
         set_servos_default();
 
-        servo_cmd_to_angle_m = (270.0 - 360.0) / ((double)servo_min_positions[BACK_TILTER_SERVO_NUM] - (double)servo_max_positions[BACK_TILTER_SERVO_NUM]);
+        servo_cmd_to_angle_m = (360.0 - 270.0) / ((double)BACK_TILTER_UP - (double)BACK_TILTER_DOWN);
         rover6_serial::println_info("PCA9685 Servos initialized.");
     }
 
@@ -133,7 +133,7 @@ namespace rover6_servos
 
 
     double tilter_servo_cmd_to_angle(int command) {
-        return servo_cmd_to_angle_m * ((double)command - (double)servo_min_positions[BACK_TILTER_SERVO_NUM]) + 360.0;
+        return servo_cmd_to_angle_m * ((double)command - 270.0) + BACK_TILTER_DOWN;
     }
 
 

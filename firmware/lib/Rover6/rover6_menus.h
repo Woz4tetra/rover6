@@ -489,7 +489,7 @@ namespace rover6_menus
             }
 
             sd_vals.front_servo_angle = new_front_servo_angle;
-            sd_vals.front_servo_x = cos(sd_vals.front_servo_angle) * sd_vals.servo_indicator_r + sd_vals.front_servo_origin_x;
+            sd_vals.front_servo_x = -cos(sd_vals.front_servo_angle) * sd_vals.servo_indicator_r + sd_vals.front_servo_origin_x;
             sd_vals.front_servo_y = sin(sd_vals.front_servo_angle) * sd_vals.servo_indicator_r + sd_vals.front_servo_origin_y;
 
             tft.drawFastHLine(sd_vals.front_servo_origin_x, sd_vals.front_servo_origin_y, sd_vals.servo_indicator_r, ST7735_WHITE);
@@ -519,7 +519,7 @@ namespace rover6_menus
             }
 
             sd_vals.back_servo_angle = new_back_servo_angle;
-            sd_vals.back_servo_x = -cos(sd_vals.back_servo_angle) * sd_vals.servo_indicator_r + sd_vals.back_servo_origin_x;
+            sd_vals.back_servo_x = cos(sd_vals.back_servo_angle) * sd_vals.servo_indicator_r + sd_vals.back_servo_origin_x;
             sd_vals.back_servo_y = sin(sd_vals.back_servo_angle) * sd_vals.servo_indicator_r + sd_vals.back_servo_origin_y;
 
             tft.drawFastHLine(sd_vals.back_servo_origin_x, sd_vals.back_servo_origin_y, -sd_vals.servo_indicator_r, ST7735_WHITE);

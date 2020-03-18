@@ -3,6 +3,7 @@ ok_voltage: 7
 low_voltage: 6.6
 critical_voltage: 6.3
 critical_voltage_timeout_s: 15.0
+battery_log_report_time: 30.0
 
 # wheel_radius_cm: 32.5
 # cm_per_tick: 2.0 * pi * self.wheel_radius_cm / 1920.0
@@ -45,6 +46,8 @@ ledge_threshold_y_mm: 35.0
 buffer_x_mm: 20.0
 
 num_servos: 16
+
+update_rpi_state_delay: 0.5
 
 packet_codes:
   txrx: "dd"
