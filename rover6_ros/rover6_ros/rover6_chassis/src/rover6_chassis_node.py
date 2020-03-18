@@ -147,6 +147,7 @@ class Rover6Chassis:
                 config["obstacle_threshold_x_mm"],
                 config["ledge_threshold_y_mm"],
                 config["buffer_x_mm"],
+                config["ranging_tilter_mode"],
             )
             self.set_safety_thresholds(*args)
         except rospy.ServiceException, e:
@@ -182,7 +183,7 @@ class Rover6Chassis:
         return obstacle_threshold, ledge_threshold, servo_command
 
 
-    def get_stopping_thresholds(self, obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm=10.0):
+    def get_stopping_thresholds(self, obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm, ranging_tilter_mode):
         # obstacle_threshold_x_mm: measured from the maximum point of the front or back of the robot
         # ledge_threshold_y_mm: measured from the ground plane where the robot sits flat on the ground
         # buffer_x_mm: x buffer distance to account for robot stopping time and update rate delay
@@ -195,6 +196,16 @@ class Rover6Chassis:
             self.calculate_tof_thresholds(obstacle_threshold_x_mm, ledge_threshold_y_mm, buffer_x_mm,
                                      self.tof_back_wall_dist_mm)
 
+
+        # if ranging_tilter_mode == 0:  # look for both obstacles and ledges
+        if ranging_tilter_mode == 1:  # look for obstacles only
+            front_servo_command = 90
+            back_servo_command = 90
+            front_ledge_threshold = 0xffff
+            back_ledge_threshold = 0xffff
+        elif ranging_tilter_mode == 2:  # look for ledges only
+            front_obstacle_threshold = 0
+            back_obstacle_threshold = 0
         return (
             int(front_obstacle_threshold), int(front_ledge_threshold), int(front_servo_command),
             int(back_obstacle_threshold), int(back_ledge_threshold), int(back_servo_command)

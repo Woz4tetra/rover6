@@ -150,7 +150,7 @@ namespace rover6_tof
         }
         rover6_serial::println_info("VL53L0X's initialized.");
 
-        set_lox_active(false);
+        set_lox_active(true);
 
         LOX_THRESHOLDS[0] = LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM;
         LOX_THRESHOLDS[1] = LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM;
@@ -170,12 +170,47 @@ namespace rover6_tof
         );
     }
 
-    bool is_range_status_ok(uint8_t range_status) {
-        return range_status < 4;
+    bool is_range_status_ok(uint8_t range_status, int lower_threshold, int upper_threhold) {
+        if (lower_threshold == 0) {
+            switch (range_status) {
+                case 0:  // Range Valid
+                case 2:  // Signal Fail
+                case 1:  // Sigma Fail
+                    return true;
+                case 3:  // Min Range Fail
+                case 4:  // Phase Fail
+                case 5: return false;  // Hardware Fail
+                default: return false;  // No Update
+            }
+        }
+        else if (upper_threhold == 0xffff) {
+            switch (range_status) {
+                case 0:  // Range Valid
+                case 1:  // Sigma Fail
+                case 2:  // Signal Fail
+                case 4:  // Phase Fail
+                    return true;
+                case 3:  // Min Range Fail
+                case 5: return false;  // Hardware Fail
+                default: return false;  // No Update
+            }
+        }
+        else {
+            switch (range_status) {
+                case 0:  // Range Valid
+                case 2:  // Signal Fail
+                    return true;
+                case 1:  // Sigma Fail
+                case 3:  // Min Range Fail
+                case 4:  // Phase Fail
+                case 5: return false;  // Hardware Fail
+                default: return false;  // No Update
+            }
+        }
     }
 
     bool does_front_tof_see_obstacle() {
-        if (!is_range_status_ok(measure1.RangeStatus)) {
+        if (!is_range_status_ok(measure1.RangeStatus, LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM, LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM)) {
             return true;
         }
         return (
@@ -185,7 +220,7 @@ namespace rover6_tof
     }
 
     bool does_back_tof_see_obstacle() {
-        if (!is_range_status_ok(measure2.RangeStatus)) {
+        if (!is_range_status_ok(measure2.RangeStatus, LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM, LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM)) {
             return true;
         }
         return (

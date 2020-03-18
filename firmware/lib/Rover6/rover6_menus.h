@@ -539,8 +539,20 @@ namespace rover6_menus
     void draw_safety_menu()
     {
         int y_offset = TOP_BAR_H + 5;
-        tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("tof f: " + String(rover6_tof::measure1.RangeMilliMeter) + ", " + String(rover6_tof::LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM) + ", " + String(rover6_tof::LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM) + "   ");  y_offset += ROW_SIZE;
-        tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("tof b: " + String(rover6_tof::measure2.RangeMilliMeter) + ", " + String(rover6_tof::LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM) + ", " + String(rover6_tof::LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM) + "   "); y_offset += ROW_SIZE;
+        tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println(
+            "tof f: " +
+            String(rover6_tof::measure1.RangeMilliMeter) + ", " +
+            String(rover6_tof::measure1.RangeStatus) + ", " +
+            String(rover6_tof::LOX_FRONT_OBSTACLE_LOWER_THRESHOLD_MM) + ", " +
+            String(rover6_tof::LOX_FRONT_OBSTACLE_UPPER_THRESHOLD_MM) +
+            "   ");  y_offset += ROW_SIZE;
+        tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println(
+            "tof b: " +
+            String(rover6_tof::measure2.RangeMilliMeter) + ", " +
+            String(rover6_tof::measure2.RangeStatus) + ", " +
+            String(rover6_tof::LOX_BACK_OBSTACLE_LOWER_THRESHOLD_MM) + ", " +
+            String(rover6_tof::LOX_BACK_OBSTACLE_UPPER_THRESHOLD_MM) +
+            "   "); y_offset += ROW_SIZE;
         tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr l: " + String(rover6_fsr::fsr_1_val) + "   "); y_offset += ROW_SIZE;
         tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("fsr r: " + String(rover6_fsr::fsr_2_val) + "   "); y_offset += ROW_SIZE;
         tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("servo f: " + String(rover6_servos::servo_positions[FRONT_TILTER_SERVO_NUM]) + "   "); y_offset += ROW_SIZE;

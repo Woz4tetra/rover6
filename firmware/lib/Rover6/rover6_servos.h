@@ -91,8 +91,9 @@ namespace rover6_servos
         servo_default_positions[CAMERA_TILT_SERVO_NUM] = CAMERA_TILT_CENTER;
 
         rover6::safety_struct.are_servos_active = false;
-        servos.sleep();
+        // servos.sleep();
         set_servos_default();
+        set_servos_active(true);
 
         servo_cmd_to_angle_m = (360.0 - 270.0) / ((double)BACK_TILTER_UP - (double)BACK_TILTER_DOWN);
         rover6_serial::println_info("PCA9685 Servos initialized.");

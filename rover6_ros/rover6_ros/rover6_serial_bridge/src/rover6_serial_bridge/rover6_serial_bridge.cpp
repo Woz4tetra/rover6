@@ -355,6 +355,7 @@ void Rover6SerialBridge::writeSerial(string name, const char *formats, ...)
     ROS_DEBUG_STREAM("Writing: " << packet);
     _serialRef.write(packet);
     _writePacketNum++;
+    ros::Duration(0.0005).sleep();
 }
 
 void Rover6SerialBridge::setup()

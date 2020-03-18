@@ -194,7 +194,7 @@ namespace rover6_bno
 
         delay(100);
 
-        set_bno_active(false);
+        set_bno_active(true);
     }
 
     bool read_BNO055()
