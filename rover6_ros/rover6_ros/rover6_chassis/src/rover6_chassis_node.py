@@ -37,6 +37,7 @@ class Rover6Chassis:
         self.ticks_per_rotation = rospy.get_param("~ticks_per_rotation", 3840.0)
         self.motors_pub_name = "motors"  # rospy.get_param("~motors_pub_name", "motors")
         self.max_speed_cps = rospy.get_param("~max_speed_cps", 915.0)
+        self.services_enabled = rospy.get_param("~services_enabled", True)
 
         self.wheel_radius_m = self.wheel_radius_cm / 100.0
         self.wheel_distance_m = self.wheel_distance_cm / 100.0
@@ -101,20 +102,25 @@ class Rover6Chassis:
         self.safety_service_name = "rover6_safety"
         self.set_safety_thresholds = None
 
-        rospy.loginfo("Waiting for service %s" % self.safety_service_name)
-        rospy.wait_for_service(self.pid_service_name)
-        self.set_pid = rospy.ServiceProxy(self.pid_service_name, Rover6PidSrv)
-        rospy.loginfo("%s service is ready" % self.pid_service_name)
+        if self.services_enabled:
+            rospy.loginfo("Waiting for service %s" % self.safety_service_name)
+            rospy.wait_for_service(self.pid_service_name)
+            self.set_pid = rospy.ServiceProxy(self.pid_service_name, Rover6PidSrv)
+            rospy.loginfo("%s service is ready" % self.pid_service_name)
 
-        rospy.loginfo("Waiting for service %s" % self.safety_service_name)
-        rospy.wait_for_service(self.safety_service_name)
-        self.set_safety_thresholds = rospy.ServiceProxy(self.safety_service_name, Rover6SafetySrv)
-        rospy.loginfo("%s service is ready" % self.safety_service_name)
+            rospy.loginfo("Waiting for service %s" % self.safety_service_name)
+            rospy.wait_for_service(self.safety_service_name)
+            self.set_safety_thresholds = rospy.ServiceProxy(self.safety_service_name, Rover6SafetySrv)
+            rospy.loginfo("%s service is ready" % self.safety_service_name)
 
         # dynamic reconfigure
         dyn_cfg = Server(Rover6ChassisConfig, lambda config, level: Rover6Chassis.dynamic_callback(self, config, level))
 
     def dynamic_callback(self, config, level):
+        if not self.services_enabled:
+            rospy.logwarn("Services for this node aren't enabled!")
+            return
+
         if self.set_pid is None:
             rospy.logwarn("%s service not ready yet!" % self.pid_service_name)
         else:
@@ -127,6 +133,8 @@ class Rover6Chassis:
         return config
 
     def call_pid_service(self, config):
+        if not self.services_enabled:
+            rospy.logwarn("Services for this node aren't enabled!")
         try:
             self.set_pid(
                 config["kp_A"],
@@ -142,6 +150,8 @@ class Rover6Chassis:
             rospy.logwarn("%s service call failed: %s" % (self.pid_service_name, e))
 
     def call_safety_service(self, config):
+        if not self.services_enabled:
+            rospy.logwarn("Services for this node aren't enabled!")
         try:
             args = self.get_stopping_thresholds(
                 config["obstacle_threshold_x_mm"],
