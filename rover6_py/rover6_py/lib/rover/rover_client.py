@@ -24,19 +24,31 @@ class BatteryState:
     def __init__(self):
         self.state = 0
         self.voltage_V = 0.0
-        self.prev_critical_time = time.time()
+        self.prev_critical_time = None
 
     def set(self, voltage_V):
         self.voltage_V = voltage_V
         if voltage_V >= rover_config.full_voltage:
             self.state = self.FULL
+            self.prev_critical_time = None
         elif voltage_V >= rover_config.ok_voltage:
             self.state = self.OK
+            self.prev_critical_time = None
         elif voltage_V >= rover_config.low_voltage:
             self.state = self.LOW
+            self.prev_critical_time = None
         elif voltage_V >= rover_config.critical_voltage:
             self.state = self.CRITICAL
-            self.prev_critical_time = time.time()
+            if self.prev_critical_time is None:
+                self.prev_critical_time = time.time()
+
+
+    def should_shutdown(self):
+        return (
+            self.state == self.CRITICAL and
+            self.prev_critical_time is not None and
+            time.time() - self.prev_critical_time > rover_config.critical_voltage_timeout_s
+        )
 
     def log_state(self):
         if self.state == self.FULL:
@@ -395,8 +407,7 @@ class RoverClient:
             if time.time() - self.prev_battery_report_time > rover_config.battery_log_report_time:
                 self.battery_state.log_state()
                 self.prev_battery_report_time = time.time()
-            is_timedout = time.time() - self.battery_state.prev_critical_time > rover_config.critical_voltage_timeout_s
-            if self.battery_state == BatteryState.CRITICAL and is_timedout:
+            if self.battery_state.should_shutdown():
                 raise LowBatteryException("Battery is critically low: %0.2f!! Shutting down." % voltage_V)
         elif identifier == "shutdown":
             if self.get(identifier, "name") == "rover6":
