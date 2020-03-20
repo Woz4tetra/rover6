@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <node pkg="rosbag" type="record" name="rosbag_record_for_gmapping"
-       args="record -o $(find rover6_config)/bags/sensors /tf /rplidar/scan /rover6/battery /rover6/bno055 /rover6/encoders /rover6/fsrs /rover6/motors /rover6/safety /rover6/servo_positions /rover6/servos /rover6/tof /rover6/odom" >
+       args="record -o $(find rover6_config)/bags/sensors /rplidar/scan /rover6/odom /rover6/battery /rover6/bno055 /rover6/encoders /rover6/fsrs /rover6/motors /rover6/safety /rover6/servo_positions /rover6/servos /rover6/tof" >
        <!--if="$(arg record_hrpsys)" /> -->
     </node>
 </launch>
