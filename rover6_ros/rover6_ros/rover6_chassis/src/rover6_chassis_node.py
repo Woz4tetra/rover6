@@ -113,8 +113,8 @@ class Rover6Chassis:
             self.set_safety_thresholds = rospy.ServiceProxy(self.safety_service_name, Rover6SafetySrv)
             rospy.loginfo("%s service is ready" % self.safety_service_name)
 
-        # dynamic reconfigure
-        dyn_cfg = Server(Rover6ChassisConfig, lambda config, level: Rover6Chassis.dynamic_callback(self, config, level))
+            # dynamic reconfigure
+            dyn_cfg = Server(Rover6ChassisConfig, lambda config, level: Rover6Chassis.dynamic_callback(self, config, level))
 
     def dynamic_callback(self, config, level):
         if not self.services_enabled:

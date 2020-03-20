@@ -6,7 +6,7 @@
     <group ns="rover6" >
         <node name="rover6_chassis" pkg="rover6_chassis" type="rover6_chassis_node.py" output="screen" required="true">
             <remap from="cmd_vel" to="$(arg cmd_vel_topic)" />
-            <arg name="services_enabled" value="(arg rover6_chassis_services_enabled)"/>
+            <param name="services_enabled" value="$(arg rover6_chassis_services_enabled)"/>
         </node>
     </group>
 </launch>

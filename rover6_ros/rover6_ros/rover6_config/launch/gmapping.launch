@@ -6,6 +6,7 @@
     </node>
     <include file="$(find rover6_config)/launch/static_transforms.launch"/>
 
-    <arg name="rover6_chassis_services_enabled" value="false"/>
-    <include file="$(find rover6_chassis)/launch/rover6_chassis.launch"/>
+    <include file="$(find rover6_chassis)/launch/rover6_chassis.launch">
+        <arg name="rover6_chassis_services_enabled" value="false"/>
+    </include>
 </launch>
