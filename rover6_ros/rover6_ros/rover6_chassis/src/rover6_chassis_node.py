@@ -38,6 +38,7 @@ class Rover6Chassis:
         self.motors_pub_name = "motors"  # rospy.get_param("~motors_pub_name", "motors")
         self.max_speed_cps = rospy.get_param("~max_speed_cps", 915.0)
         self.services_enabled = rospy.get_param("~services_enabled", True)
+        self.use_sensor_msg_time = rospy.get_param("~use_sensor_msg_time", True)
 
         self.wheel_radius_m = self.wheel_radius_cm / 100.0
         self.wheel_distance_m = self.wheel_distance_cm / 100.0
@@ -254,16 +255,20 @@ class Rover6Chassis:
             clock_rate.sleep()
 
     def publish_chassis_data(self):
+        if self.use_sensor_msg_time:
+            now = self.enc_msg.header.stamp
+        else:
+            now = rospy.Time.now()
         odom_quaternion = tf.transformations.quaternion_from_euler(0.0, 0.0, self.odom_t)
         self.tf_broadcaster.sendTransform(
             (self.odom_x, self.odom_y, 0.0),
             odom_quaternion,
-            self.enc_msg.header.stamp,
+            now,
             self.child_frame,
             self.parent_frame
         )
 
-        self.odom_msg.header.stamp = self.enc_msg.header.stamp
+        self.odom_msg.header.stamp = now
         self.odom_msg.pose.pose.position.x = self.odom_x
         self.odom_msg.pose.pose.position.y = self.odom_y
         self.odom_msg.pose.pose.position.z = 0.0
