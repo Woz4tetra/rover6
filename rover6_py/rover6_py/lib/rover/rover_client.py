@@ -122,6 +122,9 @@ class RoverClient:
         self.battery_state = BatteryState()
         self.prev_battery_report_time = time.time()
 
+        self.client_start_time = None
+        self.device_start_time = None
+
     def start(self):
         logger.info("Starting rover client")
         self.device.configure()
@@ -231,7 +234,7 @@ class RoverClient:
             self.read_packet_num = packet.packet_num
 
         if packet.identifier not in self.data_frame:
-            self.data_frame[packet.identifier] = {"num": self.read_packet_num}
+            self.data_frame[packet.identifier] = {"num": self.read_packet_num, "recv_time": 0.0}
         for segment_index, segment in packet.iter():
             subfield_name = self.PACKET_NAMES[packet.identifier][segment_index]
             self.data_frame[packet.identifier][subfield_name] = segment
@@ -254,10 +257,21 @@ class RoverClient:
 
     def on_recv_time(self, identifier):
         recv_time = self.get(identifier, "time")
+        if recv_time is None:
+            self.data_frame[identifier]["recv_time"] = time.time()
+            return
+        
+        recv_time *= 1E-3  # ms to s
+
         # recv_time = time.time()
+        if self.client_start_time is None:
+            self.client_start_time = time.time()
+        if self.device_start_time is None:
+            self.device_start_time = recv_time
+
+        self.data_frame[identifier]["recv_time"] = self.client_start_time + (recv_time - self.device_start_time)
 
         if recv_time:
-            recv_time *= 1E-3
             if identifier in self.recv_times:
                 self.recv_times[identifier].append(recv_time)
                 while len(self.recv_times[identifier]) > 0x10000:
@@ -293,20 +307,29 @@ class RoverClient:
                 #     self.thread_exception = e
                 #     break
 
-                identifier = packet.identifier
-                if identifier == "txrx":
-                    self.on_txrx()
-                self.on_recv_time(identifier)
-                self.on_receive(identifier)
+                self.on_receive(packet.identifier)
         except BaseException as e:
             logger.error("An exception occurred in the read thread", exc_info=True)
             self.thread_exception = e
 
-    def get(self, identifier, name):
+    def _get_from_name(self, identifier, name):
         if identifier in self.data_frame:
             if name in self.data_frame[identifier]:
                 return self.data_frame[identifier][name]
         return None
+
+    def get(self, identifier, *names):
+        if len(names) > 1:
+            result = []
+            for name in names:
+                result.append(self._get_from_name(identifier, name))
+            result = tuple(result)
+        elif len(names) == 1:
+            result = self._get_from_name(identifier, names[0])
+        else:
+            return None
+
+        return result
 
     def check_ready(self):
         self.write("get_ready", "rover6")
@@ -401,6 +424,8 @@ class RoverClient:
             self.write("set_servo", int(n), int(command))
 
     def on_receive(self, identifier):
+        self.on_recv_time(identifier)
+
         if identifier == "ina":
             voltage_V = self.get(identifier, "voltage_V")
             self.battery_state.set(voltage_V)

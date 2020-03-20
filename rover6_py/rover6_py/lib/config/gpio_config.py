@@ -11,3 +11,11 @@ class GpioConfig(Config):
         self.fan_out = 22
         self.shutdown_time_s = 3.0
         super(GpioConfig, self).__init__("gpio.yaml")
+
+    def to_dict(self):
+        return {
+            "led_out": self.led_out,
+            "button_in": self.button_in,
+            "fan_out": self.fan_out,
+            "shutdown_time_s": self.shutdown_time_s,
+        }

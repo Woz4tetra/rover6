@@ -30,24 +30,34 @@ class LoggerManager:
     def get_logger(cls):
         if cls.logger is not None:
             return cls.logger
+        cls.logger = cls._create_logger(**log_config.to_dict())
+        return cls.logger
 
-        cls.logger = logging.getLogger(log_config.name)
-        cls.logger.setLevel(log_config.level)
+    @staticmethod
+    def _create_logger(**kwargs):
+        name = kwargs["name"]
+        path = kwargs["path"]
+        level = kwargs["level"]
+        format = kwargs["format"]
+        suffix = kwargs["suffix"]
 
-        formatter = MyFormatter(log_config.format)
+        logger = logging.getLogger(name)
+        logger.setLevel(level)
+
+        formatter = MyFormatter(format)
 
         rotate_handle = handlers.TimedRotatingFileHandler(
-            log_config.path,
+            path,
             when="midnight", interval=1
         )
-        rotate_handle.setLevel(log_config.level)
+        rotate_handle.setLevel(level)
         rotate_handle.setFormatter(formatter)
-        rotate_handle.suffix = log_config.suffix
-        cls.logger.addHandler(rotate_handle)
+        rotate_handle.suffix = suffix
+        logger.addHandler(rotate_handle)
 
         print_handle = logging.StreamHandler()
-        print_handle.setLevel(log_config.level)
+        print_handle.setLevel(level)
         print_handle.setFormatter(formatter)
-        cls.logger.addHandler(print_handle)
+        logger.addHandler(print_handle)
 
-        return cls.logger
+        return logger

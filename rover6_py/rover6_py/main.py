@@ -10,6 +10,7 @@ from lib.logger_manager import LoggerManager
 from lib.gpio_hub import GpioHub
 from lib.sound_hub import SoundHub
 from lib.wifi_hub import WifiHub
+from lib.data_logger import DataLogger
 from lib.exceptions import ShutdownException, LowBatteryException
 
 logger = LoggerManager.get_logger()
@@ -17,11 +18,13 @@ logger = LoggerManager.get_logger()
 rover_config = ConfigManager.get_rover_config()
 gpio_config = ConfigManager.get_gpio_config()
 sound_config = ConfigManager.get_sound_config()
+data_log_config = ConfigManager.get_data_log_config()
 
 rover = RoverClient()
 gpio_hub = GpioHub()
 sounds = SoundHub()
 wifi = WifiHub()
+data_logger = DataLogger(rover)
 
 
 # max_speed = 915.0
@@ -135,6 +138,8 @@ def main():
         while True:
             gpio_hub.update()
             wifi.update()
+            if data_log_config.enabled:
+                data_logger.update()
             time.sleep(1.0 / gpio_config.update_rate_hz)
 
             # if not joystick.is_open():

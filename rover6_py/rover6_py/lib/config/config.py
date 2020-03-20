@@ -20,3 +20,6 @@ class Config:
         with open(self.config_path) as file:
             config = yaml.safe_load(file.read())
         self.__dict__.update(config)
+
+    def to_dict(self):
+        return {}

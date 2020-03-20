@@ -4,6 +4,7 @@ from .device_port_config import DevicePortConfig
 from .gpio_config import GpioConfig
 from .sound_config import SoundConfig
 from .wifi_config import WifiConfig
+from .data_log_config import DataLogConfig
 
 
 class ConfigManager:
@@ -13,6 +14,7 @@ class ConfigManager:
     gpio_config = None
     sound_config = None
     wifi_config = None
+    data_log_config = None
 
     def __init__(self):
         raise Exception("{} is class only".format(self.__class__.__name__))
@@ -52,3 +54,9 @@ class ConfigManager:
         if cls.wifi_config is None:
             cls.wifi_config = WifiConfig()
         return cls.wifi_config
+
+    @classmethod
+    def get_data_log_config(cls):
+        if cls.data_log_config is None:
+            cls.data_log_config = DataLogConfig()
+        return cls.data_log_config

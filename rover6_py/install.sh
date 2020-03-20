@@ -9,6 +9,7 @@ if [ "${BASE_INSTALL_DIR}" = "" ]; then
   BASE_INSTALL_DIR=~/.local/rover6/rover6_py
 fi
 mkdir -p ${BASE_INSTALL_DIR}/logs
+mkdir -p ${BASE_INSTALL_DIR}/data
 
 echo "Installing config files"
 cp -r ${SRC_DIR}/config ${BASE_INSTALL_DIR}

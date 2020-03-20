@@ -3,28 +3,32 @@ import logging
 from .config import Config
 
 
-class LogConfig(Config):
+class DataLogConfig(Config):
     def __init__(self):
-        self.name = "rover6"
+        self.name = "rover6_data"
         self.level = logging.DEBUG
-        self.file_name = "rover6"
+        self.file_name = "data"
         self.suffix = "%Y-%m-%d.log"
-        self.format = "%(levelname)s\t%(asctime)s\t[%(name)s, %(filename)s:%(lineno)d]\t%(message)s"
+        self.format = "%(asctime)s:\t%(message)s"
+        self.log_freq_hz = 1.0
+        self.enabled = False
 
-        super(LogConfig, self).__init__("logging.yaml")
+        super(DataLogConfig, self).__init__("data_logging.yaml")
 
-        self.dir = os.path.join(self.base_dir, "logs")
+        self.dir = os.path.join(self.base_dir, "data")
         if not os.path.isdir(self.dir):
             os.makedirs(self.dir)
         self.path = os.path.join(self.dir, self.file_name)
 
     def to_dict(self):
         return {
+            "enabled": self.enabled,
             "name": self.name,
             "level": self.level,
             "file_name": self.file_name,
             "suffix": self.suffix,
             "format": self.format,
             "path": self.path,
-            "dir": self.dir
+            "dir": self.dir,
+            "log_freq_hz": self.log_freq_hz,
         }

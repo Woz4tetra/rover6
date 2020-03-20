@@ -10,3 +10,10 @@ class SoundConfig(Config):
         super(SoundConfig, self).__init__("sounds.yaml")
         self.boot_sound = os.path.expanduser(self.boot_sound)
         self.shutdown_sound = os.path.expanduser(self.shutdown_sound)
+
+    def to_dict(self):
+        return {
+            "boot_sound": self.boot_sound,
+            "shutdown_sound": self.shutdown_sound,
+            "volume": self.volume,
+        }
