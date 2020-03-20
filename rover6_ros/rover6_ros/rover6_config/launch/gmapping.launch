@@ -8,5 +8,6 @@
 
     <include file="$(find rover6_chassis)/launch/rover6_chassis.launch">
         <arg name="rover6_chassis_services_enabled" value="false"/>
+        <arg name="rover6_chassis_use_sensor_msg_time" value="false"/>
     </include>
 </launch>

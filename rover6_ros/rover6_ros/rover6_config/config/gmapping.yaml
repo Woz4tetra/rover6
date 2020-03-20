@@ -1,4 +1,4 @@
-use_sim_time: true
+/use_sim_time: true
 
 odom_frame: odom
 base_frame: base_link
@@ -14,8 +14,8 @@ throttle_scans: 1  # 1 = no scans skipped
 # minimumScore: 40
 
 # Update frequencies
-# linearUpdate: 0.1
-# angularUpdate: 0.05
+linearUpdate: 0.1
+angularUpdate: 0.05
 temporalUpdate: 1.0
 # resampleThreshold: 0.5
 

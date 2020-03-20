@@ -2,11 +2,13 @@
 <launch>
     <arg name="cmd_vel_topic" default="cmd_vel"/>
     <arg name="rover6_chassis_services_enabled" default="true"/>
+    <arg name="rover6_chassis_use_sensor_msg_time" default="true"/>
 
     <group ns="rover6" >
         <node name="rover6_chassis" pkg="rover6_chassis" type="rover6_chassis_node.py" output="screen" required="true">
             <remap from="cmd_vel" to="$(arg cmd_vel_topic)" />
             <param name="services_enabled" value="$(arg rover6_chassis_services_enabled)"/>
+            <param name="use_sensor_msg_time" value="$(arg rover6_chassis_use_sensor_msg_time)"/>
         </node>
     </group>
 </launch>
