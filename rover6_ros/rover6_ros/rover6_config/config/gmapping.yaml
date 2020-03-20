@@ -7,8 +7,8 @@ map_frame: map
 map_update_interval: 5.0  # Publish new map (seconds)
 throttle_scans: 1  # 1 = no scans skipped
 
-# maxRange: 16.0 # Max sensor value
-# maxUrange: 12.0 # Usable region of the sensor
+maxRange: 8.0 # Max sensor value
+maxUrange: 8.0 # Usable region of the sensor
 # particles: 25
 
 # minimumScore: 40
