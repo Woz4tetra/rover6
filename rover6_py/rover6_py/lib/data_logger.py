@@ -1,7 +1,6 @@
 import re
 import time
 import logging
-import datetime
 import subprocess
 from logging import handlers
 
@@ -9,6 +8,7 @@ from .config import ConfigManager
 from .logger_manager import MyFormatter
 
 data_log_config = ConfigManager.get_data_log_config()
+
 
 class DataLogger:
     start_flag = "---- Data Logger start -----"

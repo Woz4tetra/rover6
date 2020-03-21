@@ -1,7 +1,7 @@
 full_voltage: 8.11
 ok_voltage: 7.3  # mid-curve
 low_voltage: 7.0  # shutdown soon
-critical_voltage: 6.9  # shutdown voltage
+critical_voltage: 6.7  # shutdown voltage
 critical_voltage_timeout_s: 15.0
 battery_log_report_time: 30.0
 
