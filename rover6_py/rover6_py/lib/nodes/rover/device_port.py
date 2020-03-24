@@ -111,9 +111,13 @@ class DevicePort:
             except ValueError:
                 continue
 
+        index += 1
         result = self.read_buffer[:index]
         self.read_buffer = self.read_buffer[index:]
         return result
+
+    def newline_available(self):
+        return b"\n" in self.read_buffer
 
     def stop(self):
         if self.is_open():

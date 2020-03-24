@@ -2,5 +2,5 @@ boot_sound: "~/Music/sound_effects/bloop.wav"
 shutdown_sound: "~/Music/sound_effects/ba ding.wav"
 wifi_connect_sound: "~/Music/sound_effects/got thing.wav"
 wifi_disconnect_sound: "~/Music/sound_effects/electric thud.wav"
-click_sound: "~/Music/sound_effects/click.wav"
+click_sound: "~/Music/sound_effects/clack.wav"
 volume: 20

@@ -14,19 +14,38 @@ sound_config = ConfigManager.get_sound_config()
 
 
 class SoundController:
-    process = None
+    def __init__(self):
+        self.sound_played = False
+        self.process = None
 
     def play(self, uri):
+        self.sound_played = True
         if type(uri) != str or len(uri) == 0:
             return
 
         if not self.is_running():
-            self.__class__.process = subprocess.Popen(["omxplayer", "-o", "alsa:hw:1,0", uri], stdin=subprocess.PIPE,
-                                                      stderr=None, bufsize=0, close_fds=True)
+            self.process = subprocess.Popen(["omxplayer", "-o", "alsa:hw:1,0", uri], stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, #close_fds=True
+            )
 
-    def wait(self):
-        while self.is_running():
-            time.sleep(0.1)
+    def wait(self, timeout=None):
+        try:
+            stdout, stderr = self.process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            self.stop_track()
+            stdout, stderr = proc.communicate()
+        if len(stdout) > 0:
+            logger.info(stdout.decode())
+        if len(stderr) > 0:
+            logger.error(stderr.decode())
+        self.sound_played = False
+        # while self.is_running():
+        #     time.sleep(0.1)
+
+    def get_output(self):
+        stdout = self.process.stdout.read()
+        stderr = self.process.stderr.read()
+        return stdout, stderr
 
     def send(self, command):
         # if self.process is not None:
@@ -75,24 +94,32 @@ class SoundHub(Node):
     def start(self):
         logger.info("Sound Hub initialized")
         self.controller.set_volume(sound_config.volume)
-        logger.debug("Playing boot sound")
+        logger.info("Playing boot sound")
         self.controller.play(sound_config.boot_sound)
         self.controller.wait()
 
+    def update(self):
+        if not self.controller.is_running() and self.controller.sound_played:
+            stdout, stderr = self.controller.get_output()
+            if len(stdout) > 0:
+                logger.info(stdout.decode())
+            if len(stderr) > 0:
+                logger.error(stderr.decode())
+
     def wifi_connect(self):
-        logger.debug("Playing wifi connect sound")
+        logger.info("Playing wifi connect sound")
         self.controller.play(sound_config.wifi_connect_sound)
 
     def wifi_disconnect(self):
-        logger.debug("Playing wifi disconnect sound")
+        logger.info("Playing wifi disconnect sound")
         self.controller.play(sound_config.wifi_disconnect_sound)
 
     def click(self):
-        logger.debug("Playing click sound")
+        logger.info("Playing click sound")
         self.controller.play(sound_config.click_sound)
 
     def stop(self):
-        logger.debug("Playing shutdown sound")
+        logger.info("Playing shutdown sound")
         self.controller.play(sound_config.shutdown_sound)
         self.controller.wait()
 

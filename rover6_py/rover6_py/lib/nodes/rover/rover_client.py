@@ -158,6 +158,10 @@ class RoverClient(Node):
             logger.error("Error detected in read task. Raising exception")
             raise self.thread_exception
 
+        if time.time() - self.prev_time_command_update > rover_config.update_rpi_state_delay:
+            self.update_rpi_state()
+            self.prev_time_command_update = time.time()
+
     def stop(self):
         if self.should_stop:
             logger.info("Stop flag already set")
@@ -242,6 +246,8 @@ class RoverClient(Node):
         self.wait_for_packet_start()
 
         packet_buffer = self.device.readline()
+        if packet_buffer[-1:] == b"\n":
+            packet_buffer = packet_buffer[:-1]  # remove newline
 
         logger.debug("packet_buffer: %s" % str(packet_buffer))
         packet = Packet.from_bytes(packet_buffer)
@@ -310,7 +316,7 @@ class RoverClient(Node):
         return self.thread_exception is None
 
     def read_task(self, should_stop):
-        update_delay = 1 / self.read_update_rate_hz
+        update_delay = 1.0 / self.read_update_rate_hz
         self.prev_packet_time = time.time()
 
         try:
@@ -320,21 +326,12 @@ class RoverClient(Node):
                     logger.info("Exiting read thread\n\n")
                     return
 
-                if time.time() - self.prev_time_command_update > rover_config.update_rpi_state_delay:
-                    self.update_rpi_state()
-                    self.prev_time_command_update = time.time()
-
-                if self.device.in_waiting() == 0:
-                    continue
-                # try:
-                with self.read_lock:
-                    packet = self.parse_packet()
-                # except DevicePortReadException as e:
-                #     logger.error("%s occurred while waiting for packet! Exiting." % str(e), exc_info=True)
-                #     self.thread_exception = e
-                #     break
-
-                self.on_receive(packet.identifier)
+                while self.device.in_waiting() > 0 or self.device.newline_available():
+                    with self.read_lock:
+                        packet = self.parse_packet()
+                    if packet is None:
+                        continue
+                    self.on_receive(packet.identifier)
         except BaseException as e:
             logger.error("An exception occurred in the read thread", exc_info=True)
             self.thread_exception = e
@@ -459,7 +456,10 @@ class RoverClient(Node):
             if self.get(identifier, "name") == "rover6":
                 raise ShutdownException("Device requested a shutdown.")
         elif identifier == "ir":
-            if self.get(identifier, "value") != 0xffff:
+            ir_type = self.get(identifier, "type")
+            ir_value = self.get(identifier, "value")
+            logger.info("type=%s, value=%s" % (ir_type, ir_value))
+            if ir_value != 0xffff:
                 self.sounds.click()
         elif identifier == "txrx":
             self.on_txrx()
