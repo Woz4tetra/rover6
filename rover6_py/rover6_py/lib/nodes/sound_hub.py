@@ -1,10 +1,8 @@
-import os
 import time
-import signal
 import subprocess
+from omxplayer.player import OMXPlayer
 
 from lib.nodes.node import Node
-
 from lib.logger_manager import LoggerManager
 from lib.config.config_manager import ConfigManager
 
@@ -14,128 +12,67 @@ sound_config = ConfigManager.get_sound_config()
 
 
 class SoundController:
-    def __init__(self):
-        self.sound_played = False
-        self.process = None
+    def __init__(self, sound_paths):
+        self.sound_paths = sound_paths
+        self.players = self.get_players(sound_paths)
 
-    def play(self, uri):
-        self.sound_played = True
-        if type(uri) != str or len(uri) == 0:
-            return
+    def get_players(self, sound_paths: dict):
+        players = {}
+        for name, path in sound_paths.items():
+            player = OMXPlayer(path, args=["-o", "alsa:hw:1,0"], dbus_name='org.mpris.MediaPlayer2.omxplayer1')
+            player.pause()
+            players[name] = player
+        return players
 
-        if not self.is_running():
-            self.process = subprocess.Popen(["omxplayer", "-o", "alsa:hw:1,0", uri], stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, #close_fds=True
-            )
+    def play(self, track_name):
+        player = self.players[track_name]
+        player.set_position(0)
+        player.play()
 
-    def wait(self, timeout=None):
-        try:
-            stdout, stderr = self.process.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            self.stop_track()
-            stdout, stderr = proc.communicate()
-        if len(stdout) > 0:
-            logger.info(stdout.decode())
-        if len(stderr) > 0:
-            logger.error(stderr.decode())
-        self.sound_played = False
-        # while self.is_running():
-        #     time.sleep(0.1)
-
-    def get_output(self):
-        stdout = self.process.stdout.read()
-        stderr = self.process.stderr.read()
-        return stdout, stderr
-
-    def send(self, command):
-        # if self.process is not None:
-        if self.is_running():
-            self.process.stdin.write(command)
+    def wait(self, track_name):
+        while self.players[track_name].is_playing():
+            time.sleep(0.1)
 
     def set_volume(self, percent):
         percent = max(0, min(percent, 100))
         subprocess.call("amixer -c 1 sset PCM {}%".format(percent), shell=True)
 
-    def quit(self):
-        self.send(b'q')
-        self.process = None
+    def pause(self, track_name):
+        self.players[track_name].pause()
 
-    def interrupt(self):
-        os.kill(self.process.pid, signal.SIGINT)
-        self.process = None
-
-    def kill(self):
-        os.kill(self.process.pid, signal.SIGKILL)
-        self.process = None
-
-    def toggle_pause(self):
-        self.send(b'p')
-
-    def is_running(self):
-        return self.process is not None and self.process.poll() is None
-
-    def stop_track(self):
-        self.quit()
-        time.sleep(0.25)
-        if self.is_running():  # still active:
-            self.interrupt()
-            time.sleep(1.0)
-        if self.is_running():  # still active:
-            self.kill()
-        if self.is_running():
-            raise RuntimeError("Failed to stop sound process %s" % self.process.pid)
+    def quit_all(self):
+        for name in self.sound_paths:
+            self.players[name].quit()
 
 
 class SoundHub(Node):
     def __init__(self, master):
-        self.controller = SoundController()
+        self.controller = SoundController(sound_config.sound_paths)
         super(SoundHub, self).__init__(master)
 
     def start(self):
         logger.info("Sound Hub initialized")
         self.controller.set_volume(sound_config.volume)
         logger.info("Playing boot sound")
-        self.controller.play(sound_config.boot_sound)
-        self.controller.wait()
-
-    def update(self):
-        if not self.controller.is_running() and self.controller.sound_played:
-            stdout, stderr = self.controller.get_output()
-            if len(stdout) > 0:
-                logger.info(stdout.decode())
-            if len(stderr) > 0:
-                logger.error(stderr.decode())
+        self.controller.play("boot_sound")
+        self.controller.wait("boot_sound")
 
     def wifi_connect(self):
         logger.info("Playing wifi connect sound")
-        self.controller.play(sound_config.wifi_connect_sound)
+        self.controller.play("wifi_connect_sound")
 
     def wifi_disconnect(self):
         logger.info("Playing wifi disconnect sound")
-        self.controller.play(sound_config.wifi_disconnect_sound)
+        self.controller.play("wifi_disconnect_sound")
 
     def click(self):
         logger.info("Playing click sound")
-        self.controller.play(sound_config.click_sound)
+        self.controller.play("click_sound")
 
     def stop(self):
         logger.info("Playing shutdown sound")
-        self.controller.play(sound_config.shutdown_sound)
-        self.controller.wait()
+        self.controller.play("shutdown_sound")
+        self.controller.wait("shutdown_sound")
 
     def __del__(self):
-        self.controller.stop_track()
-
-
-if __name__ == '__main__':
-    def main():
-        sounds = SoundController()
-        sounds.play("/home/pi/Music/Pokémon Center (Day).mp3")
-        time.sleep(3)
-        sounds.quit()
-        while True:
-            time.sleep(0.5)
-            print(sounds.is_running())
-
-
-    main()
+        self.controller.quit_all()
