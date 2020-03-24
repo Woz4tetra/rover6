@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 try:
     from lib.config import ConfigManager
-    from lib.data_logger import DataLogger
+    from lib.nodes.data_logger import DataLogger
 
     data_log_config = ConfigManager.get_data_log_config()
 except BaseException as e:

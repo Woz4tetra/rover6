@@ -2,7 +2,7 @@ import time
 import select
 from evdev import ecodes, InputDevice
 
-from .logger_manager import LoggerManager
+from lib.logger_manager import LoggerManager
 
 logger = LoggerManager.get_logger()
 

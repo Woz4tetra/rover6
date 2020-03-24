@@ -1,17 +1,18 @@
 import time
 import math
 from RPi import GPIO
-from .config.config_manager import ConfigManager
-from .logger_manager import LoggerManager
+from lib.config.config_manager import ConfigManager
+from lib.logger_manager import LoggerManager
 
 logger = LoggerManager.get_logger()
 gpio_config = ConfigManager.get_gpio_config()
 
-from .exceptions import ShutdownException
+from .node import Node
+from lib.exceptions import ShutdownException
 
 
-class GpioHub:
-    def __init__(self):
+class GpioHub(Node):
+    def __init__(self, master):
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(gpio_config.led_out, GPIO.OUT)
         GPIO.setup(gpio_config.fan_out, GPIO.OUT)
@@ -34,6 +35,12 @@ class GpioHub:
         self.time_print_out = None
 
         logger.info("GPIO Hub initialized")
+
+        super(GpioHub, self).__init__(master)
+
+    def start(self):
+        self.set_fan(100)
+        self.update()  # call update right away to turn the LED on
 
     def is_button_pressed(self):
         return not GPIO.input(gpio_config.button_in)

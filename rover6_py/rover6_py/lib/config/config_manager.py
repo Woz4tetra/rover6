@@ -5,6 +5,8 @@ from .gpio_config import GpioConfig
 from .sound_config import SoundConfig
 from .wifi_config import WifiConfig
 from .data_log_config import DataLogConfig
+from .battery_config import BatteryConfig
+from .general_config import GeneralConfig
 
 
 class ConfigManager:
@@ -15,6 +17,8 @@ class ConfigManager:
     sound_config = None
     wifi_config = None
     data_log_config = None
+    battery_config = None
+    general_config = None
 
     def __init__(self):
         raise Exception("{} is class only".format(self.__class__.__name__))
@@ -60,3 +64,15 @@ class ConfigManager:
         if cls.data_log_config is None:
             cls.data_log_config = DataLogConfig()
         return cls.data_log_config
+
+    @classmethod
+    def get_battery_config(cls):
+        if cls.battery_config is None:
+            cls.battery_config = BatteryConfig()
+        return cls.battery_config
+
+    @classmethod
+    def get_general_config(cls):
+        if cls.general_config is None:
+            cls.general_config = GeneralConfig()
+        return cls.general_config

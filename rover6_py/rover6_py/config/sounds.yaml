@@ -1,3 +1,5 @@
 boot_sound: "~/Music/sound_effects/bloop.wav"
 shutdown_sound: "~/Music/sound_effects/ba ding.wav"
+wifi_connect_sound: "~/Music/sound_effects/"
+wifi_disconnect_sound: "~/Music/sound_effects/"
 volume: 20

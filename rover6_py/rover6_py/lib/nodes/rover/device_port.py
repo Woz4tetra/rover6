@@ -1,8 +1,8 @@
 import time
 import serial
 
-from .config import ConfigManager
-from .logger_manager import LoggerManager
+from lib.config import ConfigManager
+from lib.logger_manager import LoggerManager
 
 logger = LoggerManager.get_logger()
 

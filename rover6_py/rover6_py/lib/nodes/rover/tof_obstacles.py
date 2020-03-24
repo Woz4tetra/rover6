@@ -1,7 +1,7 @@
 import math
 from collections import namedtuple
 
-from ..config import ConfigManager
+from lib.config import ConfigManager
 
 rover_config = ConfigManager.get_rover_config()
 

@@ -5,13 +5,6 @@ from .config import Config
 
 class RoverConfig(Config):
     def __init__(self):
-        self.full_voltage = 8.5
-        self.ok_voltage = 7
-        self.low_voltage = 6.3
-        self.critical_voltage = 5.5
-        self.critical_voltage_timeout_s = 3.0
-        self.battery_log_report_time = 30.0
-
         self.wheel_radius_cm = 32.5
         self.cm_per_tick = 2.0 * math.pi * self.wheel_radius_cm / 1920.0
         self.max_linear_speed_cps = 915.0

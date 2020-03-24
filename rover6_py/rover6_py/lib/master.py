@@ -1,11 +1,9 @@
+from lib.nodes.rover import RoverClient
+from lib.nodes.gpio_hub import GpioHub
+from lib.nodes.sound_hub import SoundHub
+from lib.nodes.wifi_hub import WifiHub
+from lib.nodes.data_logger import DataLogger
 
-from lib.rover.rover_client import RoverClient
-from lib.gpio_hub import GpioHub
-from lib.sound_hub import SoundHub
-from lib.wifi_hub import WifiHub
-from lib.data_logger import DataLogger
-
-logger = LoggerManager.get_logger()
 
 class Master:
     def __init__(self):
@@ -13,24 +11,27 @@ class Master:
         self.gpio_hub = GpioHub(self)
         self.sounds = SoundHub(self)
         self.wifi = WifiHub(self)
-        self.data_logger = DataLogger(roverself)
-
-        self.nodes = [
-            self.rover,
-            self.gpio_hub,
-            self.sounds,
-            self.wifi,
-            self.data_logger,
-        ]
+        self.data_logger = DataLogger(self)
 
     def start(self):
-        for node in self.nodes:
-            node.start()
+        self.sounds.start()
+        self.gpio_hub.start()
+
+        self.wifi.start()
+        self.data_logger.start()
+
+        self.rover.start()
 
     def update(self):
-        for node in self.nodes:
-            node.update()
+        self.gpio_hub.update()
+        self.wifi.update()
+        self.rover.update()
+        self.sounds.update()
+        self.data_logger.update()
 
     def stop(self):
-        for node in self.nodes:
-            node.stop()
+        self.sounds.stop()
+        self.rover.stop()
+        self.gpio_hub.stop()
+        self.wifi.stop()
+        self.data_logger.stop()

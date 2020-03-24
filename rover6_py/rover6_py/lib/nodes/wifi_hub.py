@@ -1,19 +1,21 @@
 import time
 import subprocess
-from .config import ConfigManager
-from .logger_manager import LoggerManager
+from lib.config import ConfigManager
+from lib.logger_manager import LoggerManager
+from .node import Node
 
 wifi_config = ConfigManager.get_wifi_config()
+
 logger = LoggerManager.get_logger()
 
 
-class WifiHub:
+class WifiHub(Node):
     UNKNOWN = 0
     WIFI = 1
     HOTSPOT = 2
     DISCONNECTED = 3
 
-    def __init__(self):
+    def __init__(self, master):
         self.hostname = ""
         self.ip_default_str = "xx.xx.xx.xx"
         self.ip_address = self.ip_default_str
@@ -23,12 +25,17 @@ class WifiHub:
         self.prev_update_time = time.time()
         self.update_delay_s = wifi_config.update_delay_s
 
+        super(WifiHub, self).__init__(master)
+
+        self.sounds = self.master.sounds
+
     def update(self):
-        if time.time() - self.prev_update_time > self.update_delay_s:
-            logger.debug("Updating wifi info")
-            self.get_broadcast_status()
-            self.get_hostname()
-            self.prev_update_time = time.time()
+        if time.time() - self.prev_update_time < self.update_delay_s:
+            return
+        logger.debug("Updating wifi info")
+        self.get_broadcast_status()
+        self.get_hostname()
+        self.prev_update_time = time.time()
 
     def run_cmd(self, cmd):
         proc = subprocess.Popen(cmd, shell=True,stdout=subprocess.PIPE)
@@ -54,11 +61,18 @@ class WifiHub:
         if self.is_wifi_running():
             self.get_wifi_ip()
             if self.ip_address:
-                self.status_code = self.WIFI
+                status_code = self.WIFI
             else:
-                self.status_code = self.DISCONNECTED
-        elif self.is_hotspot_running():
-            self.status_code = self.HOTSPOT
+                status_code = self.DISCONNECTED
+        # elif self.is_hotspot_running():
+        #     self.status_code = self.HOTSPOT
         else:
-            self.status_code = self.DISCONNECTED
-        logger.debug("Broadcast status: %s" % self.status_code)
+            status_code = self.DISCONNECTED
+        logger.debug("Broadcast status: %s" % status_code)
+
+        if status_code != self.status_code:
+            self.status_code = status_code
+            if self.status_code == self.WIFI or self.status_code == self.HOTSPOT:
+                self.sounds.wifi_connect()
+            elif self.status_code == self.DISCONNECTED or self.status_code == self.UNKNOWN:
+                self.sounds.wifi_disconnect()

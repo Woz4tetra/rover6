@@ -4,17 +4,17 @@ import logging
 import subprocess
 from logging import handlers
 
-from .config import ConfigManager
-from .logger_manager import MyFormatter
+from lib.config import ConfigManager
+from lib.logger_manager import MyFormatter
+from .node import Node
 
 data_log_config = ConfigManager.get_data_log_config()
 
 
-class DataLogger:
+class DataLogger(Node):
     start_flag = "---- Data Logger start -----"
 
-    def __init__(self, rover_client):
-        self.rover = rover_client
+    def __init__(self, master):
         self.logger = self._create_logger(**data_log_config.to_dict())
 
         self.cpu_temp_regex = r"temp=([\d.]*)'C"
@@ -23,12 +23,14 @@ class DataLogger:
         self.log_timeout = 1.0 / data_log_config.log_freq_hz
         self.logger.info(self.start_flag)
 
+        super(DataLogger, self).__init__(master)
+
     def update(self):
         if time.time() - self.prev_log_time < self.log_timeout:
             return
         self.prev_log_time = time.time()
 
-        ina_data = self.rover.get("ina", "recv_time", "voltage_V", "current_mA")
+        ina_data = self.master.rover.get("ina", "recv_time", "voltage_V", "current_mA")
         cpu_temp = self.get_cpu_temp()
         camera_detected = self.get_camera_connected()
 

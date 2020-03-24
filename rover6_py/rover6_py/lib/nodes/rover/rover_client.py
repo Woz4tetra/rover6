@@ -3,14 +3,16 @@ import datetime
 import threading
 
 from . import tof_obstacles
-from ..device_port import DevicePort, DevicePortReadException, DevicePortWriteException
-from ..config import ConfigManager
-from ..logger_manager import LoggerManager
+from .device_port import DevicePort, DevicePortReadException, DevicePortWriteException
+from lib.config import ConfigManager
+from lib.logger_manager import LoggerManager
 from .packet import Packet
-from ..exceptions import ShutdownException, LowBatteryException
+from lib.exceptions import ShutdownException, LowBatteryException
+from ..node import Node
 
 rover_config = ConfigManager.get_rover_config()
 device_port_config = ConfigManager.get_device_port_config()
+battery_config = ConfigManager.get_battery_config()
 logger = LoggerManager.get_logger()
 
 
@@ -28,26 +30,25 @@ class BatteryState:
 
     def set(self, voltage_V):
         self.voltage_V = voltage_V
-        if voltage_V >= rover_config.full_voltage:
+        if voltage_V >= battery_config.full_voltage:
             self.state = self.FULL
             self.prev_critical_time = None
-        elif voltage_V >= rover_config.ok_voltage:
+        elif voltage_V >= battery_config.ok_voltage:
             self.state = self.OK
             self.prev_critical_time = None
-        elif voltage_V >= rover_config.low_voltage:
+        elif voltage_V >= battery_config.low_voltage:
             self.state = self.LOW
             self.prev_critical_time = None
-        elif voltage_V >= rover_config.critical_voltage:
+        elif voltage_V >= battery_config.critical_voltage:
             self.state = self.CRITICAL
             if self.prev_critical_time is None:
                 self.prev_critical_time = time.time()
 
-
     def should_shutdown(self):
         return (
-            self.state == self.CRITICAL and
-            self.prev_critical_time is not None and
-            time.time() - self.prev_critical_time > rover_config.critical_voltage_timeout_s
+                self.state == self.CRITICAL and
+                self.prev_critical_time is not None and
+                time.time() - self.prev_critical_time > battery_config.critical_voltage_timeout_s
         )
 
     def log_state(self):
@@ -63,7 +64,7 @@ class BatteryState:
             logger.error("Battery is in an unknown state")
 
 
-class RoverClient:
+class RoverClient(Node):
     PACKET_CODES = rover_config.packet_codes
     PACKET_NAMES = rover_config.packet_names
     WRITE_COMMANDS = rover_config.write_commands
@@ -71,7 +72,7 @@ class RoverClient:
 
     NUM_SERVOS = rover_config.num_servos
 
-    def __init__(self):
+    def __init__(self, master):
         self.device = DevicePort(
             device_port_config.address,
             device_port_config.baud_rate,
@@ -116,46 +117,66 @@ class RoverClient:
             8: "invalid format"
         }
 
-        self.wifi_hub = None
-        self.gpio_hub = None
-
         self.battery_state = BatteryState()
         self.prev_battery_report_time = time.time()
 
         self.client_start_time = None
         self.device_start_time = None
 
+        super(RoverClient, self).__init__(master)
+
+        self.wifi_hub = self.master.wifi_hub
+        self.gpio_hub = self.master.gpio_hub
+
     def start(self):
         logger.info("Starting rover client")
+
         self.device.configure()
         logger.info("Device configured")
+
         self.check_ready()
         logger.info("Device ready")
+
         self.set_active(True)
         logger.info("Active is True")
+
         self.set_reporting(True)
         logger.info("Reporting is True")
-        self.set_reporting(True)
-        logger.info("Starting read thread")
+
         self.thread.start()
-        time.sleep(3.0)
+        logger.info("Read thread started")
+        time.sleep(1.0)
+
+    def update(self):
+        if not self.read_task_running():
+            logger.error("Error detected in read task. Raising exception")
+            raise self.thread_exception
 
     def stop(self):
         if self.should_stop:
             logger.info("Stop flag already set")
             return
+
         logger.info("Stopping rover client")
+
         self.should_stop = True
         logger.info("Set read thread stop flag")
+
         self.set_reporting(False)
         logger.info("Reporting is False")
-        time.sleep(0.01)  # make sure controller doesn't miss the next command
+        time.sleep(0.01)  # make sure device doesn't miss the next command
+
         self.set_active(False)
         logger.info("Active is False")
+
         # self.soft_restart()
         with self.read_lock:
             self.device.stop()
         logger.info("Device connection closed")
+
+        for identifier, times in self.recv_times.items():
+            logger.info("%s:\t%0.4fHz" % (identifier, 1 / np.mean(np.diff(times))))
+            # print("%s:\t%s" % (identifier, np.diff(times).tolist()))
 
     # def remove_timedout_written_packets(self):
     #     current_time = time.time()
@@ -260,7 +281,7 @@ class RoverClient:
         if recv_time is None:
             self.data_frame[identifier]["recv_time"] = time.time()
             return
-        
+
         recv_time *= 1E-3  # ms to s
 
         # recv_time = time.time()
@@ -381,12 +402,6 @@ class RoverClient:
     def reset_sensors(self):
         self.write("toggle_reporting", 2)
 
-    def set_wifi_hub(self, wifi_hub):
-        self.wifi_hub = wifi_hub
-
-    def set_gpio_hub(self, gpio_hub):
-        self.gpio_hub = gpio_hub
-
     def update_rpi_state(self):
         self.write(
             "rpi_state",
@@ -429,7 +444,7 @@ class RoverClient:
         if identifier == "ina":
             voltage_V = self.get(identifier, "voltage_V")
             self.battery_state.set(voltage_V)
-            if time.time() - self.prev_battery_report_time > rover_config.battery_log_report_time:
+            if time.time() - self.prev_battery_report_time > battery_config.battery_log_report_time:
                 self.battery_state.log_state()
                 self.prev_battery_report_time = time.time()
             if self.battery_state.should_shutdown():
