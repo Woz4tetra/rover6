@@ -3,7 +3,7 @@ import time
 import signal
 import subprocess
 
-from .node import Node
+from lib.nodes.node import Node
 
 from lib.logger_manager import LoggerManager
 from lib.config.config_manager import ConfigManager
@@ -19,9 +19,10 @@ class SoundController:
     def play(self, uri):
         if type(uri) != str or len(uri) == 0:
             return
+
         if not self.is_running():
             self.__class__.process = subprocess.Popen(["omxplayer", "-o", "alsa:hw:1,0", uri], stdin=subprocess.PIPE,
-                                                      stdout=subprocess.DEVNULL, stderr=None, bufsize=0, close_fds=True)
+                                                      stderr=None, bufsize=0, close_fds=True)
 
     def wait(self):
         while self.is_running():
@@ -63,7 +64,7 @@ class SoundController:
         if self.is_running():  # still active:
             self.kill()
         if self.is_running():
-            raise RuntimeError("Failed to stop SoundHub process %s" % self.process.pid)
+            raise RuntimeError("Failed to stop sound process %s" % self.process.pid)
 
 
 class SoundHub(Node):
@@ -72,6 +73,7 @@ class SoundHub(Node):
         super(SoundHub, self).__init__(master)
 
     def start(self):
+        logger.info("Sound Hub initialized")
         self.controller.set_volume(sound_config.volume)
         logger.debug("Playing boot sound")
         self.controller.play(sound_config.boot_sound)

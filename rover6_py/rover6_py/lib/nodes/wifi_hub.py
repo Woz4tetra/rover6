@@ -25,8 +25,11 @@ class WifiHub(Node):
         self.prev_update_time = time.time()
         self.update_delay_s = wifi_config.update_delay_s
 
+        self.sounds = None
+
         super(WifiHub, self).__init__(master)
 
+    def start(self):
         self.sounds = self.master.sounds
 
     def update(self):

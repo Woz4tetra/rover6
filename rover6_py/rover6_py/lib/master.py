@@ -10,21 +10,21 @@ class Master:
         self.rover = RoverClient(self)
         self.gpio_hub = GpioHub(self)
         self.sounds = SoundHub(self)
-        self.wifi = WifiHub(self)
+        self.wifi_hub = WifiHub(self)
         self.data_logger = DataLogger(self)
 
     def start(self):
         self.sounds.start()
         self.gpio_hub.start()
 
-        self.wifi.start()
+        self.wifi_hub.start()
         self.data_logger.start()
 
         self.rover.start()
 
     def update(self):
         self.gpio_hub.update()
-        self.wifi.update()
+        self.wifi_hub.update()
         self.rover.update()
         self.sounds.update()
         self.data_logger.update()
@@ -33,5 +33,5 @@ class Master:
         self.sounds.stop()
         self.rover.stop()
         self.gpio_hub.stop()
-        self.wifi.stop()
+        self.wifi_hub.stop()
         self.data_logger.stop()

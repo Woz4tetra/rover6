@@ -26,7 +26,7 @@ def close(master):
 
 
 def main():
-    logger.info("Starting rover\n\n")
+    logger.info("Starting rover")
     master = Master()
     update_delay = 1.0 / general_config.update_rate_hz
     try:

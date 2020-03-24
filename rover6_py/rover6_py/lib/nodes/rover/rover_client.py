@@ -1,6 +1,7 @@
 import time
 import datetime
 import threading
+import numpy as np
 
 from . import tof_obstacles
 from .device_port import DevicePort, DevicePortReadException, DevicePortWriteException
@@ -123,12 +124,15 @@ class RoverClient(Node):
         self.client_start_time = None
         self.device_start_time = None
 
+        self.wifi_hub = None
+        self.gpio_hub = None
+
         super(RoverClient, self).__init__(master)
 
+    def start(self):
         self.wifi_hub = self.master.wifi_hub
         self.gpio_hub = self.master.gpio_hub
 
-    def start(self):
         logger.info("Starting rover client")
 
         self.device.configure()
@@ -311,7 +315,7 @@ class RoverClient(Node):
             while True:
                 time.sleep(update_delay)
                 if should_stop():
-                    logger.info("Exiting read thread")
+                    logger.info("Exiting read thread\n\n")
                     return
 
                 if time.time() - self.prev_time_command_update > rover_config.update_rpi_state_delay:
