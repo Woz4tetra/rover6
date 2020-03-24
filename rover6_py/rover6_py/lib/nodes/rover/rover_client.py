@@ -126,12 +126,14 @@ class RoverClient(Node):
 
         self.wifi_hub = None
         self.gpio_hub = None
+        self.sounds = None
 
         super(RoverClient, self).__init__(master)
 
     def start(self):
         self.wifi_hub = self.master.wifi_hub
         self.gpio_hub = self.master.gpio_hub
+        self.sounds = self.master.sounds
 
         logger.info("Starting rover client")
 
@@ -456,6 +458,9 @@ class RoverClient(Node):
         elif identifier == "shutdown":
             if self.get(identifier, "name") == "rover6":
                 raise ShutdownException("Device requested a shutdown.")
+        elif identifier == "ir":
+            if self.get(identifier, "value") != 0xffff:
+                self.sounds.click()
         elif identifier == "txrx":
             self.on_txrx()
 

@@ -87,6 +87,10 @@ class SoundHub(Node):
         logger.debug("Playing wifi disconnect sound")
         self.controller.play(sound_config.wifi_disconnect_sound)
 
+    def click(self):
+        logger.debug("Playing click sound")
+        self.controller.play(sound_config.click_sound)
+
     def stop(self):
         logger.debug("Playing shutdown sound")
         self.controller.play(sound_config.shutdown_sound)

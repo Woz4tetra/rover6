@@ -8,16 +8,18 @@ class SoundConfig(Config):
         self.shutdown_sound = ""
         self.wifi_connect_sound = ""
         self.wifi_disconnect_sound = ""
+        self.click_sound = ""
 
         self.volume = 25
 
         super(SoundConfig, self).__init__("sounds.yaml")
 
         self.sound_paths = {
-            "boot_sound": self.boot_sound,
-            "shutdown_sound": self.shutdown_sound,
-            "wifi_connect_sound": self.wifi_connect_sound,
+            "boot_sound"           : self.boot_sound,
+            "shutdown_sound"       : self.shutdown_sound,
+            "wifi_connect_sound"   : self.wifi_connect_sound,
             "wifi_disconnect_sound": self.wifi_disconnect_sound,
+            "click_sound"          : self.click_sound,
         }
 
         self.check_path(self.sound_paths)
@@ -30,12 +32,12 @@ class SoundConfig(Config):
             kwargs[name] = abs_path
             self.__dict__[name] = abs_path
 
-
     def to_dict(self):
         return {
             "boot_sound"           : self.boot_sound,
             "shutdown_sound"       : self.shutdown_sound,
-            "wifi_connect_sound"   : wifi_connect_sound,
-            "wifi_disconnect_sound": wifi_disconnect_sound,
+            "wifi_connect_sound"   : self.wifi_connect_sound,
+            "wifi_disconnect_sound": self.wifi_disconnect_sound,
+            "click_sound"          : self.click_sound,
             "volume"               : self.volume,
         }
