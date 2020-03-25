@@ -102,7 +102,7 @@ namespace rover6_servos
 
     void set_servos_default()
     {
-        rover6_serial::println_info("set_servos_default");
+        // rover6_serial::println_info("set_servos_default");
         for (size_t i = 0; i < NUM_SERVOS; i++) {
             set_servo(i, servo_default_positions[i]);
         }
@@ -110,7 +110,7 @@ namespace rover6_servos
 
     void set_servos_current()
     {
-        rover6_serial::println_info("set_servos_current");
+        // rover6_serial::println_info("set_servos_current");
         for (size_t i = 0; i < NUM_SERVOS; i++) {
             set_servo(i, servo_default_positions[i]);
         }
@@ -153,7 +153,7 @@ namespace rover6_servos
         if (servo_positions[n] != angle) {
             servo_positions[n] = angle;
             uint16_t pulse = (uint16_t)map(angle, 0, 180, servo_pulse_mins[n], servo_pulse_maxs[n]);
-            rover6_serial::println_info("Servo %d: %ddeg, %d", n, angle, pulse);
+            // rover6_serial::println_info("Servo %d: %ddeg, %d", n, angle, pulse);
             servos.setPWM(n, 0, pulse);
         }
     }

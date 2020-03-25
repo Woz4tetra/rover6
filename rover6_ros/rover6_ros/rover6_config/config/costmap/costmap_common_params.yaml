@@ -14,7 +14,7 @@
 #     [-0.0842645, 0.186784927],
 #     [-0.500663781, 0.186784927]
 # ]
-robot_radius: 0.13
+robot_radius: 0.144
 
 # Specifies the delay in transform (tf) data that is tolerable in seconds.
 # This parameter serves as a safeguard to losing a link in the tf tree while
