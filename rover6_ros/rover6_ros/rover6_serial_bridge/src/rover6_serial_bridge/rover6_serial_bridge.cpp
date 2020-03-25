@@ -376,7 +376,9 @@ void Rover6SerialBridge::loop()
 {
     // if the serial buffer has data, parse it
     if (_serialRef.available() > 2) {
-        readSerial();
+        while (_serialRef.available()) {
+            readSerial();
+        }
     }
 
     ROS_INFO_THROTTLE(15, "%llu packets received", _readPacketNum);

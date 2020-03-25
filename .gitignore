@@ -1,5 +1,6 @@
 # Specific dirs
 rover6_ros/rover6_ros/rover6_config/maps/
+rover6_ros/rover6_ros/rover6_config/bags/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

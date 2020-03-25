@@ -24,13 +24,13 @@ class SoundController:
         track_name = os.path.basename(path)
         try:
             is_playing = track_name in self.players and self.players[track_name].is_playing()
+            if is_playing:
+                self.players[track_name].set_position(0)
         except BaseException as e:
             is_playing = False
-            logger.info("No longer playing. Reason: %s" % str(e))
+            logger.debug("No longer playing. Reason: %s" % str(e))
 
-        if is_playing:
-            self.players[track_name].set_position(0)
-        else:
+        if not is_playing:
             self.players[track_name] = self.get_player(path)
 
         return track_name
@@ -40,7 +40,7 @@ class SoundController:
             while self.players[track_name].is_playing():
                 time.sleep(0.1)
         except BaseException as e:
-            logger.info("%s player is already stopped. Reason: %s" % (track_name, e))
+            logger.debug("%s player is already stopped. Reason: %s" % (track_name, e))
 
     def set_volume(self, percent):
         percent = max(0, min(percent, 100))

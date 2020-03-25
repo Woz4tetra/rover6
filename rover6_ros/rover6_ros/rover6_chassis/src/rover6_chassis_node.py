@@ -33,7 +33,7 @@ class Rover6Chassis:
 
         # robot dimensions
         self.wheel_radius_cm = rospy.get_param("~wheel_radius_cm", 3.25)
-        self.wheel_distance_cm = rospy.get_param("~wheel_distance_cm", 16.0)
+        self.wheel_distance_cm = rospy.get_param("~wheel_distance_cm", 17.0)
         self.ticks_per_rotation = rospy.get_param("~ticks_per_rotation", 3840.0)
         self.motors_pub_name = "motors"  # rospy.get_param("~motors_pub_name", "motors")
         self.max_speed_cps = rospy.get_param("~max_speed_cps", 915.0)

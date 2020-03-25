@@ -11,6 +11,6 @@ if [ "${BASE_DIR}" != "$HOME/rover6" ]; then
   cp -r "${BASE_DIR}" "$HOME/rover6"
 fi
 
-bash ${BASE_DIR}/client/install.sh
 bash ${BASE_DIR}/firmware/install.sh
-bash ${BASE_DIR}/systemd/install.sh
+bash ${BASE_DIR}/rover6_py/install.sh
+bash ${BASE_DIR}/rover6_ros/install.sh
