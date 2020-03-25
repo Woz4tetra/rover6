@@ -1,4 +1,6 @@
+import os
 import time
+import dbus
 import subprocess
 from omxplayer.player import OMXPlayer
 
@@ -12,26 +14,33 @@ sound_config = ConfigManager.get_sound_config()
 
 
 class SoundController:
-    def __init__(self, sound_paths):
-        self.sound_paths = sound_paths
-        self.players = self.get_players(sound_paths)
+    def __init__(self):
+        self.players = {}
 
-    def get_players(self, sound_paths: dict):
-        players = {}
-        for name, path in sound_paths.items():
-            player = OMXPlayer(path, args=["-o", "alsa:hw:1,0"], dbus_name='org.mpris.MediaPlayer2.omxplayer1')
-            player.pause()
-            players[name] = player
-        return players
+    def get_player(self, path: str):
+        return OMXPlayer(path, args=["-o", "alsa:hw:1,0"], dbus_name='org.mpris.MediaPlayer2.omxplayer1')
 
-    def play(self, track_name):
-        player = self.players[track_name]
-        player.set_position(0)
-        player.play()
+    def play(self, path):
+        track_name = os.path.basename(path)
+        try:
+            is_playing = track_name in self.players and self.players[track_name].is_playing()
+            if is_playing:
+                self.players[track_name].set_position(0)
+        except BaseException as e:
+            is_playing = False
+            logger.debug("No longer playing. Reason: %s" % str(e))
+
+        if not is_playing:
+            self.players[track_name] = self.get_player(path)
+
+        return track_name
 
     def wait(self, track_name):
-        while self.players[track_name].is_playing():
-            time.sleep(0.1)
+        try:
+            while self.players[track_name].is_playing():
+                time.sleep(0.1)
+        except BaseException as e:
+            logger.debug("%s player is already stopped. Reason: %s" % (track_name, e))
 
     def set_volume(self, percent):
         percent = max(0, min(percent, 100))
@@ -47,32 +56,36 @@ class SoundController:
 
 class SoundHub(Node):
     def __init__(self, master):
-        self.controller = SoundController(sound_config.sound_paths)
+        self.controller = SoundController()
         super(SoundHub, self).__init__(master)
 
     def start(self):
         logger.info("Sound Hub initialized")
         self.controller.set_volume(sound_config.volume)
         logger.info("Playing boot sound")
-        self.controller.play("boot_sound")
-        self.controller.wait("boot_sound")
+        self.wait(self.play(sound_config.boot_sound))
 
     def wifi_connect(self):
         logger.info("Playing wifi connect sound")
-        self.controller.play("wifi_connect_sound")
+        self.play(sound_config.wifi_connect_sound)
 
     def wifi_disconnect(self):
         logger.info("Playing wifi disconnect sound")
-        self.controller.play("wifi_disconnect_sound")
+        self.play(sound_config.wifi_disconnect_sound)
 
     def click(self):
         logger.info("Playing click sound")
-        self.controller.play("click_sound")
+        self.play(sound_config.click_sound)
 
     def stop(self):
         logger.info("Playing shutdown sound")
-        self.controller.play("shutdown_sound")
-        self.controller.wait("shutdown_sound")
+        self.wait(self.play(sound_config.shutdown_sound))
+
+    def play(self, path):
+        return self.controller.play(path)
+
+    def wait(self, track_name):
+        self.controller.wait(track_name)
 
     def __del__(self):
         self.controller.quit_all()

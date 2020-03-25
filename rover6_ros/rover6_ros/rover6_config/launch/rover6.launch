@@ -4,4 +4,5 @@
     <include file="$(find rover6_serial_bridge)/launch/rover6_serial_bridge.launch"/>
     <include file="$(find rover6_teleop)/launch/rover6_teleop.launch"/>
     <include file="$(find rover6_config)/launch/static_transforms.launch"/>
+    <include file="$(find rover6_config)/launch/rplidar.launch"/>
 </launch>
