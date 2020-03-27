@@ -115,8 +115,12 @@ class Rover6Teleop:
         publish_cmd_vel = False
         if self.twist_command.linear.x != linear_val:
             self.twist_command.linear.x = linear_val
+            publish_cmd_vel = True
         if self.twist_command.angular.z != angular_val:
             self.twist_command.angular.z = angular_val
+            publish_cmd_vel = True
+
+        self.cmd_vel_pub.publish(self.twist_command)
 
         camera_pan_val = self.joy_to_pan_servo(msg.axes[self.camera_pan_axis])
         camera_tilt_val = self.joy_to_tilt_servo(msg.axes[self.camera_tilt_axis])
@@ -125,23 +129,23 @@ class Rover6Teleop:
         if camera_tilt_val is None:
             camera_tilt_val = -1
 
-        # publish_servo_vals = False
-        # if self.servo_command.camera_pan != camera_pan_val:
-        #     self.servo_command.camera_pan = camera_pan_val
-        #     publish_servo_vals = True
-        # else:
-        #     self.servo_command.camera_pan = -2  # -1 indicates default value, -2 indicates skip
-        #
-        # if self.servo_command.camera_tilt != camera_tilt_val:
-        #     self.servo_command.camera_tilt = camera_tilt_val
-        #     publish_servo_vals = True
-        # else:
-        #     self.servo_command.camera_tilt = -2  # -1 indicates default value, -2 indicates skip
-        #
-        # if publish_servo_vals:
-        #     self.servo_pub.publish(self.servo_command)
-        self.servo_command.camera_pan = camera_pan_val
-        self.servo_command.camera_tilt = camera_tilt_val
+        publish_servo_vals = False
+        if self.servo_command.camera_pan != camera_pan_val:
+            self.servo_command.camera_pan = camera_pan_val
+            publish_servo_vals = True
+        else:
+            self.servo_command.camera_pan = -2  # -1 indicates default value, -2 indicates skip
+
+        if self.servo_command.camera_tilt != camera_tilt_val:
+            self.servo_command.camera_tilt = camera_tilt_val
+            publish_servo_vals = True
+        else:
+            self.servo_command.camera_tilt = -2  # -1 indicates default value, -2 indicates skip
+
+        if publish_servo_vals:
+            self.servo_pub.publish(self.servo_command)
+        # self.servo_command.camera_pan = camera_pan_val
+        # self.servo_command.camera_tilt = camera_tilt_val
 
         self.prev_joy_msg = msg
 
@@ -163,8 +167,8 @@ class Rover6Teleop:
 if __name__ == "__main__":
     try:
         node = Rover6Teleop()
-        node.run()
-        # rospy.spin()
+        # node.run()
+        rospy.spin()
     except rospy.ROSInterruptException:
         pass
     rospy.loginfo("Exiting earth_rover_chassis node")
