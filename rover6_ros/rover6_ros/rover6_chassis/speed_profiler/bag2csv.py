@@ -11,7 +11,7 @@ Usage 2 (for all bag files in current directory):
 Written by Nick Speal in May 2013 at McGill University's Aerospace Mechatronics Laboratory
 www.speal.ca
 
-Supervised by Professor Inna Sharf, Professor Meyer Nahon 
+Supervised by Professor Inna Sharf, Professor Meyer Nahon
 
 '''
 
@@ -28,11 +28,12 @@ if (len(sys.argv) > 2):
 	print "or just 1  : 'bag2csv.py'"
 	sys.exit(1)
 elif (len(sys.argv) == 2):
-	listOfBagFiles = [sys.argv(1)]
-	print "reading only 1 bagfile: " + str(listOfBagFiles(0))
+	listOfBagFiles = [sys.argv[1]]
+	print "reading only 1 bagfile: " + str(listOfBagFiles[0])
+	numberOfFiles = 1
 elif (len(sys.argv) == 1):
 	listOfBagFiles = [f for f in os.listdir(".") if f[-4:] == ".bag"]	#get list of only bag files in current dir.
-	numberOfFiles = str(len(listOfBagFiles))
+	numberOfFiles = len(listOfBagFiles)
 	print "reading all " + numberOfFiles + " bagfiles in current directory: \n"
 	for f in listOfBagFiles:
 		print f
@@ -45,7 +46,7 @@ else:
 count = 0
 for bagFile in listOfBagFiles:
 	count += 1
-	print "reading file " + str(count) + " of  " + numberOfFiles + ": " + bagFile
+	print "reading file %s of %s: %s" % (count, numberOfFiles, bagFile)
 	#access bag
 	bag = rosbag.Bag(bagFile)
 	bagContents = bag.read_messages()
@@ -58,7 +59,7 @@ for bagFile in listOfBagFiles:
 		os.makedirs(folder)
 	except:
 		pass
-	shutil.copyfile(bagName, folder + '/' + bagName)
+	shutil.copyfile(bagName, folder + '/' + os.path.basename(bag.filename))
 
 
 	#get list of topics from the bag
