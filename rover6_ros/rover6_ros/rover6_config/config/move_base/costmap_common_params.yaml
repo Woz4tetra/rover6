@@ -20,10 +20,10 @@ robot_radius: 0.144
 # This parameter serves as a safeguard to losing a link in the tf tree while
 # still allowing an amount of latency the user is comfortable with to exist
 # in the system.
-transform_tolerance: 0.2
+transform_tolerance: 0.5  # 0.2
 
 # The frequency in Hz for the map to be updated.
-update_frequency: 5.0
+update_frequency: 2.0
 
 # The frequency in Hz for the map to be publish display information.
 publish_frequency: 1.0
