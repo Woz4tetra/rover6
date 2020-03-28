@@ -1,0 +1,20 @@
+### Local costmap parameters - load with the namespace "local_costmap" in the launch file ###
+
+# The global frame for the local costmap to operate in.
+global_frame: odom
+
+# The name of the frame for the base link of the robot.
+robot_base_frame: base_link
+
+rolling_window: true
+
+static_map: false
+
+width: 6
+height: 6
+resolution: 0.05
+
+plugins:
+    # parameters defined in costmap commmon parameters file
+    - {name: static_map,       type: "costmap_2d::StaticLayer"}
+    - {name: obstacles,        type: "costmap_2d::VoxelLayer"}
