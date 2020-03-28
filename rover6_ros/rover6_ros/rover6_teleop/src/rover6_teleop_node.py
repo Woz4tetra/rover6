@@ -52,7 +52,7 @@ class Rover6Teleop:
         self.tilt_center_command = rospy.get_param("~tilt_center_command", 105)
 
         # publishing topics
-        self.cmd_vel_pub = rospy.Publisher("cmd_vel", Twist, queue_size=100)
+        self.cmd_vel_pub = rospy.Publisher("/cmd_vel_teleop", Twist, queue_size=100)
         self.servo_pub = rospy.Publisher("servos", Rover6Servos, queue_size=100)
 
         # subscription topics
@@ -63,6 +63,13 @@ class Rover6Teleop:
         # self.max_speed_tps = self.max_speed_mps / self.tick_to_cm_factor  # max speed in ticks per s
 
         self.max_joy_val = 1.0
+
+        self.twist_command.linear.x = 0.0
+        self.twist_command.angular.z = 0.0
+        self.servo_command.camera_pan = -1
+        self.servo_command.camera_tilt = -1
+
+        rospy.Timer(rospy.Duration(0.25), self.timer_callback)
 
     def joy_to_speed(self, scale_factor, value):
         if abs(value) < self.deadzone_joy_val:
@@ -98,20 +105,7 @@ class Rover6Teleop:
             traceback.print_exc()
             rospy.signal_shutdown(str(e))
 
-    def process_joy_msg(self, msg):
-        if self.prev_joy_msg is None:
-            self.prev_joy_msg = msg
-            return
-
-        # button mapping:
-        # 0: A,    1: B,     2: X,      3: Y
-        # 4: L1,   5: R1,    6: Select, 7: Start
-        # 8: Home, 9: L joy, 10: R joy
-        # if self.did_button_change(msg, 0):
-        #     pass
-
-        linear_val = self.joy_to_speed(self.linear_scale, msg.axes[self.linear_axis])
-        angular_val = self.joy_to_speed(self.angular_scale, msg.axes[self.angular_axis])
+    def set_twist(self, linear_val, angular_val):
         publish_cmd_vel = False
         if self.twist_command.linear.x != linear_val:
             self.twist_command.linear.x = linear_val
@@ -119,14 +113,12 @@ class Rover6Teleop:
         if self.twist_command.angular.z != angular_val:
             self.twist_command.angular.z = angular_val
             publish_cmd_vel = True
+        return publish_cmd_vel
 
-        self.cmd_vel_pub.publish(self.twist_command)
-
-        camera_pan_val = self.joy_to_pan_servo(msg.axes[self.camera_pan_axis])
-        camera_tilt_val = self.joy_to_tilt_servo(msg.axes[self.camera_tilt_axis])
-        if camera_pan_val is None:
+    def set_servos(self, camera_pan_val=None, camera_tilt_val=None):
+        if camera_pan_val is None:  # default position
             camera_pan_val = -1
-        if camera_tilt_val is None:
+        if camera_tilt_val is None:  # default position
             camera_tilt_val = -1
 
         publish_servo_vals = False
@@ -142,23 +134,51 @@ class Rover6Teleop:
         else:
             self.servo_command.camera_tilt = -2  # -1 indicates default value, -2 indicates skip
 
-        if publish_servo_vals:
+        return publish_servo_vals
+
+    def process_joy_msg(self, msg):
+        if self.prev_joy_msg is None:
+            self.prev_joy_msg = msg
+            return
+
+        # button mapping:
+        # 0: A,    1: B,     2: X,      3: Y
+        # 4: L1,   5: R1,    6: Select, 7: Start
+        # 8: Home, 9: L joy, 10: R joy
+        # if self.did_button_change(msg, 0):
+        #     pass
+
+        linear_val = self.joy_to_speed(self.linear_scale, msg.axes[self.linear_axis])
+        angular_val = self.joy_to_speed(self.angular_scale, msg.axes[self.angular_axis])
+        if self.set_twist(linear_val, angular_val):
+            self.cmd_vel_pub.publish(self.twist_command)
+
+        camera_pan_val = self.joy_to_pan_servo(msg.axes[self.camera_pan_axis])
+        camera_tilt_val = self.joy_to_tilt_servo(msg.axes[self.camera_tilt_axis])
+
+        if self.set_servos(camera_pan_val, camera_tilt_val):
             self.servo_pub.publish(self.servo_command)
-        # self.servo_command.camera_pan = camera_pan_val
-        # self.servo_command.camera_tilt = camera_tilt_val
 
         self.prev_joy_msg = msg
 
-    def run(self):
-        clock_rate = rospy.Rate(10)
+    def timer_callback(self, event):
+        if event.current_real - self.prev_joy_msg.header.stamp > rospy.Duration(1.0):
+            if self.set_twist(0.0, 0.0):
+                self.cmd_vel_pub.publish(self.twist_command)
+            if self.set_servos():
+                self.servo_pub.publish(self.servo_command)
 
-        self.twist_command.linear.x = 0.0
-        self.twist_command.angular.z = 0.0
-        self.servo_command.camera_pan = -1
-        self.servo_command.camera_tilt = -1
+        if event.current_real - self.prev_joy_msg.header.stamp > rospy.Duration(0.5):
+            self.cmd_vel_pub.publish(self.twist_command)
+            self.servo_pub.publish(self.servo_command)
+
+
+    def run(self):
+        clock_rate = rospy.Rate(1)
 
         prev_time = rospy.get_rostime()
         while not rospy.is_shutdown():
+
             self.cmd_vel_pub.publish(self.twist_command)
             self.servo_pub.publish(self.servo_command)
             clock_rate.sleep()

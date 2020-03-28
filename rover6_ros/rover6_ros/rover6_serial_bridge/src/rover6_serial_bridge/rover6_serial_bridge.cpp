@@ -8,6 +8,8 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     nh.param<int>("/" + _roverNamespace + "/serial_baud", _serialBaud, 115200);
     nh.param<string>("/" + _roverNamespace + "/imu_frame_id", _imuFrameID, "bno055_imu");
     nh.param<string>("/" + _roverNamespace + "/enc_frame_id", _encFrameID, "encoders");
+    nh.param<string>("/" + _roverNamespace + "/motors_topic", _motorsTopicName, "motors");
+    nh.param<string>("/" + _roverNamespace + "/servos_topic", _servosTopicName, "servo_cmd");
     int num_servos = 0;
     nh.param<int>("/" + _roverNamespace + "/num_servos", num_servos, 16);
     _numServos = (unsigned int)num_servos;
@@ -57,11 +59,11 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     fsr_pub = nh.advertise<rover6_serial_bridge::Rover6FSR>("fsrs", 100);
     safety_pub = nh.advertise<rover6_serial_bridge::Rover6Safety>("safety", 100);
     ina_pub = nh.advertise<sensor_msgs::BatteryState>("battery", 10);
-    servo_pub = nh.advertise<std_msgs::Int16MultiArray>("servo_positions", 10);
+    servo_pub = nh.advertise<std_msgs::Int16MultiArray>("servo_pos", 10);
     tof_pub = nh.advertise<rover6_serial_bridge::Rover6TOF>("tof", 10);
 
-    motors_sub = nh.subscribe("motors", 100, &Rover6SerialBridge::motorsCallback, this);
-    servos_sub = nh.subscribe("servos", 100, &Rover6SerialBridge::servosCallback, this);
+    motors_sub = nh.subscribe(_motorsTopicName, 100, &Rover6SerialBridge::motorsCallback, this);
+    servos_sub = nh.subscribe(_servosTopicName, 100, &Rover6SerialBridge::servosCallback, this);
 
     pid_service = nh.advertiseService("rover6_pid", &Rover6SerialBridge::set_pid, this);
     safety_service = nh.advertiseService("rover6_safety", &Rover6SerialBridge::set_safety_thresholds, this);

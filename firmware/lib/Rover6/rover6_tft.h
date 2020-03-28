@@ -22,7 +22,6 @@
 #define TFT_RST    9
 #define TFT_DC     8
 #define TFT_LITE   6
-#define TFT_UPDATE_DELAY_MS 250
 
 namespace rover6_tft
 {

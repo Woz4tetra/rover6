@@ -231,24 +231,13 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
     }
 }
 
-void update_display()
-{
-    if (CURRENT_TIME - rover6_tft::tft_display_timer < TFT_UPDATE_DELAY_MS) {
-        return;
-    }
-    rover6_tft::tft_display_timer = CURRENT_TIME;
-
-    rover6_menus::draw_menus();
-}
-
-
 void report_data()
 {
     if (rover6_bno::read_BNO055()) {
         rover6_bno::report_BNO055();
     }
     if (rover6_tof::read_VL53L0X()) {
-        rover6_tof::report_VL53L0X();
+        // rover6_tof::report_VL53L0X();
     }
     if (rover6_ina::read_INA219()) {
         rover6_ina::report_INA219();
@@ -257,7 +246,7 @@ void report_data()
         rover6_encoders::report_encoders();
     }
     if (rover6_fsr::read_fsrs()) {
-        rover6_fsr::report_fsrs();
+        // rover6_fsr::report_fsrs();
     }
     if (rover6_ir_remote::read_IR()) {
         rover6_ir_remote::report_IR();
@@ -299,7 +288,8 @@ void loop()
     rover6_serial::data->read();
     rover6_serial::info->read();
     report_data();
-    update_display();
+
+    rover6_menus::draw_menus();
     rover6_pid::update_speed_pid();
     rover6_motors::check_motor_timeout();
 }

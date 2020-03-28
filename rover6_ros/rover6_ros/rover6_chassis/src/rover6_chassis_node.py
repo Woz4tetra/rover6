@@ -35,7 +35,7 @@ class Rover6Chassis:
         self.wheel_radius_cm = rospy.get_param("~wheel_radius_cm", 3.25)
         self.wheel_distance_cm = rospy.get_param("~wheel_distance_cm", 17.0)
         self.ticks_per_rotation = rospy.get_param("~ticks_per_rotation", 3840.0)
-        self.motors_pub_name = "motors"  # rospy.get_param("~motors_pub_name", "motors")
+        self.motors_pub_name = rospy.get_param("~motors_pub_name", "motors")
         self.max_speed_cps = rospy.get_param("~max_speed_cps", 915.0)
         self.services_enabled = rospy.get_param("~services_enabled", True)
         self.use_sensor_msg_time = rospy.get_param("~use_sensor_msg_time", True)

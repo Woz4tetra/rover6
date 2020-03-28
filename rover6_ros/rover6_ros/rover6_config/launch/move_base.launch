@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
-        <remap from="/cmd_vel" to="/rover6/cmd_vel"/>
+        <remap from="/cmd_vel" to="/cmd_vel_move_base"/>
         <remap from="/odom" to="/rover6/odom"/>
         <rosparam file="$(find rover6_config)/config/move_base/move_base_global_params.yaml" command="load"/>
 

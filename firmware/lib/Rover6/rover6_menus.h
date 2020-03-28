@@ -15,8 +15,12 @@
 
 using namespace rover6_tft;
 
+#define MENU_UPDATE_DELAY_MS 300
+
 namespace rover6_menus
 {
+    uint32_t menu_display_timer = 0;
+
     unsigned int ROW_SIZE = 10;
     unsigned int BORDER_OFFSET_W = 3;
     unsigned int BORDER_OFFSET_H = 1;
@@ -823,6 +827,11 @@ namespace rover6_menus
 
     void draw_menus()
     {
+        if (CURRENT_TIME - menu_display_timer < MENU_UPDATE_DELAY_MS) {
+            return;
+        }
+        menu_display_timer = CURRENT_TIME;
+
         if (PREV_DISPLAYED_MENU != DISPLAYED_MENU) {
             tft.fillScreen(ST7735_BLACK);
             screen_change_event();

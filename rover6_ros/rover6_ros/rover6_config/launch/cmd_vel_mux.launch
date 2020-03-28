@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <node pkg="nodelet" type="nodelet" name="yocs_cmd_vel_mux"
+            args="load yocs_cmd_vel_mux/CmdVelMuxNodelet nodelet_manager">
+        <param name="yaml_cfg_file" value="$(find rover6_config)/config/cmd_vel_mux.yaml"/>
+    </node>
+</launch>
