@@ -55,7 +55,7 @@ obstacles:
     observation_sources: base_scan
     base_scan:
         topic: /rplidar/scan
-        sensor_frame: /laser
+        sensor_frame: laser
         # observation_persistence: 0.0
         # expected_update_rate: 0.0
         data_type: LaserScan
