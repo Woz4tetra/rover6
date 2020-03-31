@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <node pkg="nodelet" type="nodelet" name="yocs_cmd_vel_mux"
-            args="load yocs_cmd_vel_mux/CmdVelMuxNodelet nodelet_manager">
-        <param name="yaml_cfg_file" value="$(find rover6_config)/config/cmd_vel_mux.yaml"/>
+    <arg name="config_locks"  default="$(find rover6_config)/config/twist_mux_locks.yaml"/>
+    <arg name="config_topics" default="$(find rover6_config)/config/twist_mux_topics.yaml"/>
+
+    <node pkg="twist_mux" type="twist_mux" name="twist_mux" output="screen">
+        <remap from="cmd_vel_out" to="/rover6/cmd_vel"/>
+
+        <rosparam file="$(arg config_locks)"  command="load"/>
+        <rosparam file="$(arg config_topics)" command="load"/>
     </node>
 </launch>

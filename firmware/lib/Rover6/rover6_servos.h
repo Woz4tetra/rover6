@@ -42,10 +42,10 @@ namespace rover6_servos
     #define BACK_TILTER_DOWN 0
 
     #define CAMERA_PAN_RIGHT 90
-    #define CAMERA_PAN_CENTER 43
+    #define CAMERA_PAN_CENTER 45
     #define CAMERA_PAN_LEFT 0
     #define CAMERA_TILT_UP 0
-    #define CAMERA_TILT_CENTER 105
+    #define CAMERA_TILT_CENTER 100
     #define CAMERA_TILT_DOWN 150
 
 

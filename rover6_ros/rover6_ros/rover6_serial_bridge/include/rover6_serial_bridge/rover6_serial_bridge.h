@@ -77,12 +77,14 @@ private:
     sensor_msgs::BatteryState ina_msg;
 
     unsigned int _numServos;
+    string _servosTopicName;
     ros::Publisher servo_pub;
     std_msgs::Int16MultiArray servo_msg;
 
     ros::Publisher tof_pub;
     rover6_serial_bridge::Rover6TOF tof_msg;
 
+    string _motorsTopicName;
     ros::Subscriber motors_sub;
     void motorsCallback(const rover6_serial_bridge::Rover6Motors::ConstPtr& msg);
 
