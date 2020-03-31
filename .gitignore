@@ -2,6 +2,10 @@
 rover6_ros/rover6_ros/rover6_config/maps/
 rover6_ros/rover6_ros/rover6_config/bags/
 
+# data
+*.bag
+*.csv
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 #*.py[cod]
