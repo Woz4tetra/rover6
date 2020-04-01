@@ -54,17 +54,37 @@ namespace rover6_serial
             if (!ready()) {
                 return;
             }
-            if (device()->available() > 0) {
+            // 2 start chars
+            // at least 1 char for packet num
+            // \t + at least 1 category char
+            // 2 chars for checksum
+            // 1 new line
+            if (device()->available() > 2) {
                 char c;
-                while (device()->available() > 0) {
-                    c = device()->read();
-                    recv_char_buffer[recv_char_index] = c;
-                    recv_char_index++;
+                bool start_found = false;
+                c = device()->read();
+                if (c == PACKET_START_0) {
+                    if (device()->available()) {
+                        c = device()->read();
+                        if (c == PACKET_START_1) {
+                            start_found = true;
+                        }
+                    }
                 }
-                recv_char_buffer[recv_char_index] = '\0';
-                recv_char_index = 0;
-                read_buffer = String(recv_char_buffer);
-                while (readline()) {
+                if (start_found) {
+                    while (true) {
+                        if (device()->available()) {
+                            c = device()->read();
+                            if (c == PACKET_STOP) {
+                                break;
+                            }
+                            recv_char_buffer[recv_char_index] = c;
+                            recv_char_index++;
+                        }
+                    }
+                    recv_char_buffer[recv_char_index] = '\0';
+                    recv_char_index = 0;
+                    read_packet = String(recv_char_buffer);
                     parse_packet();
                 }
             }
@@ -212,18 +232,20 @@ namespace rover6_serial
 
         void parse_packet()
         {
-            char c1 = get_char();
-            if (c1 != PACKET_START_0) {
-                write("txrx", "dd", read_packet_num, 1);  // error 1: c1 != \x12
-                return;
-            }
-            char c2 = get_char();
-            if (c2 != PACKET_START_1) {
-                write("txrx", "dd", read_packet_num, 2);  // error 2: c2 != \x34
-                return;
-            }
+            // read_packet assumes PACKET_START_0, PACKET_START_1, and PACKET_STOP have been removed
 
-            read_packet.remove(0, 2);  // remove start characters
+            // char c1 = get_char();
+            // if (c1 != PACKET_START_0) {
+            //     write("txrx", "dd", read_packet_num, 1);  // error 1: c1 != \x12
+            //     return;
+            // }
+            // char c2 = get_char();
+            // if (c2 != PACKET_START_1) {
+            //     write("txrx", "dd", read_packet_num, 2);  // error 2: c2 != \x34
+            //     return;
+            // }
+            //
+            // read_packet.remove(0, 2);  // remove start characters
             read_packet_index = 0;
 
             // at least 1 char for packet num

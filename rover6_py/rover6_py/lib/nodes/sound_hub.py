@@ -18,12 +18,22 @@ class SoundController:
         self.players = {}
 
     def get_player(self, path: str):
-        return OMXPlayer(path, args=["-o", "alsa:hw:1,0"], dbus_name='org.mpris.MediaPlayer2.omxplayer1')
+        try:
+            return OMXPlayer(path, args=["-o", "alsa:hw:1,0"], dbus_name='org.mpris.MediaPlayer2.omxplayer1')
+        except BaseException as e:
+            logger.error(str(e), exc_info=True)
+            return None
+
+    def is_available(self, track_name):
+        return track_name in self.players and self.players[track_name] is not None
+
+    def is_playing(self, track_name):
+        return self.is_available() and self.players[track_name].is_playing()
 
     def play(self, path):
         track_name = os.path.basename(path)
         try:
-            is_playing = track_name in self.players and self.players[track_name].is_playing()
+            is_playing = self.is_playing()
             if is_playing:
                 self.players[track_name].set_position(0)
         except BaseException as e:
@@ -37,7 +47,7 @@ class SoundController:
 
     def wait(self, track_name):
         try:
-            while self.players[track_name].is_playing():
+            while self.is_playing():
                 time.sleep(0.1)
         except BaseException as e:
             logger.debug("%s player is already stopped. Reason: %s" % (track_name, e))
@@ -47,11 +57,13 @@ class SoundController:
         subprocess.call("amixer -c 1 sset PCM {}%".format(percent), shell=True)
 
     def pause(self, track_name):
-        self.players[track_name].pause()
+        if self.is_available(track_name):
+            self.players[track_name].pause()
 
     def quit_all(self):
-        for player in self.players.values():
-            player.quit()
+        for track_name in self.players:
+            if self.is_available(track_name):
+                self.players[track_name].quit()
 
 
 class SoundHub(Node):

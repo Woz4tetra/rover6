@@ -86,9 +86,11 @@ private:
 
     string _motorsTopicName;
     ros::Subscriber motors_sub;
+    rover6_serial_bridge::Rover6Motors motors_msg;
     void motorsCallback(const rover6_serial_bridge::Rover6Motors::ConstPtr& msg);
 
     ros::Subscriber servos_sub;
+    rover6_serial_bridge::Rover6Servos servos_msg;
     void servosCallback(const rover6_serial_bridge::Rover6Servos::ConstPtr& msg);
     void writeServo(unsigned int n, int command);
 

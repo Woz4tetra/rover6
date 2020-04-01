@@ -201,10 +201,15 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
 
     // set_pid_ks
     else if (category.equals("ks")) {
-        for (size_t index = 0; index < NUM_PID_KS; index++) {
-            CHECK_SEGMENT(serial_obj); rover6_pid::pid_Ks[index] = serial_obj->get_segment().toFloat();
+        CHECK_SEGMENT(serial_obj); int index = serial_obj->get_segment().toInt();
+        CHECK_SEGMENT(serial_obj); float k_value = serial_obj->get_segment().toFloat();
+        if (0 <= index && index < NUM_PID_KS) {
+            rover6_pid::pid_Ks[index] = k_value;
+            rover6_pid::set_Ks();  // sets pid constants based on pid_Ks array
         }
-        rover6_pid::set_Ks();  // sets pid constants based on pid_Ks array
+        else {
+            rover6_serial::println_error("Invalid K value index supplied: %d", index);
+        }
     }
 
     // set_servo

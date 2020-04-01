@@ -159,7 +159,7 @@ void Rover6SerialBridge::waitForPacketStart()
         }
 
         else if (c1 == PACKET_STOP) {
-            ROS_DEBUG_STREAM("Device message: " << msg_buffer.str());
+            ROS_INFO_STREAM("Device message: " << msg_buffer.str());
             msg_buffer.str(std::string());
         }
         else {
@@ -173,6 +173,7 @@ bool Rover6SerialBridge::readSerial()
     waitForPacketStart();
     _serialBuffer = _serialRef.readline();
     _serialBuffer = _serialBuffer.substr(0, _serialBuffer.length() - 1);  // remove newline character
+    // ROS_INFO_STREAM("Buffer: " << _serialBuffer);
     // at least 1 char for packet num
     // \t + at least 1 category char
     // 2 chars for checksum
@@ -296,6 +297,7 @@ void Rover6SerialBridge::processSerialPacket(string category)
         CHECK_SEGMENT(0); readyState->time_ms = (uint32_t)stoi(_currentBufferSegment);
         CHECK_SEGMENT(1); readyState->rover_name = _currentBufferSegment;
         readyState->is_ready = true;
+        ROS_INFO_STREAM("Received ready signal! Rover name: " << _currentBufferSegment);
     }
 }
 
@@ -423,13 +425,23 @@ int Rover6SerialBridge::run()
 
 void Rover6SerialBridge::motorsCallback(const rover6_serial_bridge::Rover6Motors::ConstPtr& msg) {
     // motor commands in ticks per second
-    ROS_DEBUG("left motor: %f, right motor: %f", msg->left, msg->right);
-    writeSerial("m", "ff", msg->left, msg->right);
+    // ROS_DEBUG("left motor: %f, right motor: %f", msg->left, msg->right);
+    if (motors_msg.left != msg->left || motors_msg.right != msg->right) {
+        writeSerial("m", "ff", msg->left, msg->right);
+        motors_msg.left = msg->left;
+        motors_msg.right = msg->right;
+    }
 }
 
 void Rover6SerialBridge::servosCallback(const rover6_serial_bridge::Rover6Servos::ConstPtr& msg) {
-    writeServo(_tiltServoNum, msg->camera_tilt);
-    writeServo(_panServoNum, msg->camera_pan);
+    if (servos_msg.camera_tilt != msg->camera_tilt) {
+        writeServo(_tiltServoNum, msg->camera_tilt);
+        servos_msg.camera_tilt = msg->camera_tilt;
+    }
+    if (servos_msg.camera_pan != msg->camera_pan) {
+        writeServo(_panServoNum, msg->camera_pan);
+        servos_msg.camera_pan = msg->camera_pan;
+    }
 }
 
 void Rover6SerialBridge::writeServo(unsigned int n, int command) {
@@ -516,7 +528,15 @@ void Rover6SerialBridge::writeSpeed(float speedA, float speedB) {
 }
 
 void Rover6SerialBridge::writeK(float kp_A, float ki_A, float kd_A, float kp_B, float ki_B, float kd_B, float speed_kA, float speed_kB) {
-    writeSerial("ks", "ffffffff", kp_A, ki_A, kd_A, kp_B, ki_B, kd_B, speed_kA, speed_kB);
+    // writeSerial("ks", "ffffffff", kp_A, ki_A, kd_A, kp_B, ki_B, kd_B, speed_kA, speed_kB);
+    writeSerial("ks", "df", 0, kp_A);
+    writeSerial("ks", "df", 1, ki_A);
+    writeSerial("ks", "df", 2, kd_A);
+    writeSerial("ks", "df", 3, kp_B);
+    writeSerial("ks", "df", 4, ki_B);
+    writeSerial("ks", "df", 5, kd_B);
+    writeSerial("ks", "df", 6, speed_kA);
+    writeSerial("ks", "df", 7, speed_kB);
 }
 
 void Rover6SerialBridge::writeObstacleThresholds(int back_lower, int back_upper, int front_lower, int front_upper) {
