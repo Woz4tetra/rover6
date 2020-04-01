@@ -54,10 +54,16 @@ namespace rover6_serial
             if (!ready()) {
                 return;
             }
-            int available = device()->available();
-            if (available > 0) {
-                String incoming = device()->readString(available);
-                read_buffer += incoming;
+            if (device()->available() > 0) {
+                char c;
+                while (device()->available() > 0) {
+                    c = device()->read();
+                    recv_char_buffer[recv_char_index] = c;
+                    recv_char_index++;
+                }
+                recv_char_buffer[recv_char_index] = '\0';
+                recv_char_index = 0;
+                read_buffer = String(recv_char_buffer);
                 while (readline()) {
                     parse_packet();
                 }
@@ -119,6 +125,8 @@ namespace rover6_serial
         unsigned int read_packet_index;
         int current_segment_num;
         bool prev_ready_state;
+        char *recv_char_buffer;
+        size_t recv_char_index;
 
         void init_variables() {
             write_packet = "";
@@ -132,6 +140,9 @@ namespace rover6_serial
             read_packet_index = 0;
             current_segment_num = -1;
             prev_ready_state = false;
+
+            recv_char_buffer = new char[0x800];
+            recv_char_index = 0;
         }
 
         void (*read_callback)(String, String);

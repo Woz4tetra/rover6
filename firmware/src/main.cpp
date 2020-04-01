@@ -231,28 +231,46 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
     }
 }
 
+int cycler_index = 0;
 void report_data()
 {
-    if (rover6_bno::read_BNO055()) {
-        rover6_bno::report_BNO055();
+    switch (cycler_index) {
+        case 0:
+            if (rover6_bno::read_BNO055()) {
+                rover6_bno::report_BNO055();
+            }
+            break;
+        case 1:
+            if (rover6_tof::read_VL53L0X()) {
+                // rover6_tof::report_VL53L0X();
+            }
+            break;
+        case 2:
+            if (rover6_ina::read_INA219()) {
+                rover6_ina::report_INA219();
+            }
+            break;
+        case 3:
+            if (rover6_encoders::read_encoders()) {
+                rover6_encoders::report_encoders();
+            }
+            break;
+        case 4:
+            if (rover6_fsr::read_fsrs()) {
+                // rover6_fsr::report_fsrs();
+            }
+            break;
+        case 5:
+            if (rover6_ir_remote::read_IR()) {
+                rover6_ir_remote::report_IR();
+                rover6_ir_remote::callback_ir();
+            }
+            break;
     }
-    if (rover6_tof::read_VL53L0X()) {
-        // rover6_tof::report_VL53L0X();
+    cycler_index++;
+    if (cycler_index > 5) {
+        cycler_index = 0;
     }
-    if (rover6_ina::read_INA219()) {
-        rover6_ina::report_INA219();
-    }
-    if (rover6_encoders::read_encoders()) {
-        rover6_encoders::report_encoders();
-    }
-    if (rover6_fsr::read_fsrs()) {
-        // rover6_fsr::report_fsrs();
-    }
-    if (rover6_ir_remote::read_IR()) {
-        rover6_ir_remote::report_IR();
-        rover6_ir_remote::callback_ir();
-    }
-
 }
 
 
