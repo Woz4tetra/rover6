@@ -50,8 +50,8 @@ class SoundController:
         self.players[track_name].pause()
 
     def quit_all(self):
-        for name in self.sound_paths:
-            self.players[name].quit()
+        for player in self.players.values():
+            player.quit()
 
 
 class SoundHub(Node):
