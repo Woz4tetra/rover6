@@ -426,11 +426,11 @@ int Rover6SerialBridge::run()
 void Rover6SerialBridge::motorsCallback(const rover6_serial_bridge::Rover6Motors::ConstPtr& msg) {
     // motor commands in ticks per second
     // ROS_DEBUG("left motor: %f, right motor: %f", msg->left, msg->right);
-    if (motors_msg.left != msg->left || motors_msg.right != msg->right) {
-        writeSerial("m", "ff", msg->left, msg->right);
-        motors_msg.left = msg->left;
-        motors_msg.right = msg->right;
-    }
+    // if (motors_msg.left != msg->left || motors_msg.right != msg->right) {
+    writeSerial("m", "ff", msg->left, msg->right);
+    //     motors_msg.left = msg->left;
+    //     motors_msg.right = msg->right;
+    // }
 }
 
 void Rover6SerialBridge::servosCallback(const rover6_serial_bridge::Rover6Servos::ConstPtr& msg) {

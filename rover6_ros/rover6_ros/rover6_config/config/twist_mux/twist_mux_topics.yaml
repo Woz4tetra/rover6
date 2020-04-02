@@ -9,10 +9,10 @@ topics:
 -
   name    : navigation
   topic   : /cmd_vel_move_base
-  timeout : 0.5
-  priority: 100
+  timeout : 1.0
+  priority: 10
 -
   name    : joystick
   topic   : /cmd_vel_teleop
   timeout : 0.5
-  priority: 10
+  priority: 100

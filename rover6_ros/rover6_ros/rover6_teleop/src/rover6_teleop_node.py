@@ -69,6 +69,7 @@ class Rover6Teleop:
         self.servo_command.camera_pan = -1
         self.servo_command.camera_tilt = -1
 
+        self.cmd_vel_timeout = rospy.Time.now()
         # rospy.Timer(rospy.Duration(0.25), self.timer_callback)
 
     def joy_to_speed(self, scale_factor, value):
@@ -112,18 +113,17 @@ class Rover6Teleop:
             rospy.signal_shutdown(str(e))
 
     def set_twist(self, linear_val, angular_val):
-        self.twist_command.linear.x = linear_val
-        self.twist_command.angular.z = angular_val
-        return True
+        # self.twist_command.linear.x = linear_val
+        # self.twist_command.angular.z = angular_val
+        # return True
 
-        # publish_cmd_vel = False
-        # if self.twist_command.linear.x != linear_val:
-        #     self.twist_command.linear.x = linear_val
-        #     publish_cmd_vel = True
-        # if self.twist_command.angular.z != angular_val:
-        #     self.twist_command.angular.z = angular_val
-        #     publish_cmd_vel = True
-        # return publish_cmd_vel
+        if self.twist_command.linear.x != linear_val or self.twist_command.angular.z != angular_val:
+            self.twist_command.linear.x = linear_val
+            self.twist_command.angular.z = angular_val
+            self.cmd_vel_timeout = rospy.Time.now()
+            return True
+        else:
+            return rospy.Time.now() - self.cmd_vel_timeout < rospy.Duration(0.5)
 
     def set_servos(self, camera_pan_val=None, camera_tilt_val=None):
         if camera_pan_val is None:  # default position

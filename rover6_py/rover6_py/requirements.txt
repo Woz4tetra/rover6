@@ -2,4 +2,3 @@ pyserial
 numpy
 evdev
 PyYAML
-

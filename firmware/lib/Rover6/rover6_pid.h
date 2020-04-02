@@ -72,12 +72,12 @@ namespace rover6_pid
         }
         int compute(double measurement)
         {
-            if (target != 0.0) {
-                if (CURRENT_TIME - prev_setpoint_time > PID_COMMAND_TIMEOUT_MS) {
-                    rover6_serial::println_info("PID setpoint timed out");
-                    set_target(0.0);
-                }
-            }
+            // if (target != 0.0) {
+            //     if (CURRENT_TIME - prev_setpoint_time > PID_COMMAND_TIMEOUT_MS) {
+            //         rover6_serial::println_info("PID setpoint timed out");
+            //         set_target(0.0);
+            //     }
+            // }
 
             double error = target - measurement;
             if (abs(target) < deadzone) {
