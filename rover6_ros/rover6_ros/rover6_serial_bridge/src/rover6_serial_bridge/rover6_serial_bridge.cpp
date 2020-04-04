@@ -43,6 +43,8 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     _currentBufferSegment = "";
     _readPacketNum = 0;
     _writePacketNum = 0;
+    _recvCharIndex = 0;
+    _recvCharBuffer = new char[0xfff];
 
     _dateString = new char[16];
 
@@ -171,8 +173,23 @@ void Rover6SerialBridge::waitForPacketStart()
 bool Rover6SerialBridge::readSerial()
 {
     waitForPacketStart();
-    _serialBuffer = _serialRef.readline();
-    _serialBuffer = _serialBuffer.substr(0, _serialBuffer.length() - 1);  // remove newline character
+    char c;
+    _recvCharIndex = 0;
+    while (true) {
+        if (_serialRef.available()) {
+            c = _serialRef.read(1).at(0);
+            if (c == PACKET_STOP) {
+                break;
+            }
+            _recvCharBuffer[_recvCharIndex] = c;
+            _recvCharIndex++;
+        }
+    }
+    _recvCharBuffer[_recvCharIndex] = '\0';
+
+    // _serialBuffer = _serialRef.readline();
+    _serialBuffer = string(_recvCharBuffer);
+    // _serialBuffer = _serialBuffer.substr(0, _serialBuffer.length() - 1);  // remove newline character
     // ROS_INFO_STREAM("Buffer: " << _serialBuffer);
     // at least 1 char for packet num
     // \t + at least 1 category char

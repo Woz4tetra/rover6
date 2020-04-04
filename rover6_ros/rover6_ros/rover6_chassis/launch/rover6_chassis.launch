@@ -2,7 +2,7 @@
 <launch>
     <arg name="cmd_vel_topic" default="cmd_vel"/>
     <arg name="rover6_chassis_services_enabled" default="true"/>
-    <arg name="rover6_chassis_use_sensor_msg_time" default="true"/>
+    <arg name="rover6_chassis_use_sensor_msg_time" default="false"/>
 
     <group ns="rover6" >
         <node name="rover6_chassis" pkg="rover6_chassis" type="rover6_chassis_node.py" output="screen" required="true">

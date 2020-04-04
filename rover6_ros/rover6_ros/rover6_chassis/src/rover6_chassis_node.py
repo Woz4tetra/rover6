@@ -38,7 +38,7 @@ class Rover6Chassis:
         self.motors_pub_name = rospy.get_param("~motors_pub_name", "motors")
         self.max_speed_cps = rospy.get_param("~max_speed_cps", 36.2)
         self.services_enabled = rospy.get_param("~services_enabled", True)
-        self.use_sensor_msg_time = rospy.get_param("~use_sensor_msg_time", True)
+        self.use_sensor_msg_time = rospy.get_param("~use_sensor_msg_time", False)
 
         self.wheel_radius_m = self.wheel_radius_cm / 100.0
         self.wheel_distance_m = self.wheel_distance_cm / 100.0
@@ -299,8 +299,12 @@ class Rover6Chassis:
         delta_right = self.ticks_to_m(self.enc_msg.right_ticks - self.prev_right_ticks)
         delta_dist = (delta_right + delta_left) / 2
 
-        left_speed = self.ticks_to_m(self.enc_msg.left_speed_ticks_per_s)
-        right_speed = self.ticks_to_m(self.enc_msg.right_speed_ticks_per_s)
+        if abs(delta_dist) > 0.0001:
+            left_speed = self.ticks_to_m(self.enc_msg.left_speed_ticks_per_s)
+            right_speed = self.ticks_to_m(self.enc_msg.right_speed_ticks_per_s)
+        else:
+            left_speed = 0.0
+            right_speed = 0.0
 
         # angle = arc / radius
         delta_angle = (delta_right - delta_left) / self.wheel_distance_m

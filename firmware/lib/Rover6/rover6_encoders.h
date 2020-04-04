@@ -27,6 +27,7 @@ namespace rover6_encoders
     long encA_pos, encB_pos = 0;
     double enc_speedA, enc_speedB = 0.0;  // ticks/s, smoothed
     double enc_speedA_raw, enc_speedB_raw = 0.0;  // ticks/s
+
     uint32_t prev_enc_time = 0;
 
     double speed_smooth_kA = 1.0;
@@ -55,6 +56,11 @@ namespace rover6_encoders
         long new_encA_pos = motorA_enc.read();
         long new_encB_pos = motorB_enc.read();
 
+        bool should_report = false;
+        if (new_encA_pos != encA_pos || new_encB_pos != encB_pos) {
+            should_report = true;
+        }
+
         enc_speedA_raw = (double)(new_encA_pos - encA_pos) / (CURRENT_TIME - prev_enc_time) * 1000.0;
         enc_speedB_raw = (double)(new_encB_pos - encB_pos) / (CURRENT_TIME - prev_enc_time) * 1000.0;
         enc_speedA += speed_smooth_kA * (enc_speedA_raw - enc_speedA);
@@ -65,7 +71,7 @@ namespace rover6_encoders
 
         prev_enc_time = CURRENT_TIME;
 
-        return true;
+        return should_report;
     }
 
     void report_encoders()

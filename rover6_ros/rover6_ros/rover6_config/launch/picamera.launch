@@ -21,6 +21,7 @@
         <param name="vFlip" type="bool" value="true" />
         <param name="hFlip" type="bool" value="true" />
         <param name="ISO" type="int" value="900" />
+        <param name="shutter_speed" type="int" value="9000" />
         <!-- <param name="video_stabilisation" type="bool" value="true" /> -->
     </node>
 </launch>

@@ -234,6 +234,19 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
         }
         rover6_tof::set_lox_thresholds();  // sets thresholds based on LOX_THRESHOLDS array
     }
+
+    // menu_key
+    else if (category.equals("menu")) {
+        CHECK_SEGMENT(serial_obj); char key = serial_obj->get_segment().charAt(0);
+        switch (key) {
+            case '^':  rover6_menus::up_menu_event(); break;
+            case '<':  rover6_menus::left_menu_event(); break;
+            case '>':  rover6_menus::right_menu_event(); break;
+            case 'v':  rover6_menus::down_menu_event(); break;
+            case 'e':  rover6_menus::enter_menu_event(); break;
+            case 'b':  rover6_menus::back_menu_event(); break;
+        }
+    }
 }
 
 int cycler_index = 0;
@@ -241,9 +254,9 @@ void report_data()
 {
     switch (cycler_index) {
         case 0:
-            if (rover6_bno::read_BNO055()) {
-                rover6_bno::report_BNO055();
-            }
+            // if (rover6_bno::read_BNO055()) {
+            //     rover6_bno::report_BNO055();
+            // }
             break;
         case 1:
             if (rover6_tof::read_VL53L0X()) {

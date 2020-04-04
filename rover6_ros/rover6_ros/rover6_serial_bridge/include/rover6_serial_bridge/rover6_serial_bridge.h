@@ -57,6 +57,8 @@ private:
     ros::Time deviceStartTime;
     uint32_t offsetTimeMs;
     string _roverNamespace;
+    size_t _recvCharIndex;
+    char* _recvCharBuffer;
 
     string _imuFrameID;
     ros::Publisher imu_pub;
