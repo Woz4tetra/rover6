@@ -9,13 +9,13 @@ if [ "${BASE_INSTALL_DIR}" = "" ]; then
   BASE_INSTALL_DIR=~/.local/rover6/rover6_py
 fi
 
-chmod +x ./copy.sh
-./copy.sh
+chmod +x ${BASE_DIR}/copy.sh
+bash ${BASE_DIR}/copy.sh
 
 echo "Installing python dependencies"
 # pip3 install -U -r ${SRC_DIR}/requirements.txt
 # sudo apt-get install libatlas-base-dev  # for numpy
 
-./systemd/install_systemd.sh
+bash ${BASE_DIR}/systemd/install_systemd.sh
 
 echo "rover6_py installation complete"

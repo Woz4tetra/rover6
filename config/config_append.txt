@@ -1,0 +1,2 @@
+dtoverlay=gpio-poweroff,gpiopin=17
+gpio=18=op,dh
