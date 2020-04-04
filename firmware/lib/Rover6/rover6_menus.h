@@ -759,6 +759,7 @@ namespace rover6_menus
     //
 
     void down_menu_event() {
+        ROVER6_SERIAL_WRITE_BOTH("menu", "s", "v");
         switch (DISPLAYED_MENU) {
             case MAIN_MENU: MAIN_MENU_SELECT_INDEX += 1; break;
             case MOTORS_MENU: drive_rover_forward(-170000.0); break;
@@ -769,6 +770,7 @@ namespace rover6_menus
     }
 
     void up_menu_event() {
+        ROVER6_SERIAL_WRITE_BOTH("menu", "s", "^");
         switch (DISPLAYED_MENU) {
             case MAIN_MENU: MAIN_MENU_SELECT_INDEX -= 1; break;
             case MOTORS_MENU: drive_rover_forward(170000.0); break;
@@ -779,6 +781,7 @@ namespace rover6_menus
     }
 
     void left_menu_event() {
+        ROVER6_SERIAL_WRITE_BOTH("menu", "s", "<");
         switch (DISPLAYED_MENU) {
             case MOTORS_MENU: rotate_rover(-85000.0); break;
             default: break;
@@ -787,6 +790,7 @@ namespace rover6_menus
     }
 
     void right_menu_event() {
+        ROVER6_SERIAL_WRITE_BOTH("menu", "s", ">");
         switch (DISPLAYED_MENU) {
             case MOTORS_MENU: rotate_rover(85000.0); break;
             default: break;
@@ -795,6 +799,7 @@ namespace rover6_menus
     }
 
     void enter_menu_event() {
+        ROVER6_SERIAL_WRITE_BOTH("menu", "s", "e");
         switch (DISPLAYED_MENU) {
             case MAIN_MENU: DISPLAYED_MENU = MAIN_MENU_ENUM_MAPPING[MAIN_MENU_SELECT_INDEX]; break;
             case MOTORS_MENU: drive_rover_forward(0.0); break;
@@ -805,6 +810,7 @@ namespace rover6_menus
         }
     }
     void back_menu_event() {
+        ROVER6_SERIAL_WRITE_BOTH("menu", "s", "b");
         if (DISPLAYED_MENU == WIFI_MENU && wifi_menu_back_event()) {
             return;
         }

@@ -21,6 +21,7 @@
 
 #include "rover6_serial_bridge/Rover6PidSrv.h"
 #include "rover6_serial_bridge/Rover6SafetySrv.h"
+#include "rover6_serial_bridge/Rover6MenuSrv.h"
 
 
 using namespace std;
@@ -98,6 +99,7 @@ private:
 
     ros::ServiceServer pid_service;
     ros::ServiceServer safety_service;
+    ros::ServiceServer menu_service;
 
     StructReadyState* readyState;
 
@@ -121,8 +123,9 @@ private:
     void loop();
     void stop();
 
-    bool set_pid(rover6_serial_bridge::Rover6PidSrv::Request  &req, rover6_serial_bridge::Rover6PidSrv::Response &res);
-    bool set_safety_thresholds(rover6_serial_bridge::Rover6SafetySrv::Request  &req, rover6_serial_bridge::Rover6SafetySrv::Response &res);
+    bool set_pid(rover6_serial_bridge::Rover6PidSrv::Request &req, rover6_serial_bridge::Rover6PidSrv::Response &res);
+    bool set_safety_thresholds(rover6_serial_bridge::Rover6SafetySrv::Request &req, rover6_serial_bridge::Rover6SafetySrv::Response &res);
+    bool send_menu_event(rover6_serial_bridge::Rover6MenuSrv::Request &req, rover6_serial_bridge::Rover6MenuSrv::Response &res);
 
     void setActive(bool state);
     void softRestart();

@@ -4,13 +4,19 @@ echo "Running firmware install script"
 
 BASE_DIR=$(realpath "$(dirname $0)")
 if [ "${BASE_INSTALL_DIR}" = "" ]; then
-  BASE_INSTALL_DIR=~/.local/rover6
+    BASE_INSTALL_DIR=~/.local/bin
 fi
+SCRIPTS_DIR=${BASE_DIR}/scripts
 
-mkdir -p ${BASE_INSTALL_DIR}/bin
+mkdir -p ${BASE_INSTALL_DIR}
 
-chmod +x ${BASE_DIR}/monitor-rover
-chmod +x ${BASE_DIR}/upload-rover
+chmod +x ${SCRIPTS_DIR}/monitor-rover
+chmod +x ${SCRIPTS_DIR}/upload-firmware
+chmod +x ${SCRIPTS_DIR}/compile-firmware
+
+cp ${SCRIPTS_DIR}/monitor-rover ${BASE_INSTALL_DIR}
+cp ${SCRIPTS_DIR}/upload-firmware ${BASE_INSTALL_DIR}
+cp ${SCRIPTS_DIR}/compile-firmware ${BASE_INSTALL_DIR}
 
 if [ ! -f /etc/udev/rules.d/49-teensy.rules ]; then
   echo "Attempting to install platformio teensy rules"
@@ -27,4 +33,4 @@ source ~/.profile
 platformio --version
 
 echo "Please close this terminal session to load platformio in ~/.local/bin"
-echo "run ./upload-rover afterwards"
+echo "run 'upload-firmware' afterwards"

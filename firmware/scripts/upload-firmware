@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
+cd ~/rover6/firmware
 systemctl stop --user rover6_py.service
 platformio run --target upload
+cd -

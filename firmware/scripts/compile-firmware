@@ -1,2 +1,4 @@
 #!/usr/bin/env bash
+cd ~/rover6/firmware
 platformio run
+cd -

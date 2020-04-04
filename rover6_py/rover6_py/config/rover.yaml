@@ -46,19 +46,6 @@ update_rpi_state_delay: 0.5
 
 # ---- Rover commands ----
 
-packet_codes:
-  txrx: "dd"
-  bno: "ufffffffffd"
-  enc: "uddff"
-  fsr: "udd"
-  safe: "udddddddddddd"
-  ina: "ufff"
-  ir: "udd"
-  servo: "udddddddddddddddd"
-  lox: "udddddd"
-  ready: "us"
-  shutdown: "s"
-
 packet_names:
   ina:
     - time
@@ -79,6 +66,8 @@ packet_names:
     - time
     - type
     - value
+  menu:
+    - event
   bno:
     - time
     - orientation_x
@@ -124,6 +113,23 @@ packet_names:
     - name
   shutdown:
     - name
+  wifi:
+    - state
+
+packet_codes:
+  txrx: "dd"
+  bno: "ufffffffffd"
+  enc: "uddff"
+  fsr: "udd"
+  safe: "udddddddddddd"
+  ina: "ufff"
+  ir: "udd"
+  menu: "s"
+  servo: "udddddddddddddddd"
+  lox: "udddddd"
+  ready: "us"
+  shutdown: "s"
+  wifi: "d"
 
 write_commands:
   toggle_active: "<>"
@@ -135,6 +141,7 @@ write_commands:
   set_servo: "s"
   set_servo_default: "sd"
   set_safety_thresholds: "safe"
+  menu_event: "menu"
 
 write_codes:
   toggle_active: "d"
@@ -146,3 +153,4 @@ write_codes:
   set_servo: "dd"
   set_servo_default: "d"
   set_safety_thresholds: "dddd"
+  menu_event: "s"

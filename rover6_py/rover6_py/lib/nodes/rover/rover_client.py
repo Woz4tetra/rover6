@@ -250,7 +250,11 @@ class RoverClient(Node):
             packet_buffer = packet_buffer[:-1]  # remove newline
 
         logger.debug("packet_buffer: %s" % str(packet_buffer))
-        packet = Packet.from_bytes(packet_buffer)
+        try:
+            packet = Packet.from_bytes(packet_buffer)
+        except BaseException as e:
+            logger.error("An exception occurred while parsing packet '%s': %s" % (packet_buffer, str(e)), exc_info=True)
+            return None
 
         if not packet.checksum():
             logger.error(
@@ -461,8 +465,10 @@ class RoverClient(Node):
             ir_type = self.get(identifier, "type")
             ir_value = self.get(identifier, "value")
             logger.info("type=%s, value=%s" % (ir_type, ir_value))
-            if ir_value != 0xffff:
-                self.sounds.click()
+        elif identifier == "menu":
+            menu_event = self.get(identifier, "event")
+            logger.info("menu event: %s" % menu_event)
+            self.sounds.click()
         elif identifier == "txrx":
             self.on_txrx()
 

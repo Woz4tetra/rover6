@@ -67,6 +67,7 @@ add_service_files(
     FILES
     Rover6PidSrv.srv
     Rover6SafetySrv.srv
+    Rover6MenuSrv.srv
 )
 
 ## Generate actions in the 'action' folder

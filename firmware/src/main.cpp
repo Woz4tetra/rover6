@@ -254,9 +254,9 @@ void report_data()
 {
     switch (cycler_index) {
         case 0:
-            // if (rover6_bno::read_BNO055()) {
-            //     rover6_bno::report_BNO055();
-            // }
+            if (rover6_bno::read_BNO055()) {
+                // rover6_bno::report_BNO055();
+            }
             break;
         case 1:
             if (rover6_tof::read_VL53L0X()) {

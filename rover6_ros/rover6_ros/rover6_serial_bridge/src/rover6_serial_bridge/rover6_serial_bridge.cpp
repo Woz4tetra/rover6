@@ -69,6 +69,7 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
 
     pid_service = nh.advertiseService("rover6_pid", &Rover6SerialBridge::set_pid, this);
     safety_service = nh.advertiseService("rover6_safety", &Rover6SerialBridge::set_safety_thresholds, this);
+    menu_service = nh.advertiseService("rover6_menu", &Rover6SerialBridge::send_menu_event, this);
 
     ROS_INFO("Rover 6 serial bridge init done");
 }
@@ -508,6 +509,15 @@ bool Rover6SerialBridge::set_safety_thresholds(rover6_serial_bridge::Rover6Safet
     res.resp = true;
     return true;
 }
+
+bool Rover6SerialBridge::send_menu_event(rover6_serial_bridge::Rover6MenuSrv::Request &req, rover6_serial_bridge::Rover6MenuSrv::Response &res)
+{
+    writeSerial("menu", "s", req.event.c_str());
+    ROS_INFO_STREAM("Sending menu event: " << req.event);
+    res.resp = true;
+    return true;
+}
+
 
 void Rover6SerialBridge::setActive(bool state)
 {

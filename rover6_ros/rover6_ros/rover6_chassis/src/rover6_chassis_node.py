@@ -104,7 +104,7 @@ class Rover6Chassis:
         self.set_safety_thresholds = None
 
         if self.services_enabled:
-            rospy.loginfo("Waiting for service %s" % self.safety_service_name)
+            rospy.loginfo("Waiting for service %s" % self.pid_service_name)
             rospy.wait_for_service(self.pid_service_name)
             self.set_pid = rospy.ServiceProxy(self.pid_service_name, Rover6PidSrv)
             rospy.loginfo("%s service is ready" % self.pid_service_name)

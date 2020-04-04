@@ -12,6 +12,7 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Float64, Bool
 
 from rover6_serial_bridge.msg import Rover6Servos
+from rover6_serial_bridge.srv import Rover6MenuSrv
 
 
 class Rover6Teleop:
@@ -71,6 +72,21 @@ class Rover6Teleop:
 
         self.cmd_vel_timeout = rospy.Time.now()
         # rospy.Timer(rospy.Duration(0.25), self.timer_callback)
+
+        self.menu_service_name = "rover6_menu"
+        self.menu_events = {
+            "up": "^",
+            "down": "v",
+            "left": "<",
+            "right": ">",
+            "enter": "e",
+            "back": "b",
+        }
+
+        rospy.loginfo("Waiting for service %s" % self.menu_service_name)
+        rospy.wait_for_service(self.menu_service_name)
+        self.send_menu_event = rospy.ServiceProxy(self.menu_service_name, Rover6MenuSrv)
+        rospy.loginfo("%s service is ready" % self.menu_service_name)
 
     def joy_to_speed(self, scale_factor, value):
         if abs(value) < self.deadzone_joy_val:
@@ -160,12 +176,18 @@ class Rover6Teleop:
             self.prev_joy_msg = msg
             return
 
-        # button mapping:
-        # 0: A,    1: B,     2: X,      3: Y
-        # 4: L1,   5: R1,    6: Select, 7: Start
-        # 8: Home, 9: L joy, 10: R joy
-        # if self.did_button_change(msg, 0):
-        #     pass
+        # Xbox button mapping:
+        # 0: A,    1: B,     3: X,      4: Y
+        # 6: L1,   7: R1,    6: Select, 7: Start
+        # 11: Menu, 13: L joy, 14: R joy
+
+        # Xbox axes:
+        # Lx: 0, Ly: 1
+        # Rx: 2, Ry: 3
+        # L brake: 5
+        # R brake: 4
+        # D-pad left-right: 6
+        # D-pad up-down: 7
 
         linear_val = self.joy_to_speed(self.linear_scale, msg.axes[self.linear_axis])
         angular_val = self.joy_to_speed(self.angular_scale, msg.axes[self.angular_axis])
@@ -177,6 +199,21 @@ class Rover6Teleop:
 
         if self.set_servos(camera_pan_val, camera_tilt_val):
             self.servo_pub.publish(self.servo_command)
+
+        if self.did_button_change(msg, 0):
+            self.send_menu_event(self.menu_events["enter"])
+        elif self.did_button_change(msg, 1):
+            self.send_menu_event(self.menu_events["back"])
+        if self.prev_joy_msg.axes[7] != msg.axes[7]:
+            if msg.axes[7] < 0.0:
+                self.send_menu_event(self.menu_events["down"])
+            elif msg.axes[7] > 0.0:
+                self.send_menu_event(self.menu_events["up"])
+        if self.prev_joy_msg.axes[6] != msg.axes[6]:
+            if msg.axes[6] < 0.0:
+                self.send_menu_event(self.menu_events["left"])
+            elif msg.axes[6] > 0.0:
+                self.send_menu_event(self.menu_events["right"])
 
         self.prev_joy_msg = msg
 
