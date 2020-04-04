@@ -12,7 +12,5 @@
             /rover6/safety
             /rover6/servo_positions
             /rover6/servos
-            /rover6/tof" >
-       <!--if="$(arg record_hrpsys)" /> -->
-    </node>
+            /rover6/tof" />
 </launch>

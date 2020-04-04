@@ -209,7 +209,7 @@ namespace rover6_serial
             write_packet += String(PACKET_STOP);
         }
 
-        char get_char() {
+        /*char get_char() {
             char c = read_packet.charAt(read_packet_index);
             read_packet_index++;
             return c;
@@ -228,26 +228,26 @@ namespace rover6_serial
             read_packet_index = 0;
             read_buffer.remove(0, stop_index + 1);
             return true;
-        }
+        }*/
 
         void parse_packet()
         {
             // read_packet assumes PACKET_START_0, PACKET_START_1, and PACKET_STOP have been removed
 
-            // char c1 = get_char();
-            // if (c1 != PACKET_START_0) {
-            //     write("txrx", "dd", read_packet_num, 1);  // error 1: c1 != \x12
-            //     return;
-            // }
-            // char c2 = get_char();
-            // if (c2 != PACKET_START_1) {
-            //     write("txrx", "dd", read_packet_num, 2);  // error 2: c2 != \x34
-            //     return;
-            // }
-            //
-            // read_packet.remove(0, 2);  // remove start characters
-            read_packet_index = 0;
+            /*char c1 = get_char();
+            if (c1 != PACKET_START_0) {
+                write("txrx", "dd", read_packet_num, 1);  // error 1: c1 != \x12
+                return;
+            }
+            char c2 = get_char();
+            if (c2 != PACKET_START_1) {
+                write("txrx", "dd", read_packet_num, 2);  // error 2: c2 != \x34
+                return;
+            }
 
+            read_packet.remove(0, 2);*/  // remove start characters
+
+            read_packet_index = 0;
             // at least 1 char for packet num
             // \t + at least 1 category char
             // 2 chars for checksum
@@ -303,8 +303,6 @@ namespace rover6_serial
             write("txrx", "dd", read_packet_num, 0);  // 0: no error
             read_packet_num++;
         }
-
-        // virtual ~Rover6Serial ();
     };
 
     class Rover6HWSerial : public Rover6Serial {

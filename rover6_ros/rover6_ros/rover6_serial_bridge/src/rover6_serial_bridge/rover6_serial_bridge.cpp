@@ -190,7 +190,14 @@ bool Rover6SerialBridge::readSerial()
         calc_checksum += (uint8_t)_serialBuffer.at(index);
     }
 
-    uint16_t recv_checksum = std::stoul(_serialBuffer.substr(_serialBuffer.length() - 2), nullptr, 16);
+    uint16_t recv_checksum = 0;
+    try {
+        recv_checksum = std::stoul(_serialBuffer.substr(_serialBuffer.length() - 2), nullptr, 16);
+    }
+    catch (exception& e) {
+        ROS_ERROR_STREAM("Failed to parse checksum. Buffer: " << _serialBuffer << ". Exception: " << e.what());
+        return false;
+    }
 
     if (calc_checksum != recv_checksum) {
         // checksum failed
@@ -260,13 +267,12 @@ bool Rover6SerialBridge::getNextSegment()
 void Rover6SerialBridge::processSerialPacket(string category)
 {
     if (category.compare("txrx") == 0) {
-        CHECK_SEGMENT(0);
-        unsigned long long packet_num = (unsigned long long)stol(_currentBufferSegment);
-        CHECK_SEGMENT(1);
-        int error_code = stoi(_currentBufferSegment);
+        CHECK_SEGMENT(0); unsigned long long packet_num = (unsigned long long)stol(_currentBufferSegment);
+        CHECK_SEGMENT(1); int error_code = stoi(_currentBufferSegment);
+        // CHECK_SEGMENT(2); string message = _currentBufferSegment;
 
         if (error_code != 0) {
-            ROS_ERROR("Device failed to parse sent packet number '%llu'. Error code '%d'", packet_num, error_code);
+            logPacketErrorCode(error_code, packet_num);
         }
     }
     else if (category.compare("bno") == 0) {
@@ -385,7 +391,7 @@ void Rover6SerialBridge::loop()
         }
     }
 
-    ROS_INFO_THROTTLE(15, "%llu packets received", _readPacketNum);
+    ROS_INFO_THROTTLE(15, "Read packet num: %llu", _readPacketNum);
 }
 
 void Rover6SerialBridge::stop()
@@ -559,6 +565,21 @@ void Rover6SerialBridge::parseImu()
     eulerToQuat(roll, pitch, yaw);
 
     imu_pub.publish(imu_msg);
+}
+
+void Rover6SerialBridge::logPacketErrorCode(int error_code, unsigned long long packet_num)
+{
+    ROS_WARN("Packet %d returned an error!");
+    switch (error_code) {
+        case 1: ROS_WARN("c1 != \\x12", packet_num); break;
+        case 2: ROS_WARN("c2 != \\x34", packet_num); break;
+        case 3: ROS_WARN("packet is too short", packet_num); break;
+        case 4: ROS_WARN("checksums don't match", packet_num); break;
+        case 5: ROS_WARN("packet count segment not found", packet_num); break;
+        case 6: ROS_WARN("packet counts not synchronized", packet_num); break;
+        case 7: ROS_WARN("failed to find category segment", packet_num); break;
+        case 8: ROS_WARN("invalid format", packet_num); break;
+    }
 }
 
 void Rover6SerialBridge::eulerToQuat(double roll, double pitch, double yaw)

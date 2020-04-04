@@ -376,6 +376,8 @@ class RoverClient(Node):
                         identifier = packet.identifier
                 except DevicePortReadException:
                     logger.info("Waiting for ready signal timed out. Trying again.")
+                except BaseException as e:
+                    logger.error("Exception occurred while waiting for ready signal. %s" % str(e), exc_info=True)
 
                 if packet:
                     if identifier == "txrx":
@@ -468,7 +470,7 @@ class RoverClient(Node):
         packet_num = self.get("txrx", "packet_num")
         success = self.get("txrx", "success")
         if success != 0:
-            logger.warn("Serial packet #%s error %s: %s" % (packet_num, success, self.txrx_error_codes[success]))
+            logger.warn("Packet #%s returned an error %s: %s" % (packet_num, success, self.txrx_error_codes[success]))
         return success == 0
 
     def set_obstacle_thresholds(self, back_lower: int, back_upper: int, front_lower: int, front_upper: int):
