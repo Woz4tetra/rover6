@@ -250,7 +250,7 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
 }
 
 int cycler_index = 0;
-void report_data()
+void cycle_update()
 {
     switch (cycler_index) {
         case 0:
@@ -284,9 +284,13 @@ void report_data()
                 rover6_ir_remote::callback_ir();
             }
             break;
+        case 6: rover6_menus::draw_menus(); break;
+        case 7: rover6_pid::update_speed_pid(); break;
+        case 8: rover6_motors::check_motor_timeout(); break;
+        case 9: rover6_servos::update(); break;
     }
     cycler_index++;
-    if (cycler_index > 5) {
+    if (cycler_index > 9) {
         cycler_index = 0;
     }
 }
@@ -323,9 +327,5 @@ void loop()
 {
     rover6_serial::data->read();
     rover6_serial::info->read();
-    report_data();
-
-    rover6_menus::draw_menus();
-    rover6_pid::update_speed_pid();
-    rover6_motors::check_motor_timeout();
+    cycle_update();
 }

@@ -26,9 +26,14 @@ namespace rover6_servos
     int servo_max_positions[NUM_SERVOS];
     int servo_min_positions[NUM_SERVOS];
     int servo_default_positions[NUM_SERVOS];
+    int servo_velocities[NUM_SERVOS];  // ticks per loop
 
     double servo_cmd_to_angle_m = 0.0;
 
+    #define SERVO_UPDATE_DELAY_MS 200
+    const float vel_duty_time_period = 1.0;
+    const float servo_update_delay_s = 1E-3 * SERVO_UPDATE_DELAY_MS;
+    uint32_t prev_servo_time = 0;
 
     #define FRONT_TILTER_SERVO_NUM 0
     #define BACK_TILTER_SERVO_NUM 1
@@ -67,6 +72,7 @@ namespace rover6_servos
             servo_max_positions[i] = 0;
             servo_min_positions[i] = 0;
             servo_default_positions[i] = 0;
+            servo_velocities[i] = 0;
         }
 
         servos.begin();
@@ -137,11 +143,10 @@ namespace rover6_servos
         return servo_cmd_to_angle_m * ((double)command - 270.0) + BACK_TILTER_DOWN;
     }
 
-
-    void set_servo(uint8_t n, int angle)
+    bool _set_servo(uint8_t n, int angle)
     {
         if (!(0 <= n && n < NUM_SERVOS)) {
-            return;
+            return false;
         }
         if (angle < servo_min_positions[n]) {
             angle = servo_min_positions[n];
@@ -156,10 +161,24 @@ namespace rover6_servos
             // rover6_serial::println_info("Servo %d: %ddeg, %d", n, angle, pulse);
             servos.setPWM(n, 0, pulse);
         }
+
+        return true;
+    }
+
+    void set_servo(uint8_t n, int angle)
+    {
+        if (_set_servo(n, angle)) {
+            servo_velocities[n] = 0.0;  // clear velocity commands
+        }
     }
 
     void set_servo(uint8_t n) {
         set_servo(n, servo_default_positions[n]);
+    }
+
+    void set_velocity(uint8_t n, float command) {
+        // command is in servo ticks per second
+        servo_velocities[n] = servo_update_delay_s * command;  // convert command to servo ticks per loop
     }
 
     int get_servo(uint8_t n) {
@@ -177,6 +196,30 @@ namespace rover6_servos
             servo_positions[8], servo_positions[9], servo_positions[10], servo_positions[11],
             servo_positions[12], servo_positions[13], servo_positions[14], servo_positions[15]
         );
+    }
+
+    void update()
+    {
+        if (CURRENT_TIME - prev_servo_time < SERVO_UPDATE_DELAY_MS) {
+            return;
+        }
+
+        for (size_t n = 0; n < NUM_SERVOS; n++)
+        {
+            if (servo_velocities[n] == 0.0) {
+                continue;
+            }
+
+            int vel_command = (int)(servo_velocities[n]);
+
+            float mod_cycle = fmod(CURRENT_TIME * 1E-3, vel_duty_time_period);
+            if (mod_cycle < servo_velocities[n] - (int)(servo_velocities[n])) {
+                vel_command++;
+            }
+
+            _set_servo(n, servo_positions[n] + vel_command);
+        }
+        prev_servo_time = CURRENT_TIME;
     }
 
     void set_front_tilter(int angle) {

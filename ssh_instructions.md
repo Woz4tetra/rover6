@@ -22,7 +22,7 @@ Copy `/home/pi/.ssh/rover6_dul_id_rsa.pub` to `/home/pi/.ssh/authorized_keys`
 
 Copy `rover6_dul_id_rsa` and `rover6_dul_id_rsa.pub` to your local machine's `~/.ssh` directory.
 
-Test the log in: `ssh -i ~/.ssh/rover6_dul_id_rsa pi@dul.local`
+Test the log in: `ssh -i ~/.ssh/rover6_dul_id_rsa pi@rover6-dul.local`
 
 # Disable password login
 `sudo nano /etc/ssh/sshd_config`
