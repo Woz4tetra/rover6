@@ -90,7 +90,8 @@ packet_names:
     - back_status
   servo:
     - time
-    - $NUM_SERVOS
+    - servo_num
+    - servo_pos
   safety:
     - time
     - is_left_bumper_trig
@@ -125,7 +126,7 @@ packet_codes:
   ina: "ufff"
   ir: "udd"
   menu: "s"
-  servo: "udddddddddddddddd"
+  servo: "udd"
   lox: "udddddd"
   ready: "us"
   shutdown: "s"

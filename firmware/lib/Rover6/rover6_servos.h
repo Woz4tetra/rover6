@@ -26,11 +26,11 @@ namespace rover6_servos
     int servo_max_positions[NUM_SERVOS];
     int servo_min_positions[NUM_SERVOS];
     int servo_default_positions[NUM_SERVOS];
-    int servo_velocities[NUM_SERVOS];  // ticks per loop
+    float servo_velocities[NUM_SERVOS];  // ticks per loop
 
     double servo_cmd_to_angle_m = 0.0;
 
-    #define SERVO_UPDATE_DELAY_MS 200
+    #define SERVO_UPDATE_DELAY_MS 100
     const float vel_duty_time_period = 1.0;
     const float servo_update_delay_s = 1E-3 * SERVO_UPDATE_DELAY_MS;
     uint32_t prev_servo_time = 0;
@@ -62,6 +62,7 @@ namespace rover6_servos
     void set_servos_active(bool active);
     void set_servo(uint8_t n, int angle);
     void set_servos_default();
+    void report_servo_pos(uint8_t n);
 
     void setup_servos()
     {
@@ -72,7 +73,7 @@ namespace rover6_servos
             servo_max_positions[i] = 0;
             servo_min_positions[i] = 0;
             servo_default_positions[i] = 0;
-            servo_velocities[i] = 0;
+            servo_velocities[i] = 0.0;
         }
 
         servos.begin();
@@ -160,6 +161,7 @@ namespace rover6_servos
             uint16_t pulse = (uint16_t)map(angle, 0, 180, servo_pulse_mins[n], servo_pulse_maxs[n]);
             // rover6_serial::println_info("Servo %d: %ddeg, %d", n, angle, pulse);
             servos.setPWM(n, 0, pulse);
+            report_servo_pos(n);
         }
 
         return true;
@@ -189,13 +191,8 @@ namespace rover6_servos
         return servo_positions[n];
     }
 
-    void report_servo_pos() {
-        rover6_serial::data->write("servo", "udddddddddddddddd", CURRENT_TIME,
-            servo_positions[0], servo_positions[1], servo_positions[2], servo_positions[3],
-            servo_positions[4], servo_positions[5], servo_positions[6], servo_positions[7],
-            servo_positions[8], servo_positions[9], servo_positions[10], servo_positions[11],
-            servo_positions[12], servo_positions[13], servo_positions[14], servo_positions[15]
-        );
+    void report_servo_pos(uint8_t n) {
+        rover6_serial::data->write("servo", "udd", CURRENT_TIME, n, servo_positions[n]);
     }
 
     void update()
@@ -210,14 +207,18 @@ namespace rover6_servos
                 continue;
             }
 
-            int vel_command = (int)(servo_velocities[n]);
+            double int_part = 0.0;
+            float frac_part = (float)modf(abs(servo_velocities[n]), &int_part);
+            int vel_command = (int)(int_part);
 
-            float mod_cycle = fmod(CURRENT_TIME * 1E-3, vel_duty_time_period);
-            if (mod_cycle < servo_velocities[n] - (int)(servo_velocities[n])) {
+            float mod_cycle = (float)fmod(1E-3 * CURRENT_TIME, vel_duty_time_period);
+            if (mod_cycle < frac_part) {
                 vel_command++;
             }
+            // rover6_serial::println_info("vel_command, %d: %d", n, vel_command);
+            vel_command = (int)(copysign(vel_command, servo_velocities[n]) + servo_positions[n]);
 
-            _set_servo(n, servo_positions[n] + vel_command);
+            _set_servo(n, vel_command);
         }
         prev_servo_time = CURRENT_TIME;
     }

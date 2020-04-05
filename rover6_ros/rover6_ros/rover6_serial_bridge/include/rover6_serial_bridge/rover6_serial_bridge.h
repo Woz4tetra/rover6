@@ -95,7 +95,7 @@ private:
     ros::Subscriber servos_sub;
     rover6_serial_bridge::Rover6Servos servos_msg;
     void servosCallback(const rover6_serial_bridge::Rover6Servos::ConstPtr& msg);
-    void writeServo(unsigned int n, int command);
+    void writeServo(unsigned int n, float command, uint8_t mode);
 
     ros::ServiceServer pid_service;
     ros::ServiceServer safety_service;
@@ -113,7 +113,7 @@ private:
     void setStartTime(uint32_t time_ms);
     ros::Time getDeviceTime(uint32_t time_ms);
     bool getNextSegment();
-    void waitForPacketStart();
+    bool waitForPacketStart();
     void processSerialPacket(string category);
 
     bool readSerial();

@@ -217,22 +217,19 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
         CHECK_SEGMENT(serial_obj); int n = serial_obj->get_segment().toInt();
         CHECK_SEGMENT(serial_obj); int command = serial_obj->get_segment().toInt();
         rover6_servos::set_servo(n, command);
-        rover6_servos::report_servo_pos();
     }
 
     // set_servo_default
     else if (category.equals("sd")) {
         CHECK_SEGMENT(serial_obj); int n = serial_obj->get_segment().toInt();
         rover6_servos::set_servo(n);
-        rover6_servos::report_servo_pos();
     }
 
     // set_servo_velocity
     else if (category.equals("sv")) {
         CHECK_SEGMENT(serial_obj); int n = serial_obj->get_segment().toInt();
         CHECK_SEGMENT(serial_obj); float command = serial_obj->get_segment().toFloat();
-        rover6_servos::set_servo(n, command);
-        rover6_servos::report_servo_pos();
+        rover6_servos::set_velocity(n, command);
     }
 
     // set_safety_thresholds

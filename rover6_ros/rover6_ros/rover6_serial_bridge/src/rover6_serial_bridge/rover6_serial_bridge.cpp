@@ -32,9 +32,7 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     servo_msg.layout.dim[0].size = _numServos;
     servo_msg.layout.dim[0].stride = 1;
     servo_msg.layout.dim[0].label = "servos";
-    for (size_t i = 0; i < _numServos; i++) {
-        servo_msg.data.push_back(0);
-    }
+    servo_msg.data.resize(_numServos);
 
     tof_msg.header.frame_id = "tof";
 
@@ -146,24 +144,31 @@ void Rover6SerialBridge::checkReady()
     }
 }
 
-void Rover6SerialBridge::waitForPacketStart()
+bool Rover6SerialBridge::waitForPacketStart()
 {
     stringstream msg_buffer;
+    char c1, c2;
+    ros::Time wait_time = ros::Time::now();
+    ros::Duration wait_timeout = ros::Duration(0.05);
     while (true) {
+        if (ros::Time::now() - wait_time > wait_timeout) {
+            return false;
+        }
         if (_serialRef.available() < 2) {
             continue;
         }
-        char c1 = _serialRef.read(1).at(0);
+        c1 = _serialRef.read(1).at(0);
         if (c1 == PACKET_START_0) {
-            char c2 = _serialRef.read(1).at(0);
+            c2 = _serialRef.read(1).at(0);
             if (c2 == PACKET_START_1) {
-                return;
+                return true;
             }
         }
 
-        else if (c1 == PACKET_STOP) {
+        else if (c1 == PACKET_STOP || c2 == PACKET_STOP) {
             ROS_INFO_STREAM("Device message: " << msg_buffer.str());
             msg_buffer.str(std::string());
+            return false;
         }
         else {
             msg_buffer << c1;
@@ -173,7 +178,9 @@ void Rover6SerialBridge::waitForPacketStart()
 
 bool Rover6SerialBridge::readSerial()
 {
-    waitForPacketStart();
+    if (!waitForPacketStart()) {
+        return false;
+    }
     char c;
     _recvCharIndex = 0;
     while (true) {
@@ -191,7 +198,7 @@ bool Rover6SerialBridge::readSerial()
     // _serialBuffer = _serialRef.readline();
     _serialBuffer = string(_recvCharBuffer);
     // _serialBuffer = _serialBuffer.substr(0, _serialBuffer.length() - 1);  // remove newline character
-    // ROS_INFO_STREAM("Buffer: " << _serialBuffer);
+    ROS_DEBUG_STREAM("Buffer: " << _serialBuffer);
     // at least 1 char for packet num
     // \t + at least 1 category char
     // 2 chars for checksum
@@ -469,7 +476,7 @@ void Rover6SerialBridge::servosCallback(const rover6_serial_bridge::Rover6Servos
 }
 
 void Rover6SerialBridge::writeServo(unsigned int n, float command, uint8_t mode) {
-    if (mode == Rover6Servos::POSITION_MODE) {
+    if (mode == rover6_serial_bridge::Rover6Servos::POSITION_MODE) {
         int command_int = (int)command;
         if (command_int == -1) {
             writeSerial("sd", "d", n);
@@ -479,7 +486,7 @@ void Rover6SerialBridge::writeServo(unsigned int n, float command, uint8_t mode)
         }
         // if command < -1, skip the servo command
     }
-    else if (mode == Rover6Servos::VELOCITY_MODE) {
+    else if (mode == rover6_serial_bridge::Rover6Servos::VELOCITY_MODE) {
         writeSerial("sv", "df", n, command);
     }
 }
@@ -503,8 +510,8 @@ bool Rover6SerialBridge::set_safety_thresholds(rover6_serial_bridge::Rover6Safet
         req.front_obstacle_threshold, req.front_ledge_threshold
     );
 
-    writeServo(_frontTilterServoNum, req.front_servo_command, Rover6Servos::POSITION_MODE);
-    writeServo(_backTilterServoNum, req.back_servo_command, Rover6Servos::POSITION_MODE);
+    writeServo(_frontTilterServoNum, req.front_servo_command, rover6_serial_bridge::Rover6Servos::POSITION_MODE);
+    writeServo(_backTilterServoNum, req.back_servo_command, rover6_serial_bridge::Rover6Servos::POSITION_MODE);
 
     ROS_INFO("Setting safety: back_lower=%d, back_upper=%d, front_lower=%d, front_upper=%d",
         req.back_obstacle_threshold, req.back_ledge_threshold, req.front_obstacle_threshold, req.front_ledge_threshold
@@ -691,9 +698,8 @@ void Rover6SerialBridge::parseServo()
 {
     servo_msg.data.clear();
     CHECK_SEGMENT(0); // time ms
-    for (size_t i = 0; i < _numServos; i++) {
-        CHECK_SEGMENT(i + 1); servo_msg.data[i] = stoi(_currentBufferSegment);
-    }
+    CHECK_SEGMENT(1); int i = stoi(_currentBufferSegment);
+    CHECK_SEGMENT(2); servo_msg.data[i] = stoi(_currentBufferSegment);
     servo_pub.publish(servo_msg);
 }
 

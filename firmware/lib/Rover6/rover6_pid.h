@@ -23,7 +23,8 @@ namespace rover6_pid
     // double max_linear_speed_tps = 8200.0;  // max speed, no load measured in ticks per second (~915cm/s)
     double max_linear_speed_tps = 6800.0;  // max speed, with load measured in ticks per second
     double tps_to_cmd = 255.0 / max_linear_speed_tps;
-    double min_tps = 700.0;
+    // double min_tps = 700.0;
+    double min_tps = 0.0;
 
     #define NUM_PID_KS 8
     double* pid_Ks = new double[NUM_PID_KS];
