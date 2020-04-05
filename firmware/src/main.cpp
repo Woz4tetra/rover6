@@ -227,6 +227,14 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
         rover6_servos::report_servo_pos();
     }
 
+    // set_servo_velocity
+    else if (category.equals("sv")) {
+        CHECK_SEGMENT(serial_obj); int n = serial_obj->get_segment().toInt();
+        CHECK_SEGMENT(serial_obj); float command = serial_obj->get_segment().toFloat();
+        rover6_servos::set_servo(n, command);
+        rover6_servos::report_servo_pos();
+    }
+
     // set_safety_thresholds
     else if (category.equals("safe")) {
         for (size_t index = 0; index < 4; index++) {

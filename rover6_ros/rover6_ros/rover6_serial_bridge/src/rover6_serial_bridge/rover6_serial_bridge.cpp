@@ -459,23 +459,29 @@ void Rover6SerialBridge::motorsCallback(const rover6_serial_bridge::Rover6Motors
 
 void Rover6SerialBridge::servosCallback(const rover6_serial_bridge::Rover6Servos::ConstPtr& msg) {
     if (servos_msg.camera_tilt != msg->camera_tilt) {
-        writeServo(_tiltServoNum, msg->camera_tilt);
+        writeServo(_tiltServoNum, msg->camera_tilt, msg->mode);
         servos_msg.camera_tilt = msg->camera_tilt;
     }
     if (servos_msg.camera_pan != msg->camera_pan) {
-        writeServo(_panServoNum, msg->camera_pan);
+        writeServo(_panServoNum, msg->camera_pan, msg->mode);
         servos_msg.camera_pan = msg->camera_pan;
     }
 }
 
-void Rover6SerialBridge::writeServo(unsigned int n, int command) {
-    if (command == -1) {
-        writeSerial("sd", "d", n);
+void Rover6SerialBridge::writeServo(unsigned int n, float command, uint8_t mode) {
+    if (mode == Rover6Servos::POSITION_MODE) {
+        int command_int = (int)command;
+        if (command_int == -1) {
+            writeSerial("sd", "d", n);
+        }
+        else if (command_int >= 0) {
+            writeSerial("s", "dd", n, command_int);
+        }
+        // if command < -1, skip the servo command
     }
-    else if (command >= 0) {
-        writeSerial("s", "dd", n, command);
+    else if (mode == Rover6Servos::VELOCITY_MODE) {
+        writeSerial("sv", "df", n, command);
     }
-    // if command < -1, skip the servo command
 }
 
 bool Rover6SerialBridge::set_pid(rover6_serial_bridge::Rover6PidSrv::Request  &req,
@@ -497,8 +503,8 @@ bool Rover6SerialBridge::set_safety_thresholds(rover6_serial_bridge::Rover6Safet
         req.front_obstacle_threshold, req.front_ledge_threshold
     );
 
-    writeServo(_frontTilterServoNum, req.front_servo_command);
-    writeServo(_backTilterServoNum, req.back_servo_command);
+    writeServo(_frontTilterServoNum, req.front_servo_command, Rover6Servos::POSITION_MODE);
+    writeServo(_backTilterServoNum, req.back_servo_command, Rover6Servos::POSITION_MODE);
 
     ROS_INFO("Setting safety: back_lower=%d, back_upper=%d, front_lower=%d, front_upper=%d",
         req.back_obstacle_threshold, req.back_ledge_threshold, req.front_obstacle_threshold, req.front_ledge_threshold

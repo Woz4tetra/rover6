@@ -70,6 +70,10 @@ class Rover6Teleop:
         self.servo_command.camera_pan = -1
         self.servo_command.camera_tilt = -1
 
+        # 0 = point in dircetion of joystick
+        # 1 = move the turret at a certain velocity
+        self.camera_command_mode = Rover6Servos.POSITION_MODE
+
         self.cmd_vel_timeout = rospy.Time.now()
         # rospy.Timer(rospy.Duration(0.25), self.timer_callback)
 
@@ -194,8 +198,12 @@ class Rover6Teleop:
         if self.set_twist(linear_val, angular_val):
             self.cmd_vel_pub.publish(self.twist_command)
 
-        camera_pan_val = self.joy_to_pan_servo(msg.axes[self.camera_pan_axis])
-        camera_tilt_val = self.joy_to_tilt_servo(msg.axes[self.camera_tilt_axis])
+        if self.camera_command_mode == Rover6Servos.VELOCITY_MODE:
+            camera_pan_val = msg.axes[self.camera_pan_axis]
+            camera_tilt_val = msg.axes[self.camera_tilt_axis]
+        else:  # Rover6Servos.POSITION_MODE
+            camera_pan_val = self.joy_to_pan_servo(msg.axes[self.camera_pan_axis])
+            camera_tilt_val = self.joy_to_tilt_servo(msg.axes[self.camera_tilt_axis])
 
         if self.set_servos(camera_pan_val, camera_tilt_val):
             self.servo_pub.publish(self.servo_command)
@@ -204,6 +212,12 @@ class Rover6Teleop:
             self.send_menu_event(self.menu_events["enter"])
         elif self.did_button_change(msg, 1):
             self.send_menu_event(self.menu_events["back"])
+        elif self.did_button_change(msg, 14):
+            if self.camera_command_mode == Rover6Servos.POSITION_MODE:
+                self.camera_command_mode = Rover6Servos.VELOCITY_MODE
+            else:
+                self.camera_command_mode = Rover6Servos.POSITION_MODE
+
         if self.prev_joy_msg.axes[7] != msg.axes[7]:
             if msg.axes[7] < 0.0:
                 self.send_menu_event(self.menu_events["down"])

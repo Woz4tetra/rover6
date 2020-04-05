@@ -2,6 +2,11 @@
 <launch>
     <node name="republish" type="republish" pkg="image_transport" output="screen"
         args="compressed in:=/raspicam_node/image raw out:=/raspicam_node/image_raw" />
+
+    <arg name="map_file" default=""/>
+    <arg name="load_map" value="$(eval map_file != '')"/>
+    <!-- <arg name="localize_only" value="$(eval map_file != '')"/> -->
+
     <node name="orb_slam2_mono" pkg="orb_slam2_ros"
         type="orb_slam2_ros_mono" output="screen">
 
@@ -9,12 +14,15 @@
 
         <param name="publish_pointcloud" type="bool" value="true" />
         <param name="publish_pose" type="bool" value="true" />
+        <!-- <param name="localize_only" type="bool" value="$(arg localize_only)" /> -->
         <param name="localize_only" type="bool" value="false" />
         <param name="reset_map" type="bool" value="false" />
 
         <!-- static parameters -->
-        <param name="load_map" type="bool" value="false" />
-        <param name="map_file" type="string" value="map.bin" />
+        <!-- <param name="load_map" type="bool" value="false" /> -->
+        <!-- <param name="map_file" type="string" value="map.bin" /> -->
+        <param name="load_map" type="bool" value="$(arg load_map)" />
+        <param name="map_file" type="string" value="$(arg map_file)" />
         <param name="settings_file" type="string" value="$(find rover6_config)/config/picamerav2.yaml" />
         <param name="voc_file" type="string" value="$(find orb_slam2_ros)/orb_slam2/Vocabulary/ORBvoc.txt" />
 
