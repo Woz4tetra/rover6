@@ -5,8 +5,8 @@ echo "Running rover6_ros install"
 BASE_DIR=$(realpath "$(dirname $0)")
 PARENT_DIR=$(realpath "${BASE_DIR}/..")
 
-ROS_INSTALL_WS=/home/pi/melodic_ws/
-ROS_WS=/home/pi/ros_ws/
+ROS_INSTALL_WS=$HOME/melodic_ws/
+ROS_WS=$HOME/ros_ws/
 
 mkdir -p ${ROS_INSTALL_WS}
 mkdir -p ${ROS_WS}
