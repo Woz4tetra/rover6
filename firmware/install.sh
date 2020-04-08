@@ -22,10 +22,10 @@ if [ ! -f /etc/udev/rules.d/49-teensy.rules ]; then
   echo "Attempting to install platformio teensy rules"
   wget https://www.pjrc.com/teensy/49-teensy.rules -O /tmp/49-teensy.rules
   sudo mv /tmp/49-teensy.rules /etc/udev/rules.d/49-teensy.rules
-fi
 
-echo "Adding user '$USER' to the dialout group (USB permissions)"
-sudo usermod -a -G dialout $USER
+  echo "Adding user '$USER' to the dialout group (USB permissions)"
+  sudo usermod -a -G dialout $USER
+fi
 
 echo "Installing platformio"
 pip3 install platformio
