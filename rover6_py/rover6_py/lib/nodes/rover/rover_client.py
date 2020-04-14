@@ -11,6 +11,7 @@ from .packet import Packet
 from lib.exceptions import ShutdownException, LowBatteryException
 from ..node import Node
 
+general_config = ConfigManager.get_general_config()
 rover_config = ConfigManager.get_rover_config()
 device_port_config = ConfigManager.get_device_port_config()
 battery_config = ConfigManager.get_battery_config()
@@ -97,6 +98,11 @@ class RoverClient(Node):
         self.read_update_rate_hz = device_port_config.update_rate_hz
         self.prev_packet_time = 0.0
 
+        # The raspberry pi synchronizes time when it connects to the internet.
+        # Otherwise, it uses the time it had when it shutdown. These variables detect when such an event occurs.
+        self.time_sync_event_threshold = 1.0 / general_config.update_rate_hz * 2.0
+        self.prev_time_update = time.time()
+
         self.write_lock = threading.Lock()
         self.read_lock = threading.Lock()
 
@@ -161,6 +167,14 @@ class RoverClient(Node):
         if time.time() - self.prev_time_command_update > rover_config.update_rpi_state_delay:
             self.update_rpi_state()
             self.prev_time_command_update = time.time()
+
+            # if time jumped backwards or forwards longer than it took to complete an update cycle (+ some error),
+            # signal a time jump event occurred.
+            if self.prev_time_update > time.time() or time.time() - self.prev_time_update > self.time_sync_event_threshold:
+                logger.warning("Time sync event detected. Resetting packet times.")
+                self.client_start_time = None
+                self.device_start_time = None
+            self.prev_time_update = time.time()
 
     def stop(self):
         if self.should_stop:
@@ -300,7 +314,6 @@ class RoverClient(Node):
 
         recv_time *= 1E-3  # ms to s
 
-        # recv_time = time.time()
         if self.client_start_time is None:
             self.client_start_time = time.time()
         if self.device_start_time is None:
