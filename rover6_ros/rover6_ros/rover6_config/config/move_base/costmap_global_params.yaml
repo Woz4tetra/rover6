@@ -8,10 +8,4 @@ robot_base_frame: base_link
 
 # static_map: true
 
-rolling_window: false
-
-# track_unknown_space: true
-
-plugins:
-  - {name: obstacles,                 type: "costmap_2d::ObstacleLayer"}
-  - {name: static_map,                type: "costmap_2d::StaticLayer"}
+rolling_window: true

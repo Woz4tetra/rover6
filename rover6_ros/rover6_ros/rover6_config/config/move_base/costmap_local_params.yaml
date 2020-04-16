@@ -8,11 +8,6 @@ robot_base_frame: base_link
 
 rolling_window: true
 
-plugins:
-    # parameters defined in costmap commmon parameters file
-    - {name: static_map,       type: "costmap_2d::ObstacleLayer"}
-    - {name: obstacles,        type: "costmap_2d::VoxelLayer"}
-    - {name: inflation,        type: "costmap_2d::InflationLayer"}
 
 # The maximum height of any obstacle to be inserted into the costmap in meters.
 # This parameter should be set to be slightly higher than the height of your robot.
