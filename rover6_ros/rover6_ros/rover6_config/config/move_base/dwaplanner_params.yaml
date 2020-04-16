@@ -57,19 +57,19 @@ latch_xy_goal_tolerance: false
 ## Forward Simulation Parameters ##
 
 # The amount of time to forward-simulate trajectories in seconds
-sim_time: 2.0  # 1.7
+sim_time: 4.0  # 1.7
 
 # The step size, in meters, to take between points on a given trajectory
-sim_granularity: 0.025  # 0.025
+sim_granularity: 0.04  # 0.025
 
 # The number of samples to use when exploring the x velocity space
-vx_samples: 20  # 3
+vx_samples: 5  # 3
 
 # The number of samples to use when exploring the y velocity space
 vy_samples: 0  # 10
 
 # The number of samples to use when exploring the theta velocity space
-vth_samples: 40  # 20
+vth_samples: 20  # 20
 
 # The frequency at which this controller will be called in Hz.
 # Overrides move_base's global controller_frequency parameter if set
