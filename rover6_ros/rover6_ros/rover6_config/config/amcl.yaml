@@ -14,7 +14,7 @@ global_frame_id: map
 # kld_err: 0.01  # 0.01, Maximum error between the true distribution and the estimated distribution.
 # kld_z: 0.99  # 0.99, Upper standard normal quantile for (1 - p), where p is the probability that the error on the estimated distrubition will be less than kld_err.
 
-update_min_d: 0.2  # 0.2, meters. Translational movement required before performing a filter update.
+update_min_d: 0.05  # 0.2, meters. Translational movement required before performing a filter update.
 update_min_a: 0.13  # 0.524, π/6.0 radians. Rotational movement required before performing a filter update.
 
 # resample_interval: 2  # 2, Number of filter updates required before resampling.

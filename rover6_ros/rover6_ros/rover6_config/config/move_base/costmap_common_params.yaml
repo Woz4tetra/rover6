@@ -47,7 +47,7 @@ static:
 inflation:
     enabled:              true
     cost_scaling_factor:  2.58
-    inflation_radius:     0.1
+    inflation_radius:     1.25  # 0.15
 
 
 # namespace named in dictionary above

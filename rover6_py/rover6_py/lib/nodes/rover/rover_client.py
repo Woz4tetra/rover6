@@ -11,7 +11,6 @@ from .packet import Packet
 from lib.exceptions import ShutdownException, LowBatteryException
 from ..node import Node
 
-general_config = ConfigManager.get_general_config()
 rover_config = ConfigManager.get_rover_config()
 device_port_config = ConfigManager.get_device_port_config()
 battery_config = ConfigManager.get_battery_config()
@@ -100,7 +99,7 @@ class RoverClient(Node):
 
         # The raspberry pi synchronizes time when it connects to the internet.
         # Otherwise, it uses the time it had when it shutdown. These variables detect when such an event occurs.
-        self.time_sync_event_threshold = 1.0 / general_config.update_rate_hz * 2.0
+        self.time_sync_event_threshold = 5.0
         self.prev_time_update = time.time()
 
         self.write_lock = threading.Lock()
@@ -164,17 +163,19 @@ class RoverClient(Node):
             logger.error("Error detected in read task. Raising exception")
             raise self.thread_exception
 
-        if time.time() - self.prev_time_command_update > rover_config.update_rpi_state_delay:
+        current_time = time.time()
+        if current_time - self.prev_time_command_update > rover_config.update_rpi_state_delay:
             self.update_rpi_state()
-            self.prev_time_command_update = time.time()
+            self.prev_time_command_update = current_time
 
-            # if time jumped backwards or forwards longer than it took to complete an update cycle (+ some error),
-            # signal a time jump event occurred.
-            if self.prev_time_update > time.time() or time.time() - self.prev_time_update > self.time_sync_event_threshold:
-                logger.warning("Time sync event detected. Resetting packet times.")
-                self.client_start_time = None
-                self.device_start_time = None
-            self.prev_time_update = time.time()
+        # if time jumped backwards or forwards longer than it took to complete an update cycle (+ some error),
+        # signal a time jump event occurred.
+        if self.prev_time_update > current_time or current_time - self.prev_time_update > self.time_sync_event_threshold:
+            logger.warning("Time sync event detected. Resetting packet times.")
+            logger.info("Time was %s. Time is now %s" % (self.prev_time_update, current_time))
+            self.client_start_time = None
+            self.device_start_time = None
+        self.prev_time_update = current_time
 
     def stop(self):
         if self.should_stop:

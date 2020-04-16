@@ -15,4 +15,3 @@ rolling_window: false
 plugins:
   - {name: obstacles,                 type: "costmap_2d::ObstacleLayer"}
   - {name: static_map,                type: "costmap_2d::StaticLayer"}
-  - {name: inflation,                 type: "costmap_2d::InflationLayer"}

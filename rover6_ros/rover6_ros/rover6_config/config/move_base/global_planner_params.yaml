@@ -26,13 +26,13 @@ use_grid_path: false
 old_navfn_behavior: false
 
 # Lethal Cost (dynamic reconfigure)
-lethal_cost: 253
+lethal_cost: 253  # 253
 
 # Neutral Cost (dynamic reconfigure)
-neutral_cost: 50
+neutral_cost: 55  # 50
 
 # Factor to multiply each cost from costmap by (dynamic reconfigure)
-cost_factor: 3.0
+cost_factor: 0.55  # 3.0
 
 # Publish Potential Costmap (dynamic reconfigure)
 publish_potential: true

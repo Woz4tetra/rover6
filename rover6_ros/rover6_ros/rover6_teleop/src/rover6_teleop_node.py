@@ -64,6 +64,7 @@ class Rover6Teleop:
         # self.max_speed_tps = self.max_speed_mps / self.tick_to_cm_factor  # max speed in ticks per s
 
         self.max_joy_val = 1.0
+        self.prev_brake_engage_time = rospy.Time.now()
 
         self.twist_command.linear.x = 0.0
         self.twist_command.angular.z = 0.0
@@ -161,6 +162,18 @@ class Rover6Teleop:
                 rospy.loginfo("Switching to camera turret to velocity mode")
         self.servo_command.mode = mode
 
+    def check_brake_val(self, msg, linear_val, angular_val):
+        if angular_val == 0.0 and linear_val == 0.0:
+            left_brake = (msg.axes[5] + 1.0) / 2.0
+            right_brake = (msg.axes[4] + 1.0) / 2.0
+            if self.prev_joy_msg.axes[4] != msg.axes[4] or self.prev_joy_msg.axes[5] != msg.axes[5]:
+                self.prev_brake_engage_time = rospy.Time.now()
+            if rospy.Time.now() - self.prev_brake_engage_time > rospy.Duration(5.0):
+                left_brake = 0.0
+                right_brake = 0.0
+            angular_val = self.angular_scale / 3.0 * (right_brake - left_brake)
+        return angular_val
+
     def process_joy_msg(self, msg):
         if self.prev_joy_msg is None:
             self.prev_joy_msg = msg
@@ -181,11 +194,8 @@ class Rover6Teleop:
 
         linear_val = self.joy_to_speed(self.linear_scale, msg.axes[self.linear_axis])
         angular_val = self.joy_to_speed(self.angular_scale, msg.axes[self.angular_axis])
-        if angular_val == 0.0:
-            left_brake = (msg.axes[5] + 1.0) / 2.0
-            right_brake = (msg.axes[4] + 1.0) / 2.0
+        angular_val = self.check_brake_val(msg, linear_val, angular_val)
 
-            angular_val = self.angular_scale / 3.0 * (right_brake - left_brake)
         if self.set_twist(linear_val, angular_val):
             self.cmd_vel_pub.publish(self.twist_command)
 
@@ -196,11 +206,11 @@ class Rover6Teleop:
             camera_pan_val = self.joy_to_pan_servo(msg.axes[self.camera_pan_axis])
             camera_tilt_val = self.joy_to_tilt_servo(msg.axes[self.camera_tilt_axis])
 
-        if self.did_button_change(msg, 0):
+        if self.did_button_change(msg, 0):  # A
             self.send_menu_event(self.menu_events["enter"])
-        elif self.did_button_change(msg, 1):
+        elif self.did_button_change(msg, 1):  # B
             self.send_menu_event(self.menu_events["back"])
-        elif self.did_button_change(msg, 14):
+        elif self.did_button_change(msg, 14):  # R joy
             if self.camera_command_mode == Rover6Servos.POSITION_MODE:
                 self.camera_command_mode = Rover6Servos.VELOCITY_MODE
             else:
@@ -209,12 +219,12 @@ class Rover6Teleop:
         self.set_servos(camera_pan_val, camera_tilt_val, self.camera_command_mode)
         self.servo_pub.publish(self.servo_command)
 
-        if self.prev_joy_msg.axes[7] != msg.axes[7]:
+        if self.prev_joy_msg.axes[7] != msg.axes[7]:  # up d-pad
             if msg.axes[7] < 0.0:
                 self.send_menu_event(self.menu_events["down"])
             elif msg.axes[7] > 0.0:
                 self.send_menu_event(self.menu_events["up"])
-        if self.prev_joy_msg.axes[6] != msg.axes[6]:
+        if self.prev_joy_msg.axes[6] != msg.axes[6]:  # down d-pad
             if msg.axes[6] < 0.0:
                 self.send_menu_event(self.menu_events["left"])
             elif msg.axes[6] > 0.0:
