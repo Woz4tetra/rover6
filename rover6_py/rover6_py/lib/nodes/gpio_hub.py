@@ -16,6 +16,7 @@ class GpioHub(Node):
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(gpio_config.led_out, GPIO.OUT)
         GPIO.setup(gpio_config.fan_out, GPIO.OUT)
+        GPIO.setup(gpio_config.lidar_out, GPIO.OUT)
         GPIO.setup(gpio_config.button_in, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Button pin set as input w/ pull-up
 
         self.led_pwm = GPIO.PWM(gpio_config.led_out, 50)  # Initialize PWM with 100Hz frequency
@@ -40,10 +41,14 @@ class GpioHub(Node):
 
     def start(self):
         self.set_fan(100)
+        self.set_lidar_pin(True)
         self.update()  # call update right away to turn the LED on
 
     def is_button_pressed(self):
         return not GPIO.input(gpio_config.button_in)
+
+    def set_lidar_pin(self, state):
+        GPIO.output(gpio_config.lidar_out, GPIO.HIGH if state else GPIO.LOW)
 
     def set_led(self, duty_cycle):
         self.led_duty_cycle = duty_cycle
