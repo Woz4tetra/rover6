@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <node name="compressed_image_transport" type="republish" pkg="image_transport" output="screen"
-        args="compressed in:=color/image_rect_color raw out:=color/image_rect_color_decompressed" />
-    </node>
-
     <group ns="camera">
+        <node name="compressed_image_transport" type="republish" pkg="image_transport" output="screen"
+            args="compressed in:=color/image_rect_color raw out:=color/image_rect_color_decompressed">
+        </node>
+
         <node pkg="nodelet" type="nodelet" name="rgbd_sync" args="standalone rtabmap_ros/rgbd_sync" output="screen">
             <remap from="rgb/image"       to="color/image_rect_color_decompressed"/>
             <remap from="depth/image"     to="depth/image_rect_raw"/>
             <remap from="rgb/camera_info" to="color/camera_info"/>
             <remap from="rgbd_image"      to="rgbd_image"/> <!-- output -->
 
-            <param name="approx_sync"       value="false"/>
+            <param name="approx_sync"       value="true"/>
         </node>
 
         <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start">
