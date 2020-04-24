@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <group ns="camera">
+        <!-- <node name="compressed_depth_transport" type="republish" pkg="image_transport" output="screen"
+            args="compressedDepth in:=depth/image_rect_raw raw out:=depth/image_rect_raw_compressed" /> -->
+        <node name="compressed_image_transport" type="republish" pkg="image_transport" output="screen"
+            args="compressed in:=color/image_rect_color raw out:=color/image_rect_color_compressed" />
+
+        <node pkg="nodelet" type="nodelet" name="pointcloud_manager" args="manager" output="screen"/>
+
+        <!-- Publish registered XYZRGB point cloud -->
+        <node pkg="nodelet" type="nodelet" name="points_xyzrgb_registered"
+            args="load depth_image_proc/point_cloud_xyzrgb pointcloud_manager" respawn="false" output="screen">
+            <remap from="rgb/image_rect_color"         to="color/image_rect_color_compressed" />
+            <!-- <remap from="rgb/image_rect_color"         to="color/image_rect_color" /> -->
+            <remap from="rgb/camera_info"              to="color/camera_info" />
+            <!-- <remap from="depth_registered/image_rect"  to="depth/image_rect_raw_compressed" /> -->
+            <remap from="depth_registered/image_rect"  to="depth/image_rect_raw" />
+            <remap from="depth_registered/camera_info" to="depth/camera_info" />
+            <!-- Published to /camera/depth_registered/points -->
+        </node>
+    </group>
+</launch>
