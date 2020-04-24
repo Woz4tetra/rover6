@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <node name="compressed_image_transport" type="republish" pkg="image_transport" output="screen"
+        args="compressed in:=color/image_rect_color raw out:=color/image_rect_color_decompressed" />
+    </node>
+
+    <group ns="camera">
+        <node pkg="nodelet" type="nodelet" name="rgbd_sync" args="standalone rtabmap_ros/rgbd_sync" output="screen">
+            <remap from="rgb/image"       to="color/image_rect_color_decompressed"/>
+            <remap from="depth/image"     to="depth/image_rect_raw"/>
+            <remap from="rgb/camera_info" to="color/camera_info"/>
+            <remap from="rgbd_image"      to="rgbd_image"/> <!-- output -->
+
+            <param name="approx_sync"       value="false"/>
+        </node>
+
+        <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start">
+            <param name="frame_id" type="string" value="base_link"/>
+
+            <param name="subscribe_depth" type="bool" value="false"/>
+            <param name="subscribe_rgbd" type="bool" value="true"/>
+
+            <remap from="odom" to="/rover6/odom"/>
+
+            <remap from="rgbd_image" to="rgbd_image"/>
+
+            <param name="queue_size" type="int" value="10"/>
+
+            <!-- RTAB-Map's parameters -->
+            <param name="RGBD/AngularUpdate"        type="string" value="0.01"/>
+            <param name="RGBD/LinearUpdate"         type="string" value="0.01"/>
+            <param name="RGBD/OptimizeFromGraphEnd" type="string" value="false"/>
+        </node>
+    </group>
+</launch>
