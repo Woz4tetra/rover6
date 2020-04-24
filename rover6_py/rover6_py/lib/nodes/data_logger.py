@@ -32,11 +32,11 @@ class DataLogger(Node):
 
         ina_data = self.master.rover.get("ina", "recv_time", "voltage_V", "current_mA")
         cpu_temp = self.get_cpu_temp()
-        camera_detected = self.get_camera_connected()
+        # camera_detected = self.get_camera_connected()
 
         self.log("ina", *ina_data)
         self.log("cpu_temp", cpu_temp)
-        self.log("camera_detected", camera_detected)
+        # self.log("camera_detected", camera_detected)
 
     def _call(self, *args):
         process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

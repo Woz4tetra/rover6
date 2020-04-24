@@ -2,7 +2,5 @@
 <launch>
     <node pkg="tf" type="static_transform_publisher" name="laser_to_base" args="0.03 0.0 0.10698 0 0 1 0 base_link laser 50" />
     <node pkg="tf" type="static_transform_publisher" name="imu_to_base" args="-0.05886 0.00088 0.04535 0 0 0 1 base_link imu 100" />
-    <!-- <node pkg="tf" type="static_transform_publisher" name="imu_to_base" args="0.0945 0.0 0.07171 0 0 0 1 base_link camera_axis 50" /> -->
-    <!-- <node pkg="tf" type="static_transform_publisher" name="imu_to_base" args="0.0264 0.0 0.00241 0 0 0 1 camera_axis camera_center 50" /> -->
-    <!-- <node pkg="tf" type="static_transform_publisher" name="odom_to_base" args="-0.0004 0.0 -0.04 0 0 0 1 odom base_link 100" /> -->
+    <node pkg="tf" type="static_transform_publisher" name="d435_camera_to_base" args="0.13979 0.0 0.07171 0 0 0 1 base_link camera_link 16" />
 </launch>
