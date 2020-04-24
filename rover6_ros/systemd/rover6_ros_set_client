@@ -5,7 +5,7 @@ LOCAL_IP=`ifconfig wlp59s0 | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep 
 if [ -z ${LOCAL_IP} ]; then
     echo "Network not configured. Not setting ROS_IP or URI"
 else
-    HOST_MACHINE_NAME=192.168.0.12
+    HOST_MACHINE_NAME=192.168.0.17
     export ROS_IP=${LOCAL_IP}
     export ROS_MASTER_URI=http://${HOST_MACHINE_NAME}:11311
 
