@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from __future__ import division
 import os
+import sys
 import math
 import datetime
 import traceback
@@ -20,6 +21,7 @@ from rover6_serial_bridge.msg import Rover6Motors
 from rover6_serial_bridge.srv import Rover6PidSrv
 from rover6_serial_bridge.srv import Rover6SafetySrv
 
+print(sys.version)
 
 class Rover6Chassis:
     def __init__(self):

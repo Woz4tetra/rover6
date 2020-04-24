@@ -9,6 +9,7 @@ class GpioConfig(Config):
         self.button_in = 27
         # self.unlatch_out = 17  # unlatch handled by /boot/config.txt
         self.fan_out = 22
+        self.lidar_out = 23
         self.shutdown_time_s = 3.0
         super(GpioConfig, self).__init__("gpio.yaml")
 
