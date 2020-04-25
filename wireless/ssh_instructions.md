@@ -22,6 +22,8 @@ Copy `/home/pi/.ssh/rover6_dul_id_rsa.pub` to `/home/pi/.ssh/authorized_keys`
 
 Copy `rover6_dul_id_rsa` and `rover6_dul_id_rsa.pub` to your local machine's `~/.ssh` directory.
 
+Change permissions of these files to 600: `chmod 600 rover6_dul_id_rsa*`
+
 Test the log in: `ssh -i ~/.ssh/rover6_dul_id_rsa pi@rover6-dul.local`
 
 # Disable password login

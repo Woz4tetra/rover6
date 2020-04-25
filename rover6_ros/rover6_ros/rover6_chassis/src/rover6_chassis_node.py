@@ -53,7 +53,8 @@ class Rover6Chassis:
 
         # TF parameters
         self.child_frame = rospy.get_param("~odom_child_frame", "base_link")
-        self.parent_frame = rospy.get_param("~odom_parent_frame", "odom")
+        self.odom_parent_frame = rospy.get_param("~odom_parent_frame", "odom")
+        self.pan_tilt_frame = rospy.get_param("~pan_tilt_frame", "pan_tilt_link")
         self.tf_broadcaster = tf.TransformBroadcaster()
 
         # Encoder variables
@@ -76,6 +77,19 @@ class Rover6Chassis:
         self.tof_front_wall_dist_mm = rospy.get_param("~tof_front_wall_dist_mm", 30.8)
         self.tof_back_wall_dist_mm = rospy.get_param("~tof_back_wall_dist_mm", 15.0)
 
+        # pan tilt command limits
+        self.pan_right_command = rospy.get_param("~pan_right_command", 90)
+        self.pan_left_command = rospy.get_param("~pan_left_command", 0)
+        self.pan_center_command = rospy.get_param("~pan_center_command", 45)
+        self.pan_max_angle = math.radians(rospy.get_param("~pan_max_angle_deg", 45.0))
+        self.pan_min_angle = math.radians(rospy.get_param("~pan_min_angle_deg", -45.0))
+
+        self.tilt_up_command = rospy.get_param("~tilt_up_command", 0)
+        self.tilt_down_command = rospy.get_param("~tilt_down_command", 150)
+        self.tilt_center_command = rospy.get_param("~tilt_center_command", 100)
+        self.tilt_max_angle = math.radians(rospy.get_param("~tilt_max_angle_deg", 90.0))
+        self.tilt_min_angle = math.radians(rospy.get_param("~tilt_min_angle_deg", -45.0))
+
         # odometry state
         self.odom_x = 0.0
         self.odom_y = 0.0
@@ -85,9 +99,14 @@ class Rover6Chassis:
         self.odom_vy = 0.0
         self.odom_vt = 0.0
 
+        # pan-tilt state
+        self.servo_pan = 0.0
+        self.servo_tilt = 0.0
+        self.pan_tilt_xyz_tf = (0.0264, 0.0, 0.00241)
+
         # Odometry message
         self.odom_msg = Odometry()
-        self.odom_msg.header.frame_id = self.parent_frame
+        self.odom_msg.header.frame_id = self.odom_parent_frame
         self.odom_msg.child_frame_id = self.child_frame
 
         # Subscribers
@@ -240,6 +259,13 @@ class Rover6Chassis:
 
         self.motors_pub.publish(self.motors_msg)
 
+    def servo_to_angle(self, command, max_command, min_command, max_angle, min_angle):
+        return (max_angle - min_angle) / (max_command - min_command) * (command - min_command) + min_angle
+
+    def servo_callback(self, servo_msg):
+        self.servo_pan = servo_to_angle(servo_msg.camera_pan, self.pan_right_command, self.pan_left_command, self.pan_max_angle, self.pan_min_angle)
+        self.servo_tilt = servo_to_angle(servo_msg.camera_tilt, self.tilt_down_command, self.tilt_up_command, self.tilt_max_angle, self.tilt_min_angle)
+
     def encoder_callback(self, enc_msg):
         self.enc_msg = enc_msg
 
@@ -250,11 +276,23 @@ class Rover6Chassis:
             try:
                 self.compute_odometry()
                 self.publish_chassis_data()
+                self.publish_pan_tilt_tfs()
             except BaseException, e:
                 traceback.print_exc()
                 rospy.signal_shutdown(str(e))
 
             clock_rate.sleep()
+
+    def publish_pan_tilt_tfs(self):
+        now = rospy.Time.now()
+        pan_tilt_quaternion = tf.transformations.quaternion_from_euler(0.0, self.servo_tilt, self.servo_pan)
+        self.tf_broadcaster.sendTransform(
+            self.pan_tilt_xyz_tf,
+            pan_tilt_quaternion,
+            now,
+            self.child_frame,
+            self.pan_tilt_frame
+        )
 
     def publish_chassis_data(self):
         if self.use_sensor_msg_time:
@@ -267,7 +305,7 @@ class Rover6Chassis:
             odom_quaternion,
             now,
             self.child_frame,
-            self.parent_frame
+            self.odom_parent_frame
         )
 
         self.odom_msg.header.stamp = now
