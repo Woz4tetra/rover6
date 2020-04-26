@@ -26,13 +26,7 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     safety_msg.header.frame_id = "safety";
 
     ina_msg.header.frame_id = "battery";
-    ina_msg.power_supply_technology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_NIMH;
-
-    servo_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
-    servo_msg.layout.dim[0].size = _numServos;
-    servo_msg.layout.dim[0].stride = 1;
-    servo_msg.layout.dim[0].label = "servos";
-    servo_msg.data.resize(_numServos);
+    ina_msg.power_supply_technology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_LIPO;
 
     tof_msg.header.frame_id = "tof";
 
@@ -59,7 +53,7 @@ Rover6SerialBridge::Rover6SerialBridge(ros::NodeHandle* nodehandle):nh(*nodehand
     fsr_pub = nh.advertise<rover6_serial_bridge::Rover6FSR>("fsrs", 100);
     safety_pub = nh.advertise<rover6_serial_bridge::Rover6Safety>("safety", 100);
     ina_pub = nh.advertise<sensor_msgs::BatteryState>("battery", 10);
-    servo_pub = nh.advertise<std_msgs::Int16MultiArray>("servo_pos", 10);
+    servo_pub = nh.advertise<rover6_serial_bridge::Rover6ServoPos>("servo_pos", 10);
     tof_pub = nh.advertise<rover6_serial_bridge::Rover6TOF>("tof", 10);
 
     motors_sub = nh.subscribe(_motorsTopicName, 100, &Rover6SerialBridge::motorsCallback, this);
@@ -696,10 +690,9 @@ void Rover6SerialBridge::parseIR()
 
 void Rover6SerialBridge::parseServo()
 {
-    servo_msg.data.clear();
     CHECK_SEGMENT(0); // time ms
-    CHECK_SEGMENT(1); int i = stoi(_currentBufferSegment);
-    CHECK_SEGMENT(2); servo_msg.data[i] = stoi(_currentBufferSegment);
+    CHECK_SEGMENT(1); servo_msg.num = stoi(_currentBufferSegment);
+    CHECK_SEGMENT(2); servo_msg.value = stoi(_currentBufferSegment);
     servo_pub.publish(servo_msg);
 }
 

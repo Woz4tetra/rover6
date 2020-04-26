@@ -60,6 +60,7 @@ add_message_files(
     Rover6TOF.msg
     Rover6Motors.msg
     Rover6Servos.msg
+    Rover6ServoPos.msg
 )
 
 ## Generate services in the 'srv' folder

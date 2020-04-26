@@ -18,6 +18,7 @@
 #include "rover6_serial_bridge/Rover6TOF.h"
 #include "rover6_serial_bridge/Rover6Motors.h"
 #include "rover6_serial_bridge/Rover6Servos.h"
+#include "rover6_serial_bridge/Rover6ServoPos.h"
 
 #include "rover6_serial_bridge/Rover6PidSrv.h"
 #include "rover6_serial_bridge/Rover6SafetySrv.h"
@@ -82,7 +83,7 @@ private:
     unsigned int _numServos;
     string _servosTopicName;
     ros::Publisher servo_pub;
-    std_msgs::Int16MultiArray servo_msg;
+    rover6_serial_bridge::Rover6ServoPos servo_msg;
 
     ros::Publisher tof_pub;
     rover6_serial_bridge::Rover6TOF tof_msg;

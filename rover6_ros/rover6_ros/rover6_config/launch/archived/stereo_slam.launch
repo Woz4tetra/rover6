@@ -22,7 +22,7 @@
 
             <remap from="odom" to="/rover6/odom"/>
 
-            <remap from="rgbd_image" to="rgbd_image"/>
+            <!-- <remap from="rgbd_image" to="rgbd_image"/> -->
 
             <param name="queue_size" type="int" value="10"/>
 

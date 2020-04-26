@@ -17,6 +17,8 @@ from rover6_chassis.cfg import Rover6ChassisConfig
 
 from rover6_serial_bridge.msg import Rover6Encoder
 from rover6_serial_bridge.msg import Rover6Motors
+from rover6_serial_bridge.msg import Rover6Servos
+from rover6_serial_bridge.msg import Rover6ServoPos
 
 from rover6_serial_bridge.srv import Rover6PidSrv
 from rover6_serial_bridge.srv import Rover6SafetySrv
@@ -55,6 +57,7 @@ class Rover6Chassis:
         self.child_frame = rospy.get_param("~odom_child_frame", "base_link")
         self.odom_parent_frame = rospy.get_param("~odom_parent_frame", "odom")
         self.pan_tilt_frame = rospy.get_param("~pan_tilt_frame", "pan_tilt_link")
+        self.camera_rotate_frame = rospy.get_param("~camera_rotate_frame", "camera_rotate_link")
         self.tf_broadcaster = tf.TransformBroadcaster()
 
         # Encoder variables
@@ -78,12 +81,14 @@ class Rover6Chassis:
         self.tof_back_wall_dist_mm = rospy.get_param("~tof_back_wall_dist_mm", 15.0)
 
         # pan tilt command limits
+        self.pan_servo_num = rospy.get_param("~pan_servo_num", 2)
         self.pan_right_command = rospy.get_param("~pan_right_command", 90)
         self.pan_left_command = rospy.get_param("~pan_left_command", 0)
         self.pan_center_command = rospy.get_param("~pan_center_command", 45)
         self.pan_max_angle = math.radians(rospy.get_param("~pan_max_angle_deg", 45.0))
         self.pan_min_angle = math.radians(rospy.get_param("~pan_min_angle_deg", -45.0))
 
+        self.tilt_servo_num = rospy.get_param("~tilt_servo_num", 3)
         self.tilt_up_command = rospy.get_param("~tilt_up_command", 0)
         self.tilt_down_command = rospy.get_param("~tilt_down_command", 150)
         self.tilt_center_command = rospy.get_param("~tilt_center_command", 100)
@@ -102,7 +107,6 @@ class Rover6Chassis:
         # pan-tilt state
         self.servo_pan = 0.0
         self.servo_tilt = 0.0
-        self.pan_tilt_xyz_tf = (0.0264, 0.0, 0.00241)
 
         # Odometry message
         self.odom_msg = Odometry()
@@ -112,6 +116,7 @@ class Rover6Chassis:
         # Subscribers
         self.twist_sub = rospy.Subscriber("cmd_vel", Twist, self.twist_callback, queue_size=5)
         self.encoder_sub = rospy.Subscriber("encoders", Rover6Encoder, self.encoder_callback, queue_size=100)
+        self.servo_sub = rospy.Subscriber("servo_pos", Rover6ServoPos, self.servo_callback, queue_size=100)
 
         # Publishers
         self.odom_pub = rospy.Publisher("odom", Odometry, queue_size=5)
@@ -259,12 +264,15 @@ class Rover6Chassis:
 
         self.motors_pub.publish(self.motors_msg)
 
-    def servo_to_angle(self, command, max_command, min_command, max_angle, min_angle):
-        return (max_angle - min_angle) / (max_command - min_command) * (command - min_command) + min_angle
+    def servo_to_angle(self, command, max_command, min_command, min_angle, max_angle):
+        return (min_angle - max_angle) / (max_command - min_command) * (command - min_command) + max_angle
 
     def servo_callback(self, servo_msg):
-        self.servo_pan = servo_to_angle(servo_msg.camera_pan, self.pan_right_command, self.pan_left_command, self.pan_max_angle, self.pan_min_angle)
-        self.servo_tilt = servo_to_angle(servo_msg.camera_tilt, self.tilt_down_command, self.tilt_up_command, self.tilt_max_angle, self.tilt_min_angle)
+        if servo_msg.num == self.tilt_servo_num:
+            self.servo_tilt = self.servo_to_angle(servo_msg.value, self.tilt_down_command, self.tilt_up_command, self.tilt_min_angle, self.tilt_max_angle)
+
+        elif servo_msg.num == self.pan_servo_num:
+            self.servo_pan = self.servo_to_angle(servo_msg.value, self.pan_right_command, self.pan_left_command, self.pan_min_angle, self.pan_max_angle)
 
     def encoder_callback(self, enc_msg):
         self.enc_msg = enc_msg
@@ -285,12 +293,12 @@ class Rover6Chassis:
 
     def publish_pan_tilt_tfs(self):
         now = rospy.Time.now()
-        pan_tilt_quaternion = tf.transformations.quaternion_from_euler(0.0, self.servo_tilt, self.servo_pan)
+        pan_tilt_quaternion = tf.transformations.quaternion_from_euler(0.0, -self.servo_tilt, -self.servo_pan)
         self.tf_broadcaster.sendTransform(
-            self.pan_tilt_xyz_tf,
+            (0.0, 0.0, 0.0),
             pan_tilt_quaternion,
             now,
-            self.child_frame,
+            self.camera_rotate_frame,
             self.pan_tilt_frame
         )
 
