@@ -1,23 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <group ns="camera">
-        <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start">
-            <param name="frame_id" type="string" value="base_link"/>
+    <arg name="rgbd_sync" default="false"/>
 
-            <param name="subscribe_rgbd" value="true"/>
-            <param name="compressed" value="true"/>
-            <param name="rgbd_topic" value="rgbd_image"/>
+    <include file="$(find rtabmap_ros)/launch/rtabmap.launch" if="$(arg rgbd_sync)">
+        <arg name="args" value="--delete_db_on_start"/>
+        <arg name="compressed" value="true"/>
+        <arg name="subscribe_rgbd" value="true"/>
+        <arg name="rgbd_topic" value="/camera/rgbd_image"/>
 
-            <remap from="odom" to="/rover6/odom"/>
+        <arg name="odom_frame_id" value="odom"/>
+        <arg name="visual_odometry" value="false"/>
 
-            <!-- <remap from="rgbd_image" to="rgbd_image"/> -->
+        <param name="queue_size" type="int" value="10"/>
+    </include>
 
-            <param name="queue_size" type="int" value="10"/>
+    <include file="$(find rtabmap_ros)/launch/rtabmap.launch" unless="$(arg rgbd_sync)">
+        <arg name="args" value="--delete_db_on_start"/>
+        <arg name="compressed" value="true"/>
+        <arg name="rgb_topic" value="/camera/throttled/color/image_rect_color"/>
+        <arg name="depth_topic" value="/camera/throttled/depth/image_rect_raw"/>
+        <arg name="camera_info_topic" value="/camera/throttled/color/camera_info"/>
 
-            <!-- RTAB-Map's parameters -->
-            <!-- <param name="RGBD/AngularUpdate"        type="string" value="0.01"/>
-            <param name="RGBD/LinearUpdate"         type="string" value="0.01"/>
-            <param name="RGBD/OptimizeFromGraphEnd" type="string" value="false"/> -->
-        </node>
-    </group>
+        <arg name="odom_topic" value="/rover6/odom"/>
+
+        <param name="queue_size" type="int" value="10"/>
+    </include>
 </launch>
