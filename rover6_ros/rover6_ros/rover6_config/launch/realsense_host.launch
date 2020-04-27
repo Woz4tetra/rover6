@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <arg name="rate"  default="5"/>
-    <arg name="approx_sync" default="false" /> <!-- true for freenect driver -->
-    <arg name="rgbd_sync" default="true"/>
+    <arg name="approx_sync" default="true" /> <!-- true for freenect driver -->
+    <arg name="rgbd_sync" default="false"/>
 
     <group ns="camera">
 
@@ -28,8 +28,8 @@
             <arg name="color_height"             value="480"/>
             <arg name="enable_color"             value="true"/>
 
-            <arg name="depth_fps"                value="60"/>
-            <arg name="color_fps"                value="60"/>
+            <arg name="depth_fps"                value="30"/>
+            <arg name="color_fps"                value="30"/>
             <arg name="enable_gyro"              value="false"/>
             <arg name="enable_accel"             value="false"/>
 
@@ -43,6 +43,8 @@
             <arg name="rgb"                           value="color" />
         </include>
 
+        <node pkg="nodelet" type="nodelet" name="camera_nodelet_manager" args="manager" output="screen"/>
+
         <node if="$(arg rgbd_sync)" pkg="nodelet" type="nodelet" name="rgbd_sync" args="load rtabmap_ros/rgbd_sync camera_nodelet_manager" output="screen">
             <param name="compressed_rate"  type="double" value="$(arg rate)"/>
             <param name="approx_sync"      type="bool"   value="$(arg approx_sync)"/>
@@ -50,21 +52,19 @@
             <remap from="rgb/image"       to="color/image_rect_color"/>
             <remap from="depth/image"     to="depth/image_rect_raw"/>
             <remap from="rgb/camera_info" to="color/camera_info"/>
-
-            <!-- <remap from="rgbd_image"      to="rgbd_image"/> -->
         </node>
 
         <node unless="$(arg rgbd_sync)" pkg="nodelet" type="nodelet" name="data_throttle" args="load rtabmap_ros/data_throttle camera_nodelet_manager" output="screen">
             <param name="rate"         type="double" value="$(arg rate)"/>
             <param name="approx_sync"  type="bool"   value="$(arg approx_sync)"/>
 
-            <remap from="rgb/image_in"       to="rgb/image_rect_color"/>
-            <remap from="depth/image_in"     to="depth_registered/image_raw"/>
-            <remap from="rgb/camera_info_in" to="rgb/camera_info"/>
+            <remap from="rgb/image_in"       to="color/image_rect_color"/>
+            <remap from="depth/image_in"     to="depth/image_rect_raw"/>
+            <remap from="rgb/camera_info_in" to="color/camera_info"/>
 
-            <remap from="rgb/image_out"       to="throttled/rgb/image_rect_color"/>
-            <remap from="depth/image_out"     to="throttled/depth_registered/image_raw"/>
-            <remap from="rgb/camera_info_out" to="throttled/rgb/camera_info"/>
+            <remap from="rgb/image_out"       to="throttled/color/image_rect_color"/>
+            <remap from="depth/image_out"     to="throttled/depth/image_rect_raw"/>
+            <remap from="rgb/camera_info_out" to="throttled/color/camera_info"/>
         </node>
     </group>
 </launch>
