@@ -1,28 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <arg name="rgbd_sync" default="false"/>
+    <arg name="rgbd_sync" default="true"/>
+    <arg name="handheld" default="false"/>
 
-    <include file="$(find rtabmap_ros)/launch/rtabmap.launch" if="$(arg rgbd_sync)">
-        <arg name="args" value="--delete_db_on_start"/>
+    <include file="$(find rover6_config)/launch/rtabmap.launch" if="$(arg rgbd_sync)">
+        <arg name="args" value="--delete_db_on_start --RGBD/AngularUpdate 0.01"/>
         <arg name="compressed" value="true"/>
         <arg name="subscribe_rgbd" value="true"/>
         <arg name="rgbd_topic" value="/camera/rgbd_image"/>
 
         <arg name="odom_frame_id" value="odom"/>
         <arg name="visual_odometry" value="false"/>
-
-        <param name="queue_size" type="int" value="10"/>
+        <!-- <arg name="odom_frame_id" value="odom" unless="$(arg handheld)"/> -->
+        <!-- <arg name="visual_odometry" value="$(arg handheld)"/> -->
+        <!-- <arg name="imu_topic" value="/rover6/bno055" if="$(arg handheld)"/> -->
     </include>
 
-    <include file="$(find rtabmap_ros)/launch/rtabmap.launch" unless="$(arg rgbd_sync)">
-        <arg name="args" value="--delete_db_on_start"/>
+    <include file="$(find rover6_config)/launch/rtabmap.launch" unless="$(arg rgbd_sync)">
         <arg name="compressed" value="true"/>
         <arg name="rgb_topic" value="/camera/throttled/color/image_rect_color"/>
         <arg name="depth_topic" value="/camera/throttled/depth/image_rect_raw"/>
         <arg name="camera_info_topic" value="/camera/throttled/color/camera_info"/>
 
-        <arg name="odom_topic" value="/rover6/odom"/>
-
-        <param name="queue_size" type="int" value="10"/>
+        <arg name="odom_frame_id" value="odom"/>
+        <arg name="visual_odometry" value="$(arg handheld)"/>
+        <arg name="imu_topic" value="/rover6/bno055" if="$(arg handheld)"/>
     </include>
 </launch>
