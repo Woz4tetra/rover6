@@ -14,6 +14,7 @@
         <param name="serial_baud" type="int" value="115200"/>
         <param name="motors_topic" type="string" value="$(arg motors_topic)"/>
         <param name="servos_topic" type="string" value="$(arg servos_topic)"/>
+        <param name="imu_frame_id" type="string" value="imu"/>
         <node type="rover6_serial_bridge_node" name="rover6_serial_bridge_node" pkg="rover6_serial_bridge" required="true" output="screen"/>
     </group>
 </launch>
