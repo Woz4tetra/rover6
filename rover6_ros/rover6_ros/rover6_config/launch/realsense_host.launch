@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <arg name="rate"  default="5"/>
+    <arg name="rate"  default="10"/>
     <arg name="approx_sync" default="true" /> <!-- true for freenect driver -->
-    <arg name="rgbd_sync" default="false"/>
+    <arg name="rgbd_sync" default="true"/>
 
     <group ns="camera">
 

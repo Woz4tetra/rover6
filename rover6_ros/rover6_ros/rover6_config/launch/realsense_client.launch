@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <group ns="camera">
+    <group ns="rtabmap">
         <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start">
             <param name="frame_id" type="string" value="base_link"/>
 
             <param name="subscribe_rgbd" value="true"/>
             <param name="compressed" value="true"/>
-            <param name="rgbd_topic" value="rgbd_image"/>
+            <param name="rgbd_topic" value="/camera/rgbd_image"/>
 
             <remap from="odom" to="/rover6/odom"/>
 
@@ -15,9 +15,7 @@
             <param name="queue_size" type="int" value="10"/>
 
             <!-- RTAB-Map's parameters -->
-            <!-- <param name="RGBD/AngularUpdate"        type="string" value="0.01"/>
-            <param name="RGBD/LinearUpdate"         type="string" value="0.01"/>
-            <param name="RGBD/OptimizeFromGraphEnd" type="string" value="false"/> -->
+            <param name="RGBD/AngularUpdate"        type="string" value="0.01"/>
         </node>
     </group>
 </launch>

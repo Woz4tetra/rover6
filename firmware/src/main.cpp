@@ -260,7 +260,7 @@ void cycle_update()
     switch (cycler_index) {
         case 0:
             if (rover6_bno::read_BNO055()) {
-                // rover6_bno::report_BNO055();
+                rover6_bno::report_BNO055();
             }
             break;
         case 1:
