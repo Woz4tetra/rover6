@@ -6,11 +6,12 @@ def get_checksum(b: bytes):
     for val in b:
         checksum += val
     checksum &= 0xff
-    return checksum
+    return hex(checksum)
 
 def check(packet):
     calc_checksum = get_checksum(packet[:-2])
     recv_checksum = int(packet[-2:], 16)
     assert calc_checksum == recv_checksum, "%s != %s" % (calc_checksum, recv_checksum)
 
-check(packet)
+#check(packet)
+print(get_checksum(b"00\t?\trover6"))

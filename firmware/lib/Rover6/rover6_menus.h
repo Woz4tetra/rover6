@@ -293,7 +293,7 @@ namespace rover6_menus
     //
     // Safety menu
     //
-    struct safety_diagram {
+    /*struct safety_diagram {
         const int w = 10;
         const int h = 15;
         const int corner_r = 2;
@@ -466,7 +466,7 @@ namespace rover6_menus
         tft.drawFastVLine(sd_vals.back_lower_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_WHITE);
         tft.drawFastVLine(sd_vals.front_upper_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_WHITE);
         tft.drawFastVLine(sd_vals.back_upper_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_WHITE);
-    }
+    }*/
 
     /*void draw_safety_servo_diagrams()
     {

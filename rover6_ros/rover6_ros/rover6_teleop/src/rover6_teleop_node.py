@@ -129,6 +129,8 @@ class Rover6Teleop:
         return self.joy_to_servo(self.tilt_up_command, self.tilt_down_command, self.tilt_center_command, value)
 
     def did_button_change(self, msg, index):
+        if index >= len(msg.buttons):
+            return False
         return msg.buttons[index] and self.prev_joy_msg.buttons[index] != msg.buttons[index]
 
     def joystick_msg_callback(self, msg):
@@ -194,41 +196,41 @@ class Rover6Teleop:
 
         linear_val = self.joy_to_speed(self.linear_scale, msg.axes[self.linear_axis])
         angular_val = self.joy_to_speed(self.angular_scale, msg.axes[self.angular_axis])
-        angular_val = self.check_brake_val(msg, linear_val, angular_val)
+        # angular_val = self.check_brake_val(msg, linear_val, angular_val)
 
         if self.set_twist(linear_val, angular_val):
             self.cmd_vel_pub.publish(self.twist_command)
 
-        if self.camera_command_mode == Rover6Servos.VELOCITY_MODE:
-            camera_pan_val = self.joy_to_vel_servo(msg.axes[self.camera_pan_axis])
-            camera_tilt_val = -self.joy_to_vel_servo(msg.axes[self.camera_tilt_axis])
-        else:  # Rover6Servos.POSITION_MODE
-            camera_pan_val = self.joy_to_pan_servo(msg.axes[self.camera_pan_axis])
-            camera_tilt_val = self.joy_to_tilt_servo(msg.axes[self.camera_tilt_axis])
+        # if self.camera_command_mode == Rover6Servos.VELOCITY_MODE:
+        #     camera_pan_val = self.joy_to_vel_servo(msg.axes[self.camera_pan_axis])
+        #     camera_tilt_val = -self.joy_to_vel_servo(msg.axes[self.camera_tilt_axis])
+        # else:  # Rover6Servos.POSITION_MODE
+        #     camera_pan_val = self.joy_to_pan_servo(msg.axes[self.camera_pan_axis])
+        #     camera_tilt_val = self.joy_to_tilt_servo(msg.axes[self.camera_tilt_axis])
 
-        if self.did_button_change(msg, 0):  # A
-            self.send_menu_event(self.menu_events["enter"])
-        elif self.did_button_change(msg, 1):  # B
-            self.send_menu_event(self.menu_events["back"])
-        elif self.did_button_change(msg, 14):  # R joy
-            if self.camera_command_mode == Rover6Servos.POSITION_MODE:
-                self.camera_command_mode = Rover6Servos.VELOCITY_MODE
-            else:
-                self.camera_command_mode = Rover6Servos.POSITION_MODE
-
-        self.set_servos(camera_pan_val, camera_tilt_val, self.camera_command_mode)
-        self.servo_pub.publish(self.servo_command)
-
-        if self.prev_joy_msg.axes[7] != msg.axes[7]:  # up d-pad
-            if msg.axes[7] < 0.0:
-                self.send_menu_event(self.menu_events["down"])
-            elif msg.axes[7] > 0.0:
-                self.send_menu_event(self.menu_events["up"])
-        if self.prev_joy_msg.axes[6] != msg.axes[6]:  # down d-pad
-            if msg.axes[6] < 0.0:
-                self.send_menu_event(self.menu_events["left"])
-            elif msg.axes[6] > 0.0:
-                self.send_menu_event(self.menu_events["right"])
+        # if self.did_button_change(msg, 0):  # A
+        #     self.send_menu_event(self.menu_events["enter"])
+        # elif self.did_button_change(msg, 1):  # B
+        #     self.send_menu_event(self.menu_events["back"])
+        # elif self.did_button_change(msg, 14):  # R joy
+        #     if self.camera_command_mode == Rover6Servos.POSITION_MODE:
+        #         self.camera_command_mode = Rover6Servos.VELOCITY_MODE
+        #     else:
+        #         self.camera_command_mode = Rover6Servos.POSITION_MODE
+        #
+        # self.set_servos(camera_pan_val, camera_tilt_val, self.camera_command_mode)
+        # self.servo_pub.publish(self.servo_command)
+        #
+        # if self.prev_joy_msg.axes[7] != msg.axes[7]:  # up d-pad
+        #     if msg.axes[7] < 0.0:
+        #         self.send_menu_event(self.menu_events["down"])
+        #     elif msg.axes[7] > 0.0:
+        #         self.send_menu_event(self.menu_events["up"])
+        # if self.prev_joy_msg.axes[6] != msg.axes[6]:  # down d-pad
+        #     if msg.axes[6] < 0.0:
+        #         self.send_menu_event(self.menu_events["left"])
+        #     elif msg.axes[6] > 0.0:
+        #         self.send_menu_event(self.menu_events["right"])
 
         self.prev_joy_msg = msg
 

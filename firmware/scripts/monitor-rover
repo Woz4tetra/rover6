@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-platformio device monitor --port /dev/serial0 --baud 115200
+platformio device monitor --port /dev/ttyTHS2 --baud 115200

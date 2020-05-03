@@ -52,7 +52,7 @@ namespace rover6_tft
 
         tft.setTextWrap(false);
         tft.setTextSize(1);
-        tft.setRotation(3); // horizontal display
+        tft.setRotation(1); // horizontal display
 
         tft.print("Hello!\n");
     }

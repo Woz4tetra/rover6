@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <arg name="lidar" default="true"/>
+    <arg name="lidar" default="false"/>
+    
     <arg name="pan_right_command"   default="90" />
     <arg name="pan_left_command"   default="0" />
     <arg name="pan_center_command"   default="45" />

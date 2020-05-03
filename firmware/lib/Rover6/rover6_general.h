@@ -75,15 +75,18 @@ namespace rover6
     }
 
     bool is_safe_to_move() {
-        return safety_struct.voltage_ok && safety_struct.are_servos_active && safety_struct.are_motors_active && safety_struct.is_front_tof_ok && safety_struct.is_back_tof_ok;
+        // return safety_struct.voltage_ok && safety_struct.are_servos_active && safety_struct.are_motors_active && safety_struct.is_front_tof_ok && safety_struct.is_back_tof_ok;
+        return true;
     }
 
     bool is_obstacle_in_front() {
-        return safety_struct.is_left_bumper_trig || safety_struct.is_right_bumper_trig || safety_struct.is_front_tof_trig;
+        // return safety_struct.is_left_bumper_trig || safety_struct.is_right_bumper_trig || safety_struct.is_front_tof_trig;
+        return false;
     }
 
     bool is_obstacle_in_back() {
-        return safety_struct.is_back_tof_trig;
+        // return safety_struct.is_back_tof_trig;
+        return false;
     }
 
     void report_structs() {

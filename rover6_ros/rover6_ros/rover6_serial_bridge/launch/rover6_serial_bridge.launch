@@ -10,7 +10,7 @@
         <node type="throttle" name="servo_topic_throttle" pkg="topic_tools" required="true" output="screen"
             args="messages servos 15.0 $(arg servos_topic)"/>
 
-        <param name="serial_port" type="string" value="/dev/serial0"/>
+        <param name="serial_port" type="string" value="/dev/ttyTHS1"/>
         <param name="serial_baud" type="int" value="115200"/>
         <param name="motors_topic" type="string" value="$(arg motors_topic)"/>
         <param name="servos_topic" type="string" value="$(arg servos_topic)"/>
