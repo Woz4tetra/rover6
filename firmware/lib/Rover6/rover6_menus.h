@@ -4,13 +4,13 @@
 #include "rover6_general.h"
 #include "rover6_serial.h"
 #include "rover6_tft.h"
-#include "rover6_bno.h"
+// #include "rover6_bno.h"
 #include "rover6_encoders.h"
-#include "rover6_fsr.h"
+// #include "rover6_fsr.h"
 #include "rover6_ina.h"
 #include "rover6_motors.h"
-#include "rover6_servos.h"
-#include "rover6_tof.h"
+// #include "rover6_servos.h"
+// #include "rover6_tof.h"
 #include "rover6_pid.h"
 
 using namespace rover6_tft;
@@ -226,7 +226,7 @@ namespace rover6_menus
     //
     // IMU menu
     //
-    const double IMU_DRAW_COMPASS_RADIUS = 30;
+    /*const double IMU_DRAW_COMPASS_RADIUS = 30;
     int16_t imu_draw_x0 = 0;
     int16_t imu_draw_y0 = 0;
     int16_t imu_draw_x1 = 0;
@@ -261,7 +261,7 @@ namespace rover6_menus
 
         tft.drawLine(imu_draw_x0, imu_draw_y0, imu_draw_x1, imu_draw_y1, ST7735_WHITE);
         tft.drawCircle(imu_draw_x1, imu_draw_y1, 5, ST7735_WHITE);
-    }
+    }*/
 
 
     //
@@ -468,7 +468,7 @@ namespace rover6_menus
         tft.drawFastVLine(sd_vals.back_upper_threshold_x, sd_vals.threshold_y, sd_vals.threshold_len, ST7735_WHITE);
     }
 
-    void draw_safety_servo_diagrams()
+    /*void draw_safety_servo_diagrams()
     {
         double new_front_servo_angle = rover6_servos::tilter_servo_cmd_to_angle(
             rover6_servos::servo_positions[FRONT_TILTER_SERVO_NUM]
@@ -538,9 +538,9 @@ namespace rover6_menus
                 sd_vals.servo_ind_ball_r, ST7735_WHITE
             );
         }
-    }
+    }*/
 
-    void draw_safety_menu()
+    /*void draw_safety_menu()
     {
         int y_offset = TOP_BAR_H + 5;
         tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println(
@@ -563,8 +563,8 @@ namespace rover6_menus
         tft.setCursor(BORDER_OFFSET_W, y_offset); tft.println("servo b: " + String(rover6_servos::servo_positions[BACK_TILTER_SERVO_NUM]) + "   "); // y_offset += ROW_SIZE;
 
         draw_tof_sensor_bars();
-        draw_safety_servo_diagrams();
-    }
+        // draw_safety_servo_diagrams();
+    }*/
 
     //
     // Wifi menu
@@ -680,11 +680,11 @@ namespace rover6_menus
     // Camera menu
     //
 
-    void draw_servo_menu()
+    /*void draw_servo_menu()
     {
 
     }
-    /*
+
     void servo_menu_left_event()
     {
 
@@ -822,8 +822,8 @@ namespace rover6_menus
     void screen_change_event() {
         switch (DISPLAYED_MENU) {
             case MAIN_MENU: PREV_MAIN_MENU_SELECT_INDEX = -1; break;  // force a redraw of the menu list when switching
-            case IMU_MENU: imu_draw_prev_angle += 1; break;  // force compass redraw
-            case SAFETY_MENU: init_rover_safety_diagram(); break;  // draw the diagram once
+            // case IMU_MENU: imu_draw_prev_angle += 1; break;  // force compass redraw
+            // case SAFETY_MENU: init_rover_safety_diagram(); break;  // draw the diagram once
             case WIFI_MENU: init_wifi_menu(); break;
             case SHUTDOWN_MENU: PREV_SHUTDOWN_MENU_SELECT_INDEX = -1;
             default: break;
@@ -844,11 +844,11 @@ namespace rover6_menus
         }
         switch (DISPLAYED_MENU) {
             case MAIN_MENU: draw_main_menu(); break;
-            case IMU_MENU: draw_imu_menu(); break;
+            // case IMU_MENU: draw_imu_menu(); break;
             case MOTORS_MENU: draw_motors_menu(); break;
-            case SAFETY_MENU: draw_safety_menu(); break;
+            // case SAFETY_MENU: draw_safety_menu(); break;
             case WIFI_MENU: draw_wifi_menu(); break;
-            case SERVO_MENU: draw_servo_menu(); break;
+            // case SERVO_MENU: draw_servo_menu(); break;
 
             case SHUTDOWN_MENU: draw_shutdown_menu(); break;
             default: break;

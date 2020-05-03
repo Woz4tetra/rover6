@@ -24,10 +24,10 @@ void set_active(bool active)
 
     rover6::rover_state.is_active = active;
     rover6_motors::set_motors_active(active);
-    rover6_servos::set_servos_active(active);
+    // rover6_servos::set_servos_active(active);
     rover6_pid::set_speed_pid(active);
-    rover6_tof::set_lox_active(active);
-    rover6_bno::set_bno_active(active);
+    // rover6_tof::set_lox_active(active);
+    // rover6_bno::set_bno_active(active);
     if (!active) {
         rover6_motors::stop_motors();
     }
@@ -213,32 +213,32 @@ void rover6_serial::packet_callback(Rover6Serial* serial_obj, String category, S
     }
 
     // set_servo
-    else if (category.equals("s")) {
-        CHECK_SEGMENT(serial_obj); int n = serial_obj->get_segment().toInt();
-        CHECK_SEGMENT(serial_obj); int command = serial_obj->get_segment().toInt();
-        rover6_servos::set_servo(n, command);
-    }
+    // else if (category.equals("s")) {
+    //     CHECK_SEGMENT(serial_obj); int n = serial_obj->get_segment().toInt();
+    //     CHECK_SEGMENT(serial_obj); int command = serial_obj->get_segment().toInt();
+    //     rover6_servos::set_servo(n, command);
+    // }
 
     // set_servo_default
-    else if (category.equals("sd")) {
-        CHECK_SEGMENT(serial_obj); int n = serial_obj->get_segment().toInt();
-        rover6_servos::set_servo(n);
-    }
+    // else if (category.equals("sd")) {
+    //     CHECK_SEGMENT(serial_obj); int n = serial_obj->get_segment().toInt();
+    //     rover6_servos::set_servo(n);
+    // }
 
     // set_servo_velocity
-    else if (category.equals("sv")) {
-        CHECK_SEGMENT(serial_obj); int n = serial_obj->get_segment().toInt();
-        CHECK_SEGMENT(serial_obj); float command = serial_obj->get_segment().toFloat();
-        rover6_servos::set_velocity(n, command);
-    }
+    // else if (category.equals("sv")) {
+    //     CHECK_SEGMENT(serial_obj); int n = serial_obj->get_segment().toInt();
+    //     CHECK_SEGMENT(serial_obj); float command = serial_obj->get_segment().toFloat();
+    //     rover6_servos::set_velocity(n, command);
+    // }
 
     // set_safety_thresholds
-    else if (category.equals("safe")) {
-        for (size_t index = 0; index < 4; index++) {
-            CHECK_SEGMENT(serial_obj); rover6_tof::LOX_THRESHOLDS[index] = serial_obj->get_segment().toInt();
-        }
-        rover6_tof::set_lox_thresholds();  // sets thresholds based on LOX_THRESHOLDS array
-    }
+    // else if (category.equals("safe")) {
+    //     for (size_t index = 0; index < 4; index++) {
+    //         CHECK_SEGMENT(serial_obj); rover6_tof::LOX_THRESHOLDS[index] = serial_obj->get_segment().toInt();
+    //     }
+    //     rover6_tof::set_lox_thresholds();  // sets thresholds based on LOX_THRESHOLDS array
+    // }
 
     // menu_key
     else if (category.equals("menu")) {
@@ -258,22 +258,22 @@ int cycler_index = 0;
 void cycle_update()
 {
     switch (cycler_index) {
-        case 0:
-            if (rover6_bno::read_BNO055()) {
-                rover6_bno::report_BNO055();
-            }
-            break;
+        // case 0:
+        //     if (rover6_bno::read_BNO055()) {
+        //         rover6_bno::report_BNO055();
+        //     }
+        //     break;
         // case 1:
         //     if (rover6_tof::read_VL53L0X()) {
         //         // rover6_tof::report_VL53L0X();
         //     }
         //     break;
-        case 1:
+        case 0:
             if (rover6_ina::read_INA219()) {
                 rover6_ina::report_INA219();
             }
             break;
-        case 2:
+        case 1:
             if (rover6_encoders::read_encoders()) {
                 rover6_encoders::report_encoders();
             }
@@ -283,15 +283,15 @@ void cycle_update()
         //         rover6_fsr::report_fsrs();
         //     }
         //     break;
-        case 3:
+        case 2:
             if (rover6_ir_remote::read_IR()) {
                 rover6_ir_remote::report_IR();
                 rover6_ir_remote::callback_ir();
             }
             break;
-        case 4: rover6_menus::draw_menus(); break;
-        case 5: rover6_pid::update_speed_pid(); break;
-        case 6: rover6_motors::check_motor_timeout(); break;
+        case 3: rover6_menus::draw_menus(); break;
+        case 4: rover6_pid::update_speed_pid(); break;
+        case 5: rover6_motors::check_motor_timeout(); break;
         // case 9: rover6_servos::update(); break;
     }
     cycler_index++;
@@ -317,15 +317,17 @@ void setup()
     // rover6_servos::setup_servos();   tft.print("Servos ready!\n");
     // rover6_tof::setup_VL53L0X();   tft.print("VL53L0Xs ready!\n");
     rover6_pid::setup_pid();
+    tft.print("Devices ready!\n");
 
     set_active(true);
     // set_servos_default();
 
-    rover6_servos::set_front_tilter(FRONT_TILTER_UP);
-    rover6_servos::set_back_tilter(BACK_TILTER_UP);
-    rover6_servos::center_camera();
+    // rover6_servos::set_front_tilter(FRONT_TILTER_UP);
+    // rover6_servos::set_back_tilter(BACK_TILTER_UP);
+    // rover6_servos::center_camera();
     rover6_tft::black_display();
     rover6_menus::init_menus();
+    tft.print("Rover6 ready!\n");
 }
 
 void loop()
