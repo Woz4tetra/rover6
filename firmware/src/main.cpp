@@ -1,15 +1,15 @@
-#include <rover6_bno.h>
+// #include <rover6_bno.h>
 #include <rover6_encoders.h>
-#include <rover6_fsr.h>
+// #include <rover6_fsr.h>
 #include <rover6_general.h>
 #include <rover6_i2c.h>
 #include <rover6_ina.h>
 #include <rover6_ir_remote.h>
 #include <rover6_motors.h>
 #include <rover6_serial.h>
-#include <rover6_servos.h>
+// #include <rover6_servos.h>
 #include <rover6_tft.h>
-#include <rover6_tof.h>
+// #include <rover6_tof.h>
 #include <rover6_menus.h>
 #include <rover6_pid.h>
 
@@ -263,36 +263,36 @@ void cycle_update()
                 rover6_bno::report_BNO055();
             }
             break;
+        // case 1:
+        //     if (rover6_tof::read_VL53L0X()) {
+        //         // rover6_tof::report_VL53L0X();
+        //     }
+        //     break;
         case 1:
-            if (rover6_tof::read_VL53L0X()) {
-                // rover6_tof::report_VL53L0X();
-            }
-            break;
-        case 2:
             if (rover6_ina::read_INA219()) {
                 rover6_ina::report_INA219();
             }
             break;
-        case 3:
+        case 2:
             if (rover6_encoders::read_encoders()) {
                 rover6_encoders::report_encoders();
             }
             break;
-        case 4:
-            if (rover6_fsr::read_fsrs()) {
-                // rover6_fsr::report_fsrs();
-            }
-            break;
-        case 5:
+        // case 4:
+        //     if (rover6_fsr::read_fsrs()) {
+        //         rover6_fsr::report_fsrs();
+        //     }
+        //     break;
+        case 3:
             if (rover6_ir_remote::read_IR()) {
                 rover6_ir_remote::report_IR();
                 rover6_ir_remote::callback_ir();
             }
             break;
-        case 6: rover6_menus::draw_menus(); break;
-        case 7: rover6_pid::update_speed_pid(); break;
-        case 8: rover6_motors::check_motor_timeout(); break;
-        case 9: rover6_servos::update(); break;
+        case 4: rover6_menus::draw_menus(); break;
+        case 5: rover6_pid::update_speed_pid(); break;
+        case 6: rover6_motors::check_motor_timeout(); break;
+        // case 9: rover6_servos::update(); break;
     }
     cycler_index++;
     if (cycler_index > 9) {
@@ -309,13 +309,13 @@ void setup()
     rover6_serial::setup_serial();  tft.print("Serial ready!\n");
     rover6_i2c::setup_i2c();  tft.print("I2C ready!\n");
     rover6_encoders::reset_encoders();  tft.print("Encoders ready!\n");
-    rover6_fsr::setup_fsrs();  tft.print("FSRs ready!\n");
+    // rover6_fsr::setup_fsrs();  tft.print("FSRs ready!\n");
     rover6_ir_remote::setup_IR();   tft.print("IR ready!\n");
     rover6_motors::setup_motors();   tft.print("Motors ready!\n");
-    rover6_bno::setup_BNO055();   tft.print("BNO055 ready!\n");
+    // rover6_bno::setup_BNO055();   tft.print("BNO055 ready!\n");
     rover6_ina::setup_INA219();   tft.print("INA219 ready!\n");
-    rover6_servos::setup_servos();   tft.print("Servos ready!\n");
-    rover6_tof::setup_VL53L0X();   tft.print("VL53L0Xs ready!\n");
+    // rover6_servos::setup_servos();   tft.print("Servos ready!\n");
+    // rover6_tof::setup_VL53L0X();   tft.print("VL53L0Xs ready!\n");
     rover6_pid::setup_pid();
 
     set_active(true);

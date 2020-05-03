@@ -28,7 +28,7 @@ if [ ! -f /etc/udev/rules.d/49-teensy.rules ]; then
 fi
 
 echo "Installing platformio"
-pip3 install platformio
+# pip3 install platformio
 source ~/.profile
 platformio --version
 
