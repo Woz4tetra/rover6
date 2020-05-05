@@ -10,19 +10,25 @@
         <param name="queue_size" type="int" value="10"/>
         <param name="voxel_size" type="double" value="0.01"/>
     </node>
-    <node pkg="rtabmap_ros" type="rtabmapviz" name="rtabmapviz" args="-d ~/.ros/rtabmap_gui.ini" output="screen">
-      <param name="subscribe_rgbd"       type="bool"   value="true"/>
-      <param name="frame_id"             type="string" value="base_link"/>
-      <param name="odom_frame_id"        type="string" value="odom"/>
-      <param name="wait_for_transform_duration" type="double"   value="0.2"/>
-      <param name="queue_size"           type="int"    value="50"/>
-      <param name="approx_sync"          type="bool"   value="true"/>
 
-      <remap from="rgb/image"       to="color/image_rect_color_relay"/>
-      <remap from="depth/image"     to="depth/image_rect_raw_relay"/>
-      <remap from="rgb/camera_info" to="color/camera_info_relay"/>
+    <group ns="camera">
+        <node name="republish_rgb" type="republish" pkg="image_transport" args="compressed in:=color/image_rect_color raw out:=color/image_rect_color_relay" />
+        <node name="republish_depth" type="republish" pkg="image_transport" args="compressedDepth in:=depth/image_rect_raw raw out:=depth/image_rect_raw_relay" />
 
-      <remap from="rgbd_image"      to="/camera/rgbd_image_relay"/>
-      <remap from="odom"                   to="/rover6/odom"/>
-    </node>
+        <node pkg="rtabmap_ros" type="rtabmapviz" name="rtabmapviz" args="-d ~/.ros/rtabmap_gui.ini" output="screen">
+          <param name="subscribe_rgbd"       type="bool"   value="true"/>
+          <param name="frame_id"             type="string" value="base_link"/>
+          <param name="odom_frame_id"        type="string" value="odom"/>
+          <param name="wait_for_transform_duration" type="double"   value="0.2"/>
+          <param name="queue_size"           type="int"    value="50"/>
+          <param name="approx_sync"          type="bool"   value="true"/>
+
+          <remap from="rgb/image"       to="color/image_rect_color_relay"/>
+          <remap from="depth/image"     to="depth/image_rect_raw_relay"/>
+          <remap from="rgb/camera_info" to="color/camera_info_relay"/>
+
+          <remap from="rgbd_image"      to="rgbd_image_relay"/>
+          <remap from="odom"                   to="/rover6/odom"/>
+        </node>
+    </group>
 </launch>

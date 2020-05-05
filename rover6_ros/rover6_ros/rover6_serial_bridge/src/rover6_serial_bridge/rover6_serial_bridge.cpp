@@ -677,6 +677,7 @@ void Rover6SerialBridge::parseINA()
     CHECK_SEGMENT(1); ina_msg.current = stof(_currentBufferSegment);
     CHECK_SEGMENT(2); // ina_msg doesn't have a slot for power
     CHECK_SEGMENT(3); ina_msg.voltage = stof(_currentBufferSegment);
+    ROS_INFO_THROTTLE(3, "Voltage (V): %f, Current (mA): %f", ina_msg.voltage, ina_msg.current);
 
     ina_pub.publish(ina_msg);
 }
