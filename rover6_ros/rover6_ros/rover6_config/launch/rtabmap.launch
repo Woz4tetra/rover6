@@ -14,8 +14,13 @@
 
             <param name="queue_size" type="int" value="50"/>
 
-            <param name="RGBD/AngularUpdate"        value="0.01"/>
-            <param name="RGBD/LinearUpdate"         value="0.01"/>
+            <param name="Vis/InlierDistance"        value="0.1"/>
+            <param name="Vis/MaxFeatures"           value="2000"/>
+            <param name="Vis/MinInliers"            value="10"/>
+            <param name="Rtabmap/DetectionRate"     value="5"/>
+
+            <param name="RGBD/AngularUpdate"        value="0.1"/>
+            <param name="RGBD/LinearUpdate"         value="0.1"/>
             <param name="RGBD/OptimizeFromGraphEnd" value="false"/>
             <param name="Reg/Force3DoF"             value="true"/>
         </node>
