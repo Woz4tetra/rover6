@@ -284,7 +284,7 @@ class Rover6Chassis:
             try:
                 self.compute_odometry()
                 self.publish_chassis_data()
-                self.publish_pan_tilt_tfs()
+                # self.publish_pan_tilt_tfs()
             except BaseException, e:
                 traceback.print_exc()
                 rospy.signal_shutdown(str(e))
