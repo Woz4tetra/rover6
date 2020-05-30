@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
+    <param name="/use_sim_time" value="true"/>
+
+    <include file="$(find rover6_config)/launch/static_transforms.launch"/>
+
+    <include file="$(find rover6_chassis)/launch/rover6_chassis.launch">
+        <arg name="rover6_chassis_services_enabled" value="false"/>
+        <arg name="rover6_chassis_use_sensor_msg_time" value="false"/>
+    </include>
+
+
+    <node pkg="tf" type="static_transform_publisher" name="camera_base_to_depth" args="0.0 0.0 0.0 0 0 0 1 camera_link camera_depth_frame 30" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_depth_to_optical" args="0.0 0.0 0.0 0 0 0 1 camera_depth_frame camera_depth_optical_frame 30" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_base_to_color" args="0.0 0.0 0.0 0 0 0 1 camera_link camera_color_frame 30" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_color_to_optical" args="0.0 0.0 0.0 0 0 0 1 camera_color_frame camera_color_optical_frame 30" />
+
     <group ns="rtabmap">
         <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start">
             <param name="frame_id" type="string" value="base_link"/>
@@ -25,18 +40,4 @@
             <param name="Reg/Force3DoF"             value="true"/>
         </node>
     </group>
-
-
-    <!-- <group ns="camera">
-        <node pkg="nodelet" type="nodelet" name="camera_nodelet_manager" args="manager" output="screen"/>
-
-        <node pkg="nodelet" type="nodelet" name="rgbd_sync" args="load rtabmap_ros/rgbd_sync camera_nodelet_manager" output="screen">
-            <param name="compressed_rate"  type="double" value="5.0"/>
-            <param name="approx_sync"      type="bool"   value="false"/>
-
-            <remap from="rgb/image"       to="color/image_rect_color"/>
-            <remap from="depth/image"     to="depth/image_rect_raw"/>
-            <remap from="rgb/camera_info" to="color/camera_info"/>
-        </node>
-    </group> -->
 </launch>
