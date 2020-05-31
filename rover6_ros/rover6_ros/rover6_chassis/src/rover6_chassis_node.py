@@ -63,8 +63,8 @@ class Rover6Chassis:
         # Encoder variables
         self.enc_msg = Rover6Encoder()
 
-        self.prev_left_ticks = 0
-        self.prev_right_ticks = 0
+        self.prev_left_ticks = None
+        self.prev_right_ticks = None
 
         # motor message
         self.motors_msg = Rover6Motors()
@@ -277,11 +277,19 @@ class Rover6Chassis:
     def encoder_callback(self, enc_msg):
         self.enc_msg = enc_msg
 
+        if self.prev_left_ticks == None or self.prev_right_ticks == None:
+            self.prev_left_ticks = self.enc_msg.left_ticks
+            self.prev_right_ticks = self.enc_msg.right_ticks
+
     def run(self):
         clock_rate = rospy.Rate(30)
 
         while not rospy.is_shutdown():
             try:
+                # wait for encoders to be initialized
+                if self.prev_left_ticks == None or self.prev_right_ticks == None:
+                    continue
+                
                 self.compute_odometry()
                 self.publish_chassis_data()
                 # self.publish_pan_tilt_tfs()
