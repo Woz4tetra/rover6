@@ -44,8 +44,8 @@
             <param name="compressed_rate"  type="double" value="5.0"/>
             <param name="approx_sync"      type="bool"   value="false"/>
 
-            <remap from="rgb/image"       to="color/image_rect_color"/>
-            <remap from="depth/image"     to="depth/image_rect_raw"/>
+            <remap from="rgb/image"       to="color/image_raw"/>
+            <remap from="depth/image"     to="aligned_depth_to_color/image_raw"/>
             <remap from="rgb/camera_info" to="color/camera_info"/>
         </node>
     </group>

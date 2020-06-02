@@ -31,7 +31,8 @@
         <node name="rover6_teleop" pkg="rover6_teleop" type="rover6_teleop_node.py" output="screen" required="true">
             <param name="deadzone_joy_val" value="$(arg deadzone_val)" />
             <param name="joystick_topic" value="/joy" />
-            <param name="linear_scale" value="0.4" />
+            <!-- <param name="linear_scale" value="0.4" /> -->
+            <param name="linear_scale" value="0.15" />
             <param name="angular_scale" value="3.0" />
 
             <param name="linear_axis" value="$(arg joystick_linear_axis)" />
