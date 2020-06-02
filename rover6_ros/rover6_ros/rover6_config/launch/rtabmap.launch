@@ -1,48 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <group ns="rtabmap">
-        <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start">
-            <param name="frame_id" type="string" value="base_link"/>
+    <include file="$(find rtabmap_ros)/launch/rtabmap.launch">
+        <arg name="rtabmap_args" value="--delete_db_on_start"/>
+        <arg name="depth_topic" value="/camera/aligned_depth_to_color/image_raw"/>
+        <arg name="rgb_topic" value="/camera/color/image_raw"/>
+        <arg name="camera_info_topic" value="/camera/color/camera_info"/>
 
-            <param name="subscribe_depth" type="bool" value="false"/>
-            <param name="subscribe_rgb"   type="bool" value="false"/>
-            <param name="subscribe_rgbd"  type="bool" value="true"/>
+        <arg name="odom_frame_id" value="odom"/>
+        <arg name="frame_id" value="base_link"/>
 
-            <remap from="odom" to="/rover6/odom"/>
-
-            <remap from="rgbd_image" to="/camera/rgbd_image"/>
-
-            <param name="queue_size" type="int" value="50"/>
-
-            <param name="Vis/InlierDistance"        value="0.1"/>
-            <param name="Vis/MaxFeatures"           value="2000"/>
-            <param name="Vis/MinInliers"            value="10"/>
-            <param name="Rtabmap/DetectionRate"     value="5"/>
-
-            <param name="RGBD/AngularUpdate"        value="0.1"/>
-            <param name="RGBD/LinearUpdate"         value="0.1"/>
-            <param name="RGBD/OptimizeFromGraphEnd" value="false"/>
-            <param name="Reg/Force3DoF"             value="true"/>
-        </node>
-    </group>
-
-
-    <group ns="camera">
-        <include file="$(find rgbd_launch)/launch/includes/rgb.launch.xml">
-            <arg name="manager"                       value="realsense2_camera_manager" />
-            <arg name="respawn"                       value="false" />
-            <arg name="rgb"                           value="color" />
-        </include>
-
-        <node pkg="nodelet" type="nodelet" name="camera_nodelet_manager" args="manager" output="screen"/>
-
-        <node pkg="nodelet" type="nodelet" name="rgbd_sync" args="load rtabmap_ros/rgbd_sync camera_nodelet_manager" output="screen">
-            <param name="compressed_rate"  type="double" value="5.0"/>
-            <param name="approx_sync"      type="bool"   value="false"/>
-
-            <remap from="rgb/image"       to="color/image_rect_color"/>
-            <remap from="depth/image"     to="depth/image_rect_raw"/>
-            <remap from="rgb/camera_info" to="color/camera_info"/>
-        </node>
-    </group>
+        <arg name="approx_sync" value="false"/>
+    </include>
 </launch>

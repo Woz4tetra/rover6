@@ -9,35 +9,21 @@
         <arg name="rover6_chassis_use_sensor_msg_time" value="false"/>
     </include>
 
-
     <node pkg="tf" type="static_transform_publisher" name="camera_base_to_depth" args="0.0 0.0 0.0 0 0 0 1 camera_link camera_depth_frame 30" />
     <node pkg="tf" type="static_transform_publisher" name="camera_depth_to_optical" args="0.0 0.0 0.0 0 0 0 1 camera_depth_frame camera_depth_optical_frame 30" />
     <node pkg="tf" type="static_transform_publisher" name="camera_base_to_color" args="0.0 0.0 0.0 0 0 0 1 camera_link camera_color_frame 30" />
     <node pkg="tf" type="static_transform_publisher" name="camera_color_to_optical" args="0.0 0.0 0.0 0 0 0 1 camera_color_frame camera_color_optical_frame 30" />
 
-    <group ns="rtabmap">
-        <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start">
-            <param name="frame_id" type="string" value="base_link"/>
+    <include file="$(find rtabmap_ros)/launch/rtabmap.launch">
+        <arg name="rtabmap_args" value="--delete_db_on_start"/>
+        <arg name="depth_topic" value="/camera/aligned_depth_to_color/image_raw"/>
+        <arg name="rgb_topic" value="/camera/color/image_raw"/>
+        <arg name="camera_info_topic" value="/camera/color/camera_info"/>
 
-            <param name="subscribe_depth" type="bool" value="false"/>
-            <param name="subscribe_rgb"   type="bool" value="false"/>
-            <param name="subscribe_rgbd"  type="bool" value="true"/>
+        <arg name="odom_frame_id" value="odom"/>
+        <arg name="frame_id" value="base_link"/>
 
-            <remap from="odom" to="/rover6/odom"/>
+        <arg name="approx_sync" value="false"/>
+    </include>
 
-            <remap from="rgbd_image" to="/camera/rgbd_image"/>
-
-            <param name="queue_size" type="int" value="50"/>
-
-            <param name="Vis/InlierDistance"        value="0.1"/>
-            <param name="Vis/MaxFeatures"           value="2000"/>
-            <param name="Vis/MinInliers"            value="10"/>
-            <param name="Rtabmap/DetectionRate"     value="5"/>
-
-            <param name="RGBD/AngularUpdate"        value="0.1"/>
-            <param name="RGBD/LinearUpdate"         value="0.1"/>
-            <param name="RGBD/OptimizeFromGraphEnd" value="false"/>
-            <param name="Reg/Force3DoF"             value="true"/>
-        </node>
-    </group>
 </launch>
