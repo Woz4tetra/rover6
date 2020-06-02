@@ -2,7 +2,10 @@
 <launch>
     <node pkg="rosbag" type="record" name="rosbag_record_realsense"
        args="record -o $(find rover6_config)/bags/realsense
-            /rover6/odom
-            /camera/rgbd_image
-            /tf" />
+            /rover6/encoders
+            /camera/aligned_depth_to_color/image_raw
+            /camera/aligned_depth_to_color/camera_info
+            /camera/color/image_raw
+            /camera/color/camera_info
+            " />
 </launch>
