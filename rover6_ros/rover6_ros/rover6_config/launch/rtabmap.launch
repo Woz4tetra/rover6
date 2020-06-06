@@ -10,6 +10,14 @@
         <arg name="frame_id" value="base_link"/>
 
         <arg name="approx_sync" value="false"/>
+        <arg name="visual_odometry" value="false"/>
+        <!-- <arg name="odom_topic" value="/rover6/odom"/> -->
         <arg name="rtabmapviz" value="false"/>
     </include>
+
+    <node pkg="tf" type="static_transform_publisher" name="camera_base_to_depth" args="0.0 0.0 0.0 0 0 0 1 camera_link camera_depth_frame 30" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_depth_to_optical" args="0.0 0.0 0.0 0 0 0 1 camera_depth_frame camera_depth_optical_frame 30" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_base_to_color" args="0.0 0.0 0.0 0 0 0 1 camera_link camera_color_frame 30" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_color_to_optical" args="0.0 0.0 0.0 0 0 0 1 camera_color_frame camera_color_optical_frame 30" />
+
 </launch>
